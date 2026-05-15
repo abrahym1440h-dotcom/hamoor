@@ -1,0 +1,465 @@
+"use client";
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Home, BarChart2, Grid, BookOpen, ChevronDown,
+  TrendingUp, Users, DollarSign, AlertTriangle,
+  MapPin, Coffee, ShoppingBag, Building2, Utensils,
+  Wifi, Car, Search, CheckCircle, XCircle, Clock,
+  Lightbulb, Zap, Shield, Sparkles, ChevronLeft, X
+} from "lucide-react";
+
+const $ = {
+  bg:"#F2F2F7", surface:"#FFFFFF",
+  L1:"#1C1C1E", L2:"rgba(60,60,67,0.78)",
+  L3:"rgba(60,60,67,0.54)", L4:"rgba(60,60,67,0.26)",
+  blue:"#007AFF", green:"#34C759", red:"#FF3B30",
+  orange:"#FF9500", purple:"#AF52DE", teal:"#32ADE6", indigo:"#5856D6",
+  F3:"rgba(120,120,128,0.12)", F4:"rgba(120,120,128,0.08)", F5:"rgba(120,120,128,0.04)",
+  sep:"rgba(60,60,67,0.29)", sepL:"rgba(60,60,67,0.10)",
+};
+const SH = {
+  card: "0 1px 0 rgba(0,0,0,0.05),0 2px 12px rgba(0,0,0,0.05),0 4px 24px rgba(0,0,0,0.04)",
+  lift: "0 2px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.08),0 16px 48px rgba(0,0,0,0.06)",
+  blue: "0 2px 8px rgba(0,122,255,0.22),0 8px 32px rgba(0,122,255,0.28)",
+};
+const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
+
+async function apiCall(endpoint, body) {
+  const res = await fetch(`/api/${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "خطأ في الخادم");
+  return data;
+}
+
+function Spinner({sz=20, clr="#fff"}) {
+  return <div style={{width:sz,height:sz,flexShrink:0,border:`2.5px solid ${clr}28`,borderTop:`2.5px solid ${clr}`,borderRadius:"50%",animation:"_spin .72s linear infinite"}}/>;
+}
+
+function ScoreRing({value, size=120, track=10, color=$.blue, noAnim=false}) {
+  const [v, setV] = useState(noAnim ? value : 0);
+  const raf = useRef();
+  useEffect(() => {
+    if (noAnim) { setV(value); return; }
+    let t0;
+    function tick(ts) {
+      if (!t0) t0 = ts;
+      const p = Math.min((ts-t0)/1100, 1);
+      setV(Math.round(value*(1-Math.pow(1-p,4))));
+      if (p<1) raf.current = requestAnimationFrame(tick);
+    }
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [value, noAnim]);
+  const r=((size-track)/2), cx=size/2, circ=2*Math.PI*r, dash=(v/100)*circ;
+  return (
+    <div style={{position:"relative",width:size,height:size,flexShrink:0}}>
+      <svg width={size} height={size} style={{transform:"rotate(-90deg)",display:"block"}}>
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke={`${color}1A`} strokeWidth={track}/>
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke={color} strokeWidth={track} strokeLinecap="round" strokeDasharray={`${dash} ${circ-dash}`}/>
+      </svg>
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontSize:size*.246,fontWeight:800,color:$.L1,letterSpacing:"-2px",lineHeight:1}}>{v}</span>
+        <span style={{fontSize:size*.097,fontWeight:500,color:$.L3,marginTop:2}}>/ 100</span>
+      </div>
+    </div>
+  );
+}
+
+function Bar({pct, color=$.blue, h=6}) {
+  return <div style={{background:$.F3,borderRadius:99,height:h,overflow:"hidden"}}><div style={{width:`${Math.min(pct,100)}%`,height:"100%",background:color,borderRadius:99,transition:"width .9s cubic-bezier(.4,0,.2,1)"}}/></div>;
+}
+
+function Chip({text, color=$.L3, bg=$.F4, size=11}) {
+  return <span style={{display:"inline-flex",alignItems:"center",background:bg,color,borderRadius:99,padding:`${size>11?5:3}px ${size>11?14:10}px`,fontSize:size,fontWeight:600,lineHeight:1.2}}>{text}</span>;
+}
+
+function Spark({data, color=$.blue, w=68, h=30}) {
+  if (!data||data.length<2) return null;
+  const mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;
+  const pts=data.map((v,i)=>`${(i/(data.length-1))*(w-4)+2},${(h-6)-((v-mn)/rng)*(h-10)+3}`).join(" ");
+  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"><polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>;
+}
+
+function IconBadge({Icon, color, size=36}) {
+  return <div style={{width:size,height:size,borderRadius:size*.27,background:`${color}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon size={size*.48} color={color} strokeWidth={1.9}/></div>;
+}
+
+function Card({children, style, onClick}) {
+  return <div onClick={onClick} style={{background:$.surface,borderRadius:20,boxShadow:SH.card,overflow:"hidden",...style}}>{children}</div>;
+}
+
+function SectionLabel({children}) {
+  return <div style={{fontSize:13,fontWeight:600,color:$.L3,letterSpacing:.4,textTransform:"uppercase",paddingRight:4,marginBottom:sp[2]}}>{children}</div>;
+}
+
+function Section({title, Icon, color=$.blue, children}) {
+  return <Card style={{marginBottom:sp[3]}}><div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[4]}px ${sp[5]}px ${sp[3]}px`,borderBottom:`0.5px solid ${$.sepL}`}}><IconBadge Icon={Icon} color={color} size={32}/><span style={{fontSize:15,fontWeight:700,color:$.L1,letterSpacing:"-0.2px"}}>{title}</span></div><div style={{padding:`${sp[4]}px ${sp[5]}px`}}>{children}</div></Card>;
+}
+
+const iStyle = {width:"100%",boxSizing:"border-box",background:$.F5,border:"1.5px solid transparent",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:15,color:$.L1,fontFamily:"inherit",outline:"none",appearance:"none",WebkitAppearance:"none",transition:"border-color .15s,box-shadow .15s,background .15s"};
+
+function FormField({label, icon, children}) {
+  return <div style={{marginBottom:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>{icon}<label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>{label}</label></div>{children}</div>;
+}
+
+function Sheet({open, onClose, children}) {
+  if (!open) return null;
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.40)",backdropFilter:"blur(4px)"}}/>
+      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"88vh",overflowY:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.18)"}}>
+        <div style={{display:"flex",justifyContent:"center",padding:`${sp[3]}px 0 ${sp[2]}px`}}><div style={{width:36,height:4,borderRadius:99,background:$.F3}}/></div>
+        <button onClick={onClose} style={{position:"absolute",top:sp[3],left:sp[4],background:$.F3,border:"none",borderRadius:99,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={16} color={$.L3}/></button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const CITIES=["الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","تبوك","أبها","القصيم","الخبر","نجران"];
+
+function HomeScreen({onAnalyze, lastResult, onViewLast}) {
+  const [idea,setIdea]=useState("");
+  const [city,setCity]=useState("الرياض");
+  const [budget,setBudget]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+  const canGo = idea.trim()&&budget.trim()&&!busy;
+
+  async function go() {
+    if (!canGo) return;
+    setBusy(true); setErr(null);
+    try {
+      const r = await apiCall("analyze", { idea, city, budget });
+      onAnalyze({...r,idea,city,budget});
+    } catch(e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div>
+      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{position:"relative"}}>
+          <p style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)",marginBottom:sp[1]}}>مرحباً بعودتك</p>
+          <h1 style={{fontSize:38,fontWeight:800,color:"#fff",letterSpacing:"-1.2px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
+          <p style={{fontSize:15,color:"rgba(255,255,255,0.70)",lineHeight:1.6,maxWidth:240}}>منصة الذكاء الاصطناعي لتحليل المشاريع وقرارات استثمارية ذكية</p>
+        </div>
+      </div>
+
+      <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
+        <Card style={{boxShadow:SH.lift,marginBottom:sp[4],marginTop:sp[5]}}>
+          <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[4]}px`,borderBottom:`0.5px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:sp[3]}}>
+            <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(145deg,#007AFF,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={17} color="#fff" strokeWidth={2}/></div>
+            <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل فكرتك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل بالذكاء الاصطناعي</div></div>
+          </div>
+          <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
+            <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
+              <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص…" style={iStyle}/>
+            </FormField>
+            <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
+              <div style={{position:"relative"}}>
+                <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+              </div>
+            </FormField>
+            <FormField label="الميزانية" icon={<DollarSign size={14} color={$.L4}/>}>
+              <input value={budget} onChange={e=>setBudget(e.target.value)} placeholder="مثال: 150,000 ريال" style={iStyle}/>
+            </FormField>
+            {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+            <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+              {busy?<><Spinner sz={17}/>جاري التحليل…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
+            </button>
+          </div>
+        </Card>
+
+        {lastResult && (
+          <div style={{marginBottom:sp[5]}}>
+            <SectionLabel>آخر تحليل</SectionLabel>
+            <Card onClick={onViewLast} style={{cursor:"pointer"}}>
+              <div style={{padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
+                <ScoreRing value={lastResult.score} size={64} track={6} color={lastResult.decision_type==="positive"?$.green:$.red} noAnim/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:11,color:$.L3,marginBottom:3}}>{lastResult.idea} · {lastResult.city}</div>
+                  <div style={{fontSize:17,fontWeight:700,marginBottom:4,color:lastResult.decision_type==="positive"?$.green:$.red}}>{lastResult.decision}</div>
+                  <div style={{fontSize:13,color:$.L3,lineHeight:1.45,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{lastResult.summary}</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const TABS=["نظرة عامة","السوق","المالي","المخاطر"];
+
+function AnalysisScreen({result}) {
+  const [tab,setTab]=useState(0);
+  if (!result) return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[16]}px ${sp[5]}px`,gap:sp[3],color:$.L3}}>
+      <BarChart2 size={48} strokeWidth={1.3}/>
+      <p style={{fontSize:17,fontWeight:600,color:$.L2}}>لا يوجد تحليل بعد</p>
+      <p style={{fontSize:14,textAlign:"center"}}>ادخل لصفحة الرئيسية وحلّل فكرتك أولاً</p>
+    </div>
+  );
+  const pos=result.decision_type==="positive";
+  const hGrad=pos?"linear-gradient(160deg,#2DD36F,#34C759,#1E9E40)":"linear-gradient(160deg,#FF4747,#FF3B30,#D42820)";
+
+  return (
+    <div>
+      <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
+          <div style={{flex:1}}>
+            <Chip text="نتيجة التحليل" color="rgba(255,255,255,0.88)" bg="rgba(255,255,255,0.20)"/>
+            <div style={{fontSize:28,fontWeight:800,color:"#fff",letterSpacing:"-0.6px",margin:`${sp[3]}px 0 ${sp[2]}px`}}>{result.decision}</div>
+            <p style={{fontSize:14,color:"rgba(255,255,255,0.76)",lineHeight:1.6,maxWidth:210}}>{result.summary}</p>
+          </div>
+          <ScoreRing value={result.score} size={104} track={9} color="rgba(255,255,255,0.95)"/>
+        </div>
+      </div>
+
+      <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
+          {[{Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue,data:result.monthly_data},{Icon:Users,label:"المنافسة",val:result.competition,color:$.orange,data:[62,58,66,60,70,65]},{Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple,data:[42,46,50,48,54,52]},{Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red,data:[70,66,60,56,58,51]}].map(({Icon,label,val,color,data})=>(
+            <Card key={label} style={{padding:`${sp[4]}px ${sp[4]}px ${sp[3]}px`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[3]}}><IconBadge Icon={Icon} color={color} size={34}/><Spark data={data} color={color} w={58} h={26}/></div>
+              <div style={{fontSize:11,color:$.L3,marginBottom:3}}>{label}</div>
+              <div style={{fontSize:16,fontWeight:700,color:$.L1}}>{val}</div>
+            </Card>
+          ))}
+        </div>
+
+        <div style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4]}}>
+          {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:1,padding:`${sp[2]}px ${sp[1]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none"}}>{t}</button>))}
+        </div>
+
+        {tab===0 && (
+          <>
+            {result.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>{result.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+            <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.orange}>
+              <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div></div>
+              <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div></div>
+            </Section>
+          </>
+        )}
+        {tab===1 && (
+          <>
+            <Section title="تحليل السوق" Icon={TrendingUp} color={$.blue}><p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{result.market_insight}</p></Section>
+            <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
+              {[{type:"الأفضل",color:$.green,loc:result.best_location},{type:"الأقل ملاءمة",color:$.red,loc:result.worst_location}].map(({type,color,loc})=>(
+                <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}><div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{loc?.name}</div></div><div style={{fontSize:28,fontWeight:800,color}}>{loc?.score}%</div></div>
+                  <Bar pct={loc?.score||0} color={color}/>
+                </div>
+              ))}
+            </Section>
+          </>
+        )}
+        {tab===2 && (
+          <Section title="التحليل المالي" Icon={DollarSign} color={$.green}>
+            <p style={{fontSize:14,color:$.L2,lineHeight:1.7,marginBottom:sp[5]}}>{result.financial_insight}</p>
+            {[{label:"الإيجار",val:result.costs?.rent||0,color:$.blue},{label:"التشغيل",val:result.costs?.operations||0,color:$.orange},{label:"الرواتب",val:result.costs?.salaries||0,color:$.purple}].map(({label,val,color})=>{const max=Math.max(result.costs?.rent||0,result.costs?.operations||0,result.costs?.salaries||0)||1;return(<div key={label} style={{marginBottom:sp[4]}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[2]}}><span style={{fontSize:14,color:$.L2}}>{label}</span><span style={{fontSize:14,fontWeight:700,color:$.L1}}>{val.toLocaleString("ar-SA")} ر.س</span></div><Bar pct={(val/max)*100} color={color}/></div>);})}
+            <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[4],display:"flex",justifyContent:"space-between"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span><span style={{fontSize:20,fontWeight:800,color:$.blue}}>{(result.costs?.total||0).toLocaleString("ar-SA")} ر.س</span></div>
+          </Section>
+        )}
+        {tab===3 && (
+          <Section title="تحليل المخاطر" Icon={AlertTriangle} color={$.red}>
+            <p style={{fontSize:14,color:$.L2,lineHeight:1.7,marginBottom:sp[4]}}>{result.risk_insight}</p>
+            {(result.risks||[]).map((r,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],background:`${$.red}07`,border:`1px solid ${$.red}18`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}><XCircle size={15} color={$.red} style={{flexShrink:0,marginTop:1}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.5}}>{r}</span></div>)}
+          </Section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const SECTORS=[
+  {id:1,name:"مطاعم",Icon:Utensils,score:72,comp:"متوسطة",color:$.orange,data:[60,65,62,70,68,72]},
+  {id:2,name:"مقاهي",Icon:Coffee,score:68,comp:"عالية",color:$.red,data:[55,60,58,65,62,68]},
+  {id:3,name:"تجزئة",Icon:ShoppingBag,score:55,comp:"عالية",color:$.purple,data:[50,52,48,55,50,55]},
+  {id:4,name:"فنادق",Icon:Building2,score:62,comp:"منخفضة",color:$.indigo,data:[58,60,65,62,68,62]},
+  {id:5,name:"اتصالات",Icon:Wifi,score:80,comp:"منخفضة",color:$.blue,data:[70,72,75,78,76,80]},
+  {id:6,name:"نقل",Icon:Car,score:59,comp:"متوسطة",color:$.teal,data:[55,57,54,60,58,59]},
+];
+
+function SectorsScreen() {
+  const [q,setQ]=useState("");
+  const [active,setActive]=useState(null);
+  const [detail,setDetail]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+  const list=SECTORS.filter(s=>(!q||s.name.includes(q)));
+
+  async function open(s) {
+    setActive(s); setDetail(null); setErr(null); setBusy(true);
+    try { setDetail(await apiCall("sector",{name:s.name})); }
+    catch(e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+  const sc=s=>s.score>=70?$.green:s.score>=55?$.orange:$.red;
+  const cc=s=>s.comp==="منخفضة"?$.green:s.comp==="متوسطة"?$.orange:$.red;
+
+  return (
+    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>القطاعات</h1>
+      <p style={{fontSize:15,color:$.L3,marginBottom:sp[5]}}>اضغط على قطاع لتحليله</p>
+      <div style={{position:"relative",marginBottom:sp[5]}}>
+        <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن قطاع…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
+        {list.map(s=>(
+          <Card key={s.id} onClick={()=>open(s)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+            <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+              <IconBadge Icon={s.Icon} color={s.color} size={44}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[2]}}><span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span><span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}%</span></div>
+                <Bar pct={s.score} color={sc(s)}/>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}><Chip text={"منافسة "+s.comp} color={cc(s)} bg={`${cc(s)}15`}/><Spark data={s.data} color={sc(s)} w={60} h={22}/></div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Sheet open={!!active} onClose={()=>{setActive(null);setDetail(null);}}>
+        {active && (
+          <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
+            <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[5]}}>
+              <IconBadge Icon={active.Icon} color={active.color} size={48}/>
+              <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
+            </div>
+            {busy && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[3],padding:`${sp[8]}px 0`}}><Spinner sz={28} clr={active.color}/><p style={{fontSize:14,color:$.L3}}>يحلل القطاع…</p></div>}
+            {err && <div style={{background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:sp[4],fontSize:13,color:$.red}}>{err}</div>}
+            {detail && !busy && (
+              <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
+                <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:sp[2]}}>نظرة عامة</div><p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{detail.overview}</p></Card>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+                  <Card style={{padding:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}><CheckCircle size={14} color={$.green}/><span style={{fontSize:11,fontWeight:600,color:$.green}}>الفرصة</span></div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{detail.opportunity}</p></Card>
+                  <Card style={{padding:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}><AlertTriangle size={14} color={$.red}/><span style={{fontSize:11,fontWeight:600,color:$.red}}>التحديات</span></div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{detail.challenges}</p></Card>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+                  <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:4}}>متوسط الاستثمار</div><div style={{fontSize:15,fontWeight:700,color:$.L1}}>{detail.avg_investment}</div></Card>
+                  <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:4}}>فترة الاسترداد</div><div style={{fontSize:15,fontWeight:700,color:$.L1}}>{detail.roi_period}</div></Card>
+                </div>
+                {detail.tips?.length>0 && <Card><div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[3]}px`,borderBottom:`0.5px solid ${$.sepL}`}}><span style={{fontSize:14,fontWeight:700,color:$.L1}}>نصائح للنجاح</span></div>{detail.tips.map((t,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],padding:`${sp[3]}px ${sp[5]}px`,borderBottom:i<detail.tips.length-1?`0.5px solid ${$.sepL}`:"none"}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:active.color}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.55}}>{t}</span></div>)}</Card>}
+                {detail.top_cities?.length>0 && <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:sp[3]}}>أفضل المدن</div><div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>{detail.top_cities.map(c=><Chip key={c} text={c} color={active.color} bg={`${active.color}14`} size={13}/>)}</div></Card>}
+              </div>
+            )}
+          </div>
+        )}
+      </Sheet>
+    </div>
+  );
+}
+
+const ARTICLES=[
+  {id:1,title:"كيف تفتح كوفي ناجح في السعودية",time:8,cat:"مقاهي",grad:"linear-gradient(145deg,#FF9500,#E07800)"},
+  {id:2,title:"أهم 5 أخطاء يقع فيها رواد الأعمال",time:5,cat:"عام",grad:"linear-gradient(145deg,#FF3B30,#C01E16)"},
+  {id:3,title:"دراسة جدوى مطعم بميزانية 200 ألف ريال",time:12,cat:"مطاعم",grad:"linear-gradient(145deg,#34C759,#1C8C36)"},
+  {id:4,title:"كيف تختار الموقع الصح لمشروعك",time:6,cat:"تسويق",grad:"linear-gradient(145deg,#007AFF,#0050C0)"},
+  {id:5,title:"الفرق بين الفرنشايز والمشروع المستقل",time:9,cat:"عام",grad:"linear-gradient(145deg,#AF52DE,#7830B0)"},
+  {id:6,title:"أبرز قطاعات الاستثمار في رؤية 2030",time:7,cat:"اقتصاد",grad:"linear-gradient(145deg,#32ADE6,#1880B8)"},
+];
+
+function LearningScreen() {
+  const feat=ARTICLES[3];
+  const rest=ARTICLES.filter(a=>a.id!==feat.id);
+  const [active,setActive]=useState(null);
+  const [content,setContent]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+
+  async function open(a) {
+    setActive(a); setContent(null); setErr(null); setBusy(true);
+    try { const r = await apiCall("article",{title:a.title}); setContent(r.content); }
+    catch(e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>التعلم</h1>
+      <p style={{fontSize:15,color:$.L3,marginBottom:sp[6]}}>اضغط على مقالة لقراءتها</p>
+
+      <div onClick={()=>open(feat)} style={{background:feat.grad,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],cursor:"pointer"}}>
+        <Chip text="مقالة مميزة" color="rgba(255,255,255,0.92)" bg="rgba(255,255,255,0.22)"/>
+        <div style={{fontSize:20,fontWeight:800,color:"#fff",lineHeight:1.3,margin:`${sp[3]}px 0 ${sp[4]}px`}}>{feat.title}</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:sp[1],color:"rgba(255,255,255,0.72)"}}><Clock size={13}/><span style={{fontSize:13}}>{feat.time} دقائق</span></div>
+          <div style={{background:"rgba(255,255,255,0.22)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:600,color:"#fff"}}>اقرأ الآن</div>
+        </div>
+      </div>
+
+      <SectionLabel>جميع المقالات</SectionLabel>
+      <Card>
+        {rest.map((a,i)=>(
+          <div key={a.id} onClick={()=>open(a)} style={{display:"flex",alignItems:"center",gap:sp[4],padding:`${sp[4]}px ${sp[5]}px`,borderBottom:i<rest.length-1?`0.5px solid ${$.sepL}`:"none",cursor:"pointer"}}>
+            <div style={{width:52,height:52,borderRadius:14,background:a.grad,flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:14,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:6}}>{a.title}</div>
+              <div style={{display:"flex",alignItems:"center",gap:sp[2]}}><Chip text={a.cat}/><div style={{display:"flex",alignItems:"center",gap:4,color:$.L4}}><Clock size={11}/><span style={{fontSize:11}}>{a.time} دقائق</span></div></div>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <Sheet open={!!active} onClose={()=>{setActive(null);setContent(null);}}>
+        {active && (
+          <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
+            <div style={{height:140,background:active.grad,borderRadius:16,marginBottom:sp[5],display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:`${sp[4]}px ${sp[5]}px`}}>
+              <Chip text={active.cat} color="rgba(255,255,255,0.9)" bg="rgba(255,255,255,0.2)"/>
+              <div style={{fontSize:17,fontWeight:800,color:"#fff",lineHeight:1.3,marginTop:sp[2]}}>{active.title}</div>
+            </div>
+            {busy && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[3],padding:`${sp[8]}px 0`}}><Spinner sz={28} clr={$.blue}/><p style={{fontSize:14,color:$.L3}}>يكتب المقالة…</p></div>}
+            {err && <div style={{background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:sp[4],fontSize:13,color:$.red}}>{err}</div>}
+            {content && !busy && content.split("\n\n").filter(p=>p.trim()).map((p,i)=>(<p key={i} style={{fontSize:15,color:$.L2,lineHeight:1.85,marginBottom:sp[4]}}>{p.trim()}</p>))}
+          </div>
+        )}
+      </Sheet>
+    </div>
+  );
+}
+
+const NAV=[{id:"home",label:"الرئيسية",Icon:Home},{id:"analysis",label:"التحليل",Icon:BarChart2},{id:"sectors",label:"القطاعات",Icon:Grid},{id:"learning",label:"التعلم",Icon:BookOpen}];
+
+function BottomNav({tab,setTab}) {
+  return (
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:"rgba(246,246,248,0.88)",backdropFilter:"saturate(180%) blur(28px)",WebkitBackdropFilter:"saturate(180%) blur(28px)",borderTop:`0.5px solid rgba(60,60,67,0.18)`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
+      {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[4]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={22} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:10,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
+    </nav>
+  );
+}
+
+export default function HamourApp() {
+  const [tab,setTab]=useState("home");
+  const [result,setResult]=useState(null);
+  const handleAnalyze=useCallback((data)=>{setResult(data);setTab("analysis");},[]);
+
+  return (
+    <>
+      <style>{`
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        html,body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;direction:rtl;background:${$.bg};color:${$.L1};-webkit-font-smoothing:antialiased;}
+        button,input,select,textarea{font-family:inherit;}
+        select option{background:#fff;color:${$.L1};}
+        ::-webkit-scrollbar{width:0;height:0;}
+        *{-webkit-tap-highlight-color:transparent;}
+        @keyframes _spin{to{transform:rotate(360deg);}}
+      `}</style>
+      <div style={{minHeight:"100vh",maxWidth:430,margin:"0 auto",background:$.bg,position:"relative",paddingBottom:90}}>
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={()=>setTab("analysis")}/>}
+        {tab==="analysis" && <AnalysisScreen result={result}/>}
+        {tab==="sectors" && <SectorsScreen/>}
+        {tab==="learning" && <LearningScreen/>}
+        <BottomNav tab={tab} setTab={setTab}/>
+      </div>
+    </>
+  );
+}
