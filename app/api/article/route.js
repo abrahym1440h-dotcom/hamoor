@@ -10,7 +10,7 @@ export async function POST(request) {
     const prompt = `اكتب مقالة عربية تعليمية بعنوان "${title}" لرواد الأعمال السعوديين. المقالة من 4-5 فقرات، كل فقرة 3-4 جمل. ابدأ مباشرة بالمقالة بدون عنوان أو مقدمة.`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
