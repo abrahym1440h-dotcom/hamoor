@@ -7,7 +7,7 @@ export async function POST(request) {
       return Response.json({ error: "GEMINI_API_KEY غير مضبوط" }, { status: 500 });
     }
 
-    const prompt = `اكتب مقالة عربية تعليمية بعنوان "${title}" لرواد الأعمال السعوديين. المقالة من 4-5 فقرات، كل فقرة 3-4 جمل. ابدأ مباشرة بالمقالة بدون عنوان أو مقدمة.`;
+    const prompt = `اكتب مقالة عربية تعليمية بعنوان "${title}" لرواد الأعمال السعوديين. المقالة من 4-5 فقرات، كل فقرة 3-4 جمل. ابدأ مباشرة بالمحتوى بدون عنوان أو مقدمة أو علامات تنسيق.`;
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -16,7 +16,7 @@ export async function POST(request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 1500 },
+          generationConfig: { temperature: 0.8, maxOutputTokens: 2048 },
         }),
       }
     );
