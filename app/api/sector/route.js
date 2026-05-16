@@ -7,16 +7,12 @@ export async function POST(request) {
       return Response.json({ error: "GEMINI_API_KEY غير مضبوط" }, { status: 500 });
     }
 
-    const prompt = `حلل قطاع "${name}" في السوق السعودي. أجب فقط بـ JSON بدون نص آخر:
-{
-  "overview": "نظرة عامة على القطاع في جملتين",
-  "opportunity": "الفرصة الاستثمارية في جملة",
-  "challenges": "أبرز التحديات في جملة",
-  "top_cities": ["الرياض", "جدة", "الدمام"],
-  "tips": ["نصيحة 1", "نصيحة 2", "نصيحة 3"],
-  "avg_investment": "200,000 ريال",
-  "roi_period": "18-24 شهراً"
-}`;
+    const prompt = `أنت محلل قطاعات في السوق السعودي. أرجع JSON فقط بدون أي نص قبله أو بعده.
+
+القطاع: ${name}
+
+أرجع هذا JSON بالضبط:
+{"overview":"نظرة عامة في جملتين","opportunity":"الفرصة الاستثمارية في جملة","challenges":"أبرز التحديات في جملة","top_cities":["الرياض","جدة","الدمام"],"tips":["نصيحة 1","نصيحة 2","نصيحة 3"],"avg_investment":"200,000 ريال","roi_period":"18-24 شهراً"}`;
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -25,7 +21,11 @@ export async function POST(request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+            responseMimeType: "application/json"
+          },
         }),
       }
     );
@@ -34,7 +34,9 @@ export async function POST(request) {
     if (data.error) return Response.json({ error: data.error.message }, { status: 500 });
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const match = text.match(/\{[\s\S]*\}/);
+    let cleanText = text.trim();
+    cleanText = cleanText.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+    const match = cleanText.match(/\{[\s\S]*\}/);
     if (!match) return Response.json({ error: "لم يرجع JSON" }, { status: 500 });
 
     return Response.json(JSON.parse(match[0]));
