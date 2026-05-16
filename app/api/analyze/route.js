@@ -27,7 +27,7 @@ decision_type يجب أن يكون "positive" أو "negative" فقط.`;
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 4096,
             responseMimeType: "application/json"
           },
         }),
