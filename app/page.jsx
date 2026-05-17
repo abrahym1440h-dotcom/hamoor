@@ -4,7 +4,8 @@ import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
-  Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star
+  Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
+  Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle
 } from "lucide-react";
 
 const $ = {
@@ -12,7 +13,7 @@ const $ = {
   L1:"#1C1C1E", L2:"rgba(60,60,67,0.78)",
   L3:"rgba(60,60,67,0.54)", L4:"rgba(60,60,67,0.26)",
   blue:"#007AFF", green:"#34C759", red:"#FF3B30",
-  orange:"#FF9500", purple:"#AF52DE", teal:"#32ADE6", indigo:"#5856D6", pink:"#FF2D92",
+  orange:"#FF9500", purple:"#AF52DE", teal:"#32ADE6", indigo:"#5856D6", pink:"#FF2D92", yellow:"#FFCC00",
   F3:"rgba(120,120,128,0.12)", F4:"rgba(120,120,128,0.08)", F5:"rgba(120,120,128,0.04)",
   sep:"rgba(60,60,67,0.29)", sepL:"rgba(60,60,67,0.10)",
 };
@@ -35,7 +36,7 @@ async function apiCall(endpoint, body) {
 
 const fmt = n => (n||0).toLocaleString("en-US");
 
-function function RiyalIcon({size=14, color="currentColor", style={}}) {
+function RiyalIcon({size=14, color="currentColor", style={}}) {
   return (
     <svg 
       width={size} 
@@ -53,22 +54,6 @@ function function RiyalIcon({size=14, color="currentColor", style={}}) {
         strokeLinejoin="round"
         fill="none"
       />
-    </svg>
-  );
-}
-
-  return (
-    <svg 
-      width={size} 
-      height={size * 1.1} 
-      viewBox="0 0 1124.14 1256.39" 
-      fill={color}
-      style={{display:"inline-block", verticalAlign:"middle", ...style}}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/>
-      <path d="M1085.73,895.94c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.39L0,698.51c20.06,44.47,33.32,92.75,38.4,143.37l violations.49-65.04v176.13Z"/>
-      <path d="M1085.73,895.94c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.39L0,698.51c20.06,44.47,33.32,92.75,38.4,143.37l428.39-91.04v435.04c132.25-29.04,132.25-130.59,132.25-189.61v-273.5l132.25-28.11v359.4l253.44-53.85Z"/>
     </svg>
   );
 }
@@ -226,11 +211,9 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
             <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل مشروعك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل عميق على 4 أبعاد</div></div>
           </div>
           <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
-            
             <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
               <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
             </FormField>
-
             <div style={{marginBottom:sp[4]}}>
               <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
                 <Sparkles size={14} color={$.L4}/>
@@ -240,14 +223,12 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
               <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية، يستهدف الشباب" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
               <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4}}>💡 كل ما زادت التفاصيل، زادت دقة التحليل</div>
             </div>
-
             <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
               <div style={{position:"relative"}}>
                 <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
                 <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
               </div>
             </FormField>
-
             <div style={{marginBottom:sp[4]}}>
               <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
                 <MapPin size={14} color={$.L4}/>
@@ -256,7 +237,6 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
               </div>
               <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا، الملقا، النخيل" style={iStyle}/>
             </div>
-
             <div style={{marginBottom:sp[4]}}>
               <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
                 <DollarSign size={14} color={$.L4}/>
@@ -264,20 +244,11 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
               </div>
               <div style={{position:"relative"}}>
                 <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
-                <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}>
-                  <RiyalIcon size={20} color={$.L3}/>
-                </div>
+                <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><RiyalIcon size={20} color={$.L3}/></div>
               </div>
-              {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-                <span>💰</span>
-                <span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span>
-                <RiyalIcon size={11} color={$.L2}/>
-                <span>سعودي</span>
-              </div>}
+              {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}><span>💰</span><span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span><RiyalIcon size={11} color={$.L2}/><span>سعودي</span></div>}
             </div>
-
             {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-            
             <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
               {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
             </button>
@@ -353,168 +324,93 @@ function AnalysisScreen({result}) {
           {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:1,padding:`${sp[2]}px ${sp[1]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none"}}>{t}</button>))}
         </div>
 
-        {tab===0 && (
-          <>
-            {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>
-              {sw.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
-            </Section>}
-            {sw.weaknesses?.length>0 && <Section title="نقاط الضعف" Icon={TrendingDown} color={$.orange}>
-              {sw.weaknesses.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.orange,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
-            </Section>}
-            {sw.opportunities?.length>0 && <Section title="الفرص" Icon={Target} color={$.blue}>
-              {sw.opportunities.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.blue,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
-            </Section>}
-            {sw.threats?.length>0 && <Section title="التهديدات" Icon={AlertTriangle} color={$.red}>
-              {sw.threats.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.red,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
-            </Section>}
-            {result.recommendations?.length>0 && <Section title="التوصيات الاستراتيجية" Icon={Lightbulb} color={$.purple}>
-              {result.recommendations.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10}}><div style={{width:22,height:22,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
-            </Section>}
-            {result.kpis?.length>0 && <Section title="مؤشرات الأداء" Icon={Activity} color={$.teal}>
-              {result.kpis.map((k,i)=><Row key={i} label={k.name} value={k.target} valueColor={$.teal}/>)}
-            </Section>}
-          </>
-        )}
+        {tab===0 && (<>
+          {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>{sw.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+          {sw.weaknesses?.length>0 && <Section title="نقاط الضعف" Icon={TrendingDown} color={$.orange}>{sw.weaknesses.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.orange,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+          {sw.opportunities?.length>0 && <Section title="الفرص" Icon={Target} color={$.blue}>{sw.opportunities.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.blue,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+          {sw.threats?.length>0 && <Section title="التهديدات" Icon={AlertTriangle} color={$.red}>{sw.threats.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.red,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+          {result.recommendations?.length>0 && <Section title="التوصيات الاستراتيجية" Icon={Lightbulb} color={$.purple}>{result.recommendations.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10}}><div style={{width:22,height:22,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+          {result.kpis?.length>0 && <Section title="مؤشرات الأداء" Icon={Activity} color={$.teal}>{result.kpis.map((k,i)=><Row key={i} label={k.name} value={k.target} valueColor={$.teal}/>)}</Section>}
+        </>)}
 
-        {tab===1 && (
-          <>
-            <Section title="حجم السوق والجمهور" Icon={Users} color={$.blue}>
-              <Row label="حجم السوق" value={m.market_size||"-"}/>
-              <Row label="الفئة المستهدفة" value={m.target_audience||"-"}/>
-              <Row label="أنماط الشراء" value={m.buying_patterns||"-"}/>
-              <Row label="الموسمية" value={m.seasonality||"-"}/>
-              <Row label="الحصة المتوقعة" value={m.expected_market_share||"-"} valueColor={$.blue} bold/>
-              <Row label="إمكانيات النمو" value={m.growth_potential||"-"}/>
-            </Section>
-            {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange}>
-              {m.competitors.map((c,i)=><div key={i} style={{padding:`${sp[3]}px 0`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:4}}>
-                  <Star size={14} color={$.orange}/>
-                  <span style={{fontSize:14,fontWeight:700,color:$.L1}}>{c.name}</span>
+        {tab===1 && (<>
+          <Section title="حجم السوق والجمهور" Icon={Users} color={$.blue}>
+            <Row label="حجم السوق" value={m.market_size||"-"}/>
+            <Row label="الفئة المستهدفة" value={m.target_audience||"-"}/>
+            <Row label="أنماط الشراء" value={m.buying_patterns||"-"}/>
+            <Row label="الموسمية" value={m.seasonality||"-"}/>
+            <Row label="الحصة المتوقعة" value={m.expected_market_share||"-"} valueColor={$.blue} bold/>
+            <Row label="إمكانيات النمو" value={m.growth_potential||"-"}/>
+          </Section>
+          {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange}>{m.competitors.map((c,i)=><div key={i} style={{padding:`${sp[3]}px 0`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none"}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:4}}><Star size={14} color={$.orange}/><span style={{fontSize:14,fontWeight:700,color:$.L1}}>{c.name}</span></div><p style={{fontSize:13,color:$.L3,lineHeight:1.5,paddingRight:sp[5]}}>{c.strength}</p></div>)}</Section>}
+          <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
+            {[{type:"الموقع الأفضل",color:$.green,d:loc.best},{type:"الموقع الأسوأ",color:$.red,d:loc.worst}].map(({type,color,d})=>d && (
+              <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}><div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{d.name}</div></div><div style={{fontSize:26,fontWeight:800,color}}>{d.score}%</div></div>
+                <Bar pct={d.score||0} color={color}/>
+                {d.reason && <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginTop:sp[3]}}>{d.reason}</p>}
+              </div>
+            ))}
+          </Section>
+        </>)}
+
+        {tab===2 && (<>
+          <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="تكاليف لمرة واحدة">
+            <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit}/>
+            <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
+            <MoneyRow label="المعدات" value={sc.equipment}/>
+            <MoneyRow label="التراخيص" value={sc.licenses}/>
+            <MoneyRow label="المخزون الأولي" value={sc.initial_inventory}/>
+            <MoneyRow label="تسويق الإطلاق" value={sc.marketing_launch}/>
+            <MoneyRow label="رأس مال تشغيلي" value={sc.working_capital}/>
+            <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي</span><span style={{fontSize:20,fontWeight:800,color:$.purple,display:"inline-flex",alignItems:"center",gap:6}}><span>{fmt(sc.total)}</span><RiyalIcon size={18} color={$.purple}/></span></div>
+          </Section>
+          <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange}>
+            <MoneyRow label="الإيجار" value={mc.rent}/>
+            <MoneyRow label="الرواتب" value={mc.salaries}/>
+            <MoneyRow label="فواتير الخدمات" value={mc.utilities}/>
+            <MoneyRow label="المواد الخام" value={mc.materials}/>
+            <MoneyRow label="التسويق" value={mc.marketing}/>
+            <MoneyRow label="الصيانة" value={mc.maintenance}/>
+            <MoneyRow label="مصاريف أخرى" value={mc.other}/>
+            <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span><span style={{fontSize:20,fontWeight:800,color:$.orange,display:"inline-flex",alignItems:"center",gap:6}}><span>{fmt(mc.total)}</span><RiyalIcon size={18} color={$.orange}/></span></div>
+          </Section>
+          <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
+            <MoneyRow label="الشهر الأول" value={rp.month_1}/>
+            <MoneyRow label="الشهر الثالث" value={rp.month_3}/>
+            <MoneyRow label="الشهر السادس" value={rp.month_6}/>
+            <MoneyRow label="الشهر الـ12" value={rp.month_12} valueColor={$.green} bold/>
+            <MoneyRow label="السنة الثانية (شهرياً)" value={rp.year_2_monthly}/>
+            <MoneyRow label="السنة الثالثة (شهرياً)" value={rp.year_3_monthly} valueColor={$.green} bold/>
+          </Section>
+          <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue}>
+            <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold/>
+            <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold/>
+            <MoneyRow label="الربح السنوي - السنة 1" value={f.annual_profit_year1}/>
+            <MoneyRow label="الربح السنوي - السنة 3" value={f.annual_profit_year3} valueColor={$.green} bold/>
+          </Section>
+        </>)}
+
+        {tab===3 && (<>
+          <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle="5 مخاطر مصنّفة مع خطط التخفيف">
+            {(result.risk_analysis||[]).map((r,i)=>{
+              const probColor = r.probability==="عالي"?$.red:r.probability==="متوسط"?$.orange:$.green;
+              const impColor = r.impact==="شديد"?$.red:r.impact==="متوسط"?$.orange:$.green;
+              return (
+                <div key={i} style={{background:$.F5,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}><div style={{width:26,height:26,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,fontWeight:700,color:$.L1,flex:1}}>{r.risk}</span></div>
+                  <div style={{display:"flex",gap:sp[2],marginBottom:sp[3],flexWrap:"wrap"}}><Chip text={"احتمالية: "+r.probability} color={probColor} bg={`${probColor}15`}/><Chip text={"التأثير: "+r.impact} color={impColor} bg={`${impColor}15`}/></div>
+                  <div style={{background:`${$.green}07`,borderRight:`3px solid ${$.green}`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:8}}><div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:4}}>خطة التخفيف</div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{r.mitigation}</p></div>
                 </div>
-                <p style={{fontSize:13,color:$.L3,lineHeight:1.5,paddingRight:sp[5]}}>{c.strength}</p>
-              </div>)}
-            </Section>}
-            <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
-              {[{type:"الموقع الأفضل",color:$.green,d:loc.best},{type:"الموقع الأسوأ",color:$.red,d:loc.worst}].map(({type,color,d})=>d && (
-                <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}>
-                    <div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{d.name}</div></div>
-                    <div style={{fontSize:26,fontWeight:800,color}}>{d.score}%</div>
-                  </div>
-                  <Bar pct={d.score||0} color={color}/>
-                  {d.reason && <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginTop:sp[3]}}>{d.reason}</p>}
-                </div>
-              ))}
-            </Section>
-          </>
-        )}
-
-        {tab===2 && (
-          <>
-            <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="تكاليف لمرة واحدة">
-              <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit}/>
-              <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
-              <MoneyRow label="المعدات" value={sc.equipment}/>
-              <MoneyRow label="التراخيص" value={sc.licenses}/>
-              <MoneyRow label="المخزون الأولي" value={sc.initial_inventory}/>
-              <MoneyRow label="تسويق الإطلاق" value={sc.marketing_launch}/>
-              <MoneyRow label="رأس مال تشغيلي" value={sc.working_capital}/>
-              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي</span>
-                <span style={{fontSize:20,fontWeight:800,color:$.purple,display:"inline-flex",alignItems:"center",gap:6}}>
-                  <span>{fmt(sc.total)}</span>
-                  <RiyalIcon size={18} color={$.purple}/>
-                </span>
-              </div>
-            </Section>
-
-            <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange}>
-              <MoneyRow label="الإيجار" value={mc.rent}/>
-              <MoneyRow label="الرواتب" value={mc.salaries}/>
-              <MoneyRow label="فواتير الخدمات" value={mc.utilities}/>
-              <MoneyRow label="المواد الخام" value={mc.materials}/>
-              <MoneyRow label="التسويق" value={mc.marketing}/>
-              <MoneyRow label="الصيانة" value={mc.maintenance}/>
-              <MoneyRow label="مصاريف أخرى" value={mc.other}/>
-              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span>
-                <span style={{fontSize:20,fontWeight:800,color:$.orange,display:"inline-flex",alignItems:"center",gap:6}}>
-                  <span>{fmt(mc.total)}</span>
-                  <RiyalIcon size={18} color={$.orange}/>
-                </span>
-              </div>
-            </Section>
-
-            <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
-              <MoneyRow label="الشهر الأول" value={rp.month_1}/>
-              <MoneyRow label="الشهر الثالث" value={rp.month_3}/>
-              <MoneyRow label="الشهر السادس" value={rp.month_6}/>
-              <MoneyRow label="الشهر الـ12" value={rp.month_12} valueColor={$.green} bold/>
-              <MoneyRow label="السنة الثانية (شهرياً)" value={rp.year_2_monthly}/>
-              <MoneyRow label="السنة الثالثة (شهرياً)" value={rp.year_3_monthly} valueColor={$.green} bold/>
-            </Section>
-
-            <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue}>
-              <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold/>
-              <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold/>
-              <MoneyRow label="الربح السنوي - السنة 1" value={f.annual_profit_year1}/>
-              <MoneyRow label="الربح السنوي - السنة 3" value={f.annual_profit_year3} valueColor={$.green} bold/>
-            </Section>
-
-            <Card style={{background:`${$.blue}07`,border:`1px solid ${$.blue}25`,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-              <div style={{display:"flex",alignItems:"flex-start",gap:sp[3]}}>
-                <Lightbulb size={18} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
-                <p style={{fontSize:13,color:$.L2,lineHeight:1.65}}>{result.financial_insight || "تحليل مالي شامل بناءً على بيانات السوق الحقيقية"}</p>
-              </div>
-            </Card>
-          </>
-        )}
-
-        {tab===3 && (
-          <>
-            <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle="5 مخاطر مصنّفة مع خطط التخفيف">
-              {(result.risk_analysis||[]).map((r,i)=>{
-                const probColor = r.probability==="عالي"?$.red:r.probability==="متوسط"?$.orange:$.green;
-                const impColor = r.impact==="شديد"?$.red:r.impact==="متوسط"?$.orange:$.green;
-                return (
-                  <div key={i} style={{background:$.F5,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-                    <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-                      <div style={{width:26,height:26,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div>
-                      <span style={{fontSize:14,fontWeight:700,color:$.L1,flex:1}}>{r.risk}</span>
-                    </div>
-                    <div style={{display:"flex",gap:sp[2],marginBottom:sp[3],flexWrap:"wrap"}}>
-                      <Chip text={"احتمالية: "+r.probability} color={probColor} bg={`${probColor}15`}/>
-                      <Chip text={"التأثير: "+r.impact} color={impColor} bg={`${impColor}15`}/>
-                    </div>
-                    <div style={{background:`${$.green}07`,borderRight:`3px solid ${$.green}`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:8}}>
-                      <div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:4}}>خطة التخفيف</div>
-                      <p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{r.mitigation}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </Section>
-
-            {result.risk_insight && <Card style={{background:`${$.red}07`,border:`1px solid ${$.red}25`,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-              <div style={{display:"flex",alignItems:"flex-start",gap:sp[3]}}>
-                <Shield size={18} color={$.red} style={{flexShrink:0,marginTop:2}}/>
-                <p style={{fontSize:13,color:$.L2,lineHeight:1.65}}>{result.risk_insight}</p>
-              </div>
-            </Card>}
-          </>
-        )}
+              );
+            })}
+          </Section>
+        </>)}
 
         <div style={{marginTop:sp[5]}}>
           <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple}>
-            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}>
-              <div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div>
-              <div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div>
-            </div>
-            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}>
-              <div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div>
-              <div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div>
-            </div>
+            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div></div>
+            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div></div>
           </Section>
         </div>
       </div>
@@ -522,79 +418,452 @@ function AnalysisScreen({result}) {
   );
 }
 
-const SECTORS=[
-  {id:1,name:"مطاعم",Icon:Utensils,score:72,comp:"متوسطة",color:$.orange,data:[60,65,62,70,68,72]},
-  {id:2,name:"مقاهي",Icon:Coffee,score:68,comp:"عالية",color:$.red,data:[55,60,58,65,62,68]},
-  {id:3,name:"تجزئة",Icon:ShoppingBag,score:55,comp:"عالية",color:$.purple,data:[50,52,48,55,50,55]},
-  {id:4,name:"فنادق",Icon:Building2,score:62,comp:"منخفضة",color:$.indigo,data:[58,60,65,62,68,62]},
-  {id:5,name:"اتصالات",Icon:Wifi,score:80,comp:"منخفضة",color:$.blue,data:[70,72,75,78,76,80]},
-  {id:6,name:"نقل",Icon:Car,score:59,comp:"متوسطة",color:$.teal,data:[55,57,54,60,58,59]},
+const CATEGORIES = [
+  {id:"all", name:"الكل", color:$.blue},
+  {id:"food", name:"أطعمة", color:$.orange},
+  {id:"retail", name:"تجزئة", color:$.purple},
+  {id:"services", name:"خدمات", color:$.teal},
+  {id:"professional", name:"احترافية", color:$.indigo}
+];
+
+const SECTORS_DATA = [
+  {
+    id:1, category:"food", name:"مقاهي ومشروبات", Icon:Coffee, color:$.orange,
+    score:68, growth:"+12%", failure_rate:"60%", investment:"150,000 - 400,000", investment_avg:250000,
+    payback:"18-24 شهر", margin:"15-25%", competition:"عالية جداً",
+    audience:"شباب 18-35، طلاب جامعات، عمال شركات، عائلات في عطلات نهاية الأسبوع",
+    top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"],
+    success_tips:[
+      "موقع استراتيجي قرب الجامعات أو المكاتب أو الأحياء السكنية الحديثة",
+      "تميّز في القهوة - استورد حبوب مختصة وقدّم تجربة فريدة",
+      "تصميم داخلي جذاب للسوشيال ميديا وتجربة تصوير ممتازة",
+      "خدمة توصيل سريعة عبر التطبيقات (هنقرستيشن، جاهز، توصيل)",
+      "برامج ولاء وعروض ذكية للزبائن المنتظمين",
+      "تركيز على جودة الباريستا وتدريبه باستمرار"
+    ],
+    failure_reasons:[
+      "إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية",
+      "موقع ضعيف أو في حي ميت بدون حركة كافية",
+      "ضعف التمييز - كل المقاهي صارت متشابهة",
+      "تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء",
+      "عدم الاستمرارية في الجودة بسبب دوران الباريستا"
+    ],
+    competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد","حلواني"],
+    sub_ideas:["كوفي متخصص في القهوة الكورية","عربة قهوة متنقلة","كوفي بطابع تراثي سعودي"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:2, category:"food", name:"مطاعم وأكل", Icon:Utensils, color:$.red,
+    score:65, growth:"+8%", failure_rate:"70%", investment:"200,000 - 800,000", investment_avg:400000,
+    payback:"24-36 شهر", margin:"10-18%", competition:"عالية",
+    audience:"عائلات، عمال، موظفون، شباب في الخروجات الأسبوعية",
+    top_cities:["الرياض","جدة","الدمام","الخبر","مكة المكرمة"],
+    success_tips:[
+      "تخصص واضح - مطعم لمأكولات محددة أفضل من قائمة طويلة",
+      "اتساق في الجودة - الزبون يجي عشان طعم معين",
+      "خدمة توصيل قوية عبر كل المنصات",
+      "تسعير منافس وعروض موسمية",
+      "موقع في مجمعات تجارية أو شوارع رئيسية مزدحمة",
+      "نظافة المطبخ والخدمة - أهم من أي شي ثاني"
+    ],
+    failure_reasons:[
+      "قائمة طعام كبيرة جداً تسبب هدر في المواد",
+      "ضعف الإدارة المالية والمخزون",
+      "منافسة شرسة من السلاسل الكبيرة (البيك، كودو، هرفي)",
+      "موسمية صعبة في رمضان والإجازات",
+      "صعوبة إيجاد طباخين ماهرين والاحتفاظ بهم"
+    ],
+    competitors:["البيك","كودو","هرفي","ماكدونالدز","ماجستيك","الطازج","البرج"],
+    sub_ideas:["مطعم متخصص في الكبسة","مطعم آسيوي شعبي","فطور صباحي راقي"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:3, category:"food", name:"حلويات ومخبوزات", Icon:Cake, color:$.pink,
+    score:72, growth:"+18%", failure_rate:"45%", investment:"120,000 - 500,000", investment_avg:200000,
+    payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
+    audience:"نساء، عائلات، مناسبات (أعراس، تخرج، مواليد)، مكاتب",
+    top_cities:["الرياض","جدة","الدمام","القصيم","المدينة المنورة"],
+    success_tips:[
+      "تصوير احترافي للمنتجات للسوشيال ميديا",
+      "تغليف فاخر يصلح للهدايا والمناسبات",
+      "توصيل سريع مع المحافظة على جودة المنتج",
+      "تخصص في نوع معين (كنافة، بقلاوة، كيكات مناسبات، إلخ)",
+      "ابتكار طعمات جديدة باستمرار",
+      "حسابات قوية في إنستقرام وتيك توك"
+    ],
+    failure_reasons:[
+      "تقليد المنافسين بدل الابتكار",
+      "ضعف التغليف يضر التجربة",
+      "عدم اتساق الجودة بين الوجبات",
+      "تسعير غير صحيح",
+      "إهمال الموسمية (رمضان، أعياد، فصل الشتاء)"
+    ],
+    competitors:["صابا","عبدالصمد القرشي","ميلانو","لافيت","الإمبراطور","تشيز كيك فاكتوري"],
+    sub_ideas:["حلويات صحية بدون سكر","تخصص في الكنافة الفاخرة","كيكات تخرج وأعراس"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:4, category:"food", name:"وجبات سريعة", Icon:Pizza, color:$.yellow,
+    score:64, growth:"+10%", failure_rate:"55%", investment:"100,000 - 350,000", investment_avg:180000,
+    payback:"15-24 شهر", margin:"20-30%", competition:"عالية",
+    audience:"شباب، طلاب، عمال، موظفون في استراحة الغداء",
+    top_cities:["الرياض","جدة","الدمام","تبوك","الخبر"],
+    success_tips:[
+      "سرعة التحضير - أقل من 5 دقائق",
+      "تسعير منافس - أقل من السلاسل العالمية",
+      "موقع قريب من الجامعات أو المناطق الصناعية",
+      "توصيل عبر كل تطبيقات التوصيل بفعالية",
+      "بساطة القائمة - تركيز على 3-5 منتجات أساسية",
+      "نظافة عالية ومستمرة"
+    ],
+    failure_reasons:[
+      "منافسة شرسة من السلاسل العالمية",
+      "ضعف الجودة في المواد الخام",
+      "ارتفاع تكاليف اللحوم والدجاج",
+      "صعوبة المحافظة على نفس الجودة في الذروة",
+      "اعتماد كامل على التوصيل بدون حضور قوي في المحل"
+    ],
+    competitors:["ماكدونالدز","برجر كنق","KFC","البيك","شوكسي","صب واي"],
+    sub_ideas:["برجر سعودي بنكهات محلية","شاورما مختصة فاخرة","ساندوتشات صحية"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:5, category:"retail", name:"تجزئة عامة", Icon:ShoppingBag, color:$.purple,
+    score:55, growth:"+5%", failure_rate:"55%", investment:"100,000 - 500,000", investment_avg:200000,
+    payback:"24-36 شهر", margin:"15-30%", competition:"عالية جداً",
+    audience:"عام - حسب نوع البضاعة (أطفال، نساء، رجال، عائلات)",
+    top_cities:["الرياض","جدة","الدمام","مكة المكرمة","الخبر"],
+    success_tips:[
+      "تخصص واضح - متجر بدل سوبر ماركت عام",
+      "موقع في مجمع تجاري أو شارع تجاري مزدحم",
+      "إدارة مخزون ذكية - تجنب البضاعة الراكدة",
+      "حضور أونلاين قوي (متجر إلكتروني + سوشيال)",
+      "خدمة عملاء مميزة وسياسة استرجاع واضحة",
+      "عروض موسمية ومناسبات"
+    ],
+    failure_reasons:[
+      "منافسة قوية من التجارة الإلكترونية (نون، أمازون)",
+      "بضاعة راكدة تأكل رأس المال",
+      "موقع ضعيف بدون حركة",
+      "تسعير مرتفع مقارنة بالسلاسل الكبيرة",
+      "إهمال التسويق الرقمي"
+    ],
+    competitors:["نون","أمازون","إكسترا","ساكو","جرير","سنتربوينت","المنيع"],
+    sub_ideas:["متجر منتجات أطفال متخصص","متجر مستلزمات حيوانات","متجر هدايا فاخرة"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:6, category:"retail", name:"أزياء وعبايات", Icon:Shirt, color:$.indigo,
+    score:75, growth:"+15%", failure_rate:"40%", investment:"80,000 - 300,000", investment_avg:150000,
+    payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
+    audience:"نساء 20-60 سنة، مناسبات (أعراس، تخرج، عيد، رمضان)",
+    top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"],
+    success_tips:[
+      "تصاميم حصرية وفريدة - لا تقلد",
+      "خياطة عالية الجودة بأقمشة فاخرة",
+      "إنستقرام احترافي مع مودلز وتصوير ممتاز",
+      "خدمة VIP لكبار العملاء",
+      "موقع راقي في حي راقي أو مول",
+      "تنوع المقاسات والألوان"
+    ],
+    failure_reasons:[
+      "تشابه التصاميم مع المنافسين",
+      "تسعير ضعيف لا يغطي التكاليف",
+      "موقع غير ملائم للجمهور المستهدف",
+      "ضعف التسويق الرقمي",
+      "عدم متابعة الموضة الحالية"
+    ],
+    competitors:["مزون","نهى","أنوار","حلا الترك","نسك","عبايات الرياض"],
+    sub_ideas:["عبايات شبابية عصرية","فساتين سهرة مستوردة","عبايات صلاة فاخرة"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:7, category:"retail", name:"إلكترونيات", Icon:Smartphone, color:$.teal,
+    score:60, growth:"+7%", failure_rate:"50%", investment:"200,000 - 1,000,000", investment_avg:400000,
+    payback:"30-48 شهر", margin:"8-18%", competition:"عالية جداً",
+    audience:"شباب، موظفون، طلاب، عائلات",
+    top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
+    success_tips:[
+      "أسعار منافسة (الهامش قليل، الكمية تفرق)",
+      "ضمان موثوق وخدمة ما بعد البيع",
+      "تشكيلة متنوعة من الماركات",
+      "صيانة في المحل لتمييز عن المنافسين",
+      "حسابات سوشيال قوية مع مراجعات للمنتجات",
+      "تعاون مع شركات الأقساط (تابي، تمارا، تسهيل)"
+    ],
+    failure_reasons:[
+      "هامش ربح ضعيف يصعب الاستمرار",
+      "منافسة قاتلة من المتاجر الإلكترونية",
+      "تزييف المنتجات وفقدان الثقة",
+      "تخزين بضاعة قديمة تنخفض قيمتها",
+      "صعوبة الحصول على وكالات حصرية"
+    ],
+    competitors:["إكسترا","جرير","نون","أمازون","السيف غاليري","لولو هايبر","ماكس"],
+    sub_ideas:["إكسسوارات الجوالات","صيانة وإصلاح متخصصة","قطع غيار كمبيوترات"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:8, category:"services", name:"صالونات وتجميل", Icon:Sparkle, color:$.pink,
+    score:70, growth:"+14%", failure_rate:"50%", investment:"100,000 - 400,000", investment_avg:200000,
+    payback:"18-24 شهر", margin:"25-40%", competition:"متوسطة",
+    audience:"نساء 18-55 سنة، رجال 18-50 (للحلاقة)، مناسبات",
+    top_cities:["الرياض","جدة","الخبر","الدمام","أبها"],
+    success_tips:[
+      "مصففين موهوبين من بلاد متخصصة (لبنان، تركيا، البرازيل)",
+      "تجربة فاخرة - استقبال، تشكيلة قهوة، خصوصية",
+      "نظام حجز إلكتروني (واتساب، تطبيق)",
+      "تخصص في خدمات معينة (أعراس، علاج بشرة، شعر)",
+      "نظافة وتعقيم على أعلى مستوى",
+      "تنظيم الوقت - عدم تأخير الزبائن"
+    ],
+    failure_reasons:[
+      "دوران الموظفين السريع",
+      "عدم النظافة والتعقيم الكافي",
+      "تسعير غير واضح يفاجئ الزبون",
+      "ضعف التسويق الرقمي",
+      "إهمال خدمة الزبون والمتابعة"
+    ],
+    competitors:["روزا","إكسير","توني آند جاي","رويال","حلا للتجميل","ميرنا"],
+    sub_ideas:["صالون رجالي راقي","صالون متخصص في الأعراس","عيادة جلدية تجميلية"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:9, category:"services", name:"خياطة وتفصيل", Icon:Scissors, color:$.purple,
+    score:62, growth:"+6%", failure_rate:"30%", investment:"40,000 - 150,000", investment_avg:70000,
+    payback:"12-18 شهر", margin:"30-50%", competition:"متوسطة",
+    audience:"رجال (ثياب، بشوت)، نساء (فساتين، عبايات)، مناسبات",
+    top_cities:["الرياض","القصيم","المدينة المنورة","جدة","الدمام"],
+    success_tips:[
+      "خياطين ماهرين بخبرة طويلة",
+      "الالتزام بالمواعيد - السمعة كل شي",
+      "تخصص في نوع معين (رجالي، نسائي، عبايات)",
+      "أقمشة فاخرة ومستوردة",
+      "موقع قريب من الأحياء التي تخدمها",
+      "خدمة قياس بالمنزل للعملاء الكبار"
+    ],
+    failure_reasons:[
+      "تأخر التسليم وفقدان ثقة الزبائن",
+      "ضعف جودة الخياطة",
+      "نقص في الخياطين المهرة",
+      "تسعير غير منافس",
+      "عدم مواكبة موضة الموسم"
+    ],
+    competitors:["محلات خياطة محلية في كل حي","الطلال","الفيصلية","عابد"],
+    sub_ideas:["خياطة فساتين سهرة","خياطة بشوت ملوكية","تفصيل عبايات تصاميم خاصة"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:10, category:"professional", name:"تعليم وتدريب", Icon:GraduationCap, color:$.blue,
+    score:82, growth:"+22%", failure_rate:"35%", investment:"80,000 - 350,000", investment_avg:150000,
+    payback:"12-20 شهر", margin:"35-55%", competition:"متوسطة",
+    audience:"طلاب مدارس، طلاب جامعات، موظفون يبغون تطوير ذواتهم",
+    top_cities:["الرياض","جدة","الدمام","الخبر","المدينة المنورة"],
+    success_tips:[
+      "مدرّبين ذوي خبرة وشهادات",
+      "محتوى مميز وأسلوب تقديم جذاب",
+      "شهادات معتمدة من جهات معروفة",
+      "تسويق رقمي قوي عبر السوشيال",
+      "دورات مكثفة وقصيرة الأمد",
+      "أسعار تنافسية مع برامج أقساط"
+    ],
+    failure_reasons:[
+      "ضعف جودة المدربين والمحتوى",
+      "تسعير مرتفع جداً",
+      "موقع غير ملائم أو وصول صعب",
+      "عدم وجود تخصص واضح",
+      "إهمال متابعة الطلاب بعد الدورة"
+    ],
+    competitors:["دروب","رواق","عبر مدرسة","تمكين","مهارة"],
+    sub_ideas:["تعليم البرمجة للأطفال","تطوير الذات والقيادة","دورات لغات متخصصة"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:11, category:"professional", name:"لياقة ورياضة", Icon:Dumbbell, color:$.green,
+    score:78, growth:"+20%", failure_rate:"40%", investment:"150,000 - 600,000", investment_avg:300000,
+    payback:"18-30 شهر", margin:"30-45%", competition:"متوسطة",
+    audience:"شباب وشابات 18-45، موظفون، رياضيون، مهتمون بالصحة",
+    top_cities:["الرياض","جدة","الخبر","الدمام","تبوك"],
+    success_tips:[
+      "أجهزة حديثة وعالية الجودة",
+      "مدربين معتمدين دولياً",
+      "تنوع البرامج (يوغا، كروسفت، حديد، كارديو)",
+      "نظافة وتعقيم مستمر",
+      "اشتراكات مرنة وعروض موسمية",
+      "تطبيق لحجز الجلسات والمتابعة"
+    ],
+    failure_reasons:[
+      "أجهزة قديمة أو معطلة",
+      "اشتراكات مرتفعة جداً",
+      "صعوبة الاحتفاظ بالعملاء بعد أول شهر",
+      "موقع غير ملائم بدون مواقف",
+      "ضعف خدمة العملاء"
+    ],
+    competitors:["فتنس تايم","بادي ماستر","بود فيتنس","نقاء","فيتنس فيرست"],
+    sub_ideas:["نادي نسائي متخصص","مركز كروسفت متخصص","ستوديو يوغا وبيلاتس"],
+    last_updated:"يناير 2026"
+  },
+  {
+    id:12, category:"professional", name:"خدمات تقنية", Icon:Wifi, color:$.indigo,
+    score:85, growth:"+25%", failure_rate:"30%", investment:"50,000 - 300,000", investment_avg:100000,
+    payback:"12-18 شهر", margin:"40-60%", competition:"منخفضة",
+    audience:"شركات، رواد أعمال، متاجر، أفراد",
+    top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
+    success_tips:[
+      "تخصص في خدمة محددة (تطبيقات، مواقع، تسويق رقمي)",
+      "محفظة أعمال قوية وشهادات عملاء",
+      "أسعار باقات واضحة ومحددة",
+      "دعم فني سريع ومستمر",
+      "حضور قوي على لينكدإن وموقع احترافي",
+      "شراكات مع شركات كبرى"
+    ],
+    failure_reasons:[
+      "عدم وجود تخصص واضح",
+      "ضعف التسعير وعدم تقدير الجهد",
+      "صعوبة إيجاد عملاء مستمرين",
+      "ضعف خدمة الدعم بعد التسليم",
+      "تقادم التقنيات بسرعة"
+    ],
+    competitors:["شركات تقنية محلية متنوعة","stc Pay","موضوع","حسوب"],
+    sub_ideas:["تسويق رقمي للمحلات","تصميم تطبيقات للشركات","إدارة سوشيال ميديا"],
+    last_updated:"يناير 2026"
+  }
 ];
 
 function SectorsScreen() {
   const [q,setQ]=useState("");
+  const [cat,setCat]=useState("all");
   const [active,setActive]=useState(null);
-  const [detail,setDetail]=useState(null);
-  const [busy,setBusy]=useState(false);
-  const [err,setErr]=useState(null);
-  const list=SECTORS.filter(s=>(!q||s.name.includes(q)));
+  
+  const list = SECTORS_DATA.filter(s => {
+    if (cat !== "all" && s.category !== cat) return false;
+    if (q && !s.name.includes(q)) return false;
+    return true;
+  });
 
-  async function open(s) {
-    setActive(s); setDetail(null); setErr(null); setBusy(true);
-    try { setDetail(await apiCall("sector",{name:s.name})); }
-    catch(e) { setErr(e.message); }
-    finally { setBusy(false); }
-  }
-  const sc=s=>s.score>=70?$.green:s.score>=55?$.orange:$.red;
-  const cc=s=>s.comp==="منخفضة"?$.green:s.comp==="متوسطة"?$.orange:$.red;
+  const sc = s => s.score>=75?$.green : s.score>=60?$.orange : $.red;
 
   return (
     <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
       <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>القطاعات</h1>
-      <p style={{fontSize:15,color:$.L3,marginBottom:sp[5]}}>اضغط على قطاع لتحليله</p>
-      <div style={{position:"relative",marginBottom:sp[5]}}>
+      <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>تحليلات السوق السعودي · محدّثة يناير 2026</p>
+
+      <div style={{position:"relative",marginBottom:sp[4]}}>
         <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن قطاع…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
       </div>
+
+      <div style={{display:"flex",gap:sp[2],marginBottom:sp[5],overflowX:"auto",paddingBottom:4}}>
+        {CATEGORIES.map(c => (
+          <button key={c.id} onClick={()=>setCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:cat===c.id?c.color:$.F4,color:cat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{c.name}</button>
+        ))}
+      </div>
+
       <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
+        {list.length === 0 && <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14}}>لا توجد قطاعات مطابقة</div>}
         {list.map(s=>(
-          <Card key={s.id} onClick={()=>open(s)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+          <Card key={s.id} onClick={()=>setActive(s)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
             <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
-              <IconBadge Icon={s.Icon} color={s.color} size={44}/>
+              <IconBadge Icon={s.Icon} color={s.color} size={48}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[2]}}><span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span><span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}%</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
+                  <span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span>
+                  <span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}<span style={{fontSize:12,fontWeight:600,color:$.L4}}>/100</span></span>
+                </div>
                 <Bar pct={s.score} color={sc(s)}/>
-                <div style={{marginTop:sp[2]}}><Chip text={"منافسة "+s.comp} color={cc(s)} bg={`${cc(s)}15`}/></div>
+                <div style={{display:"flex",gap:sp[2],marginTop:sp[3],flexWrap:"wrap"}}>
+                  <Chip text={"نمو "+s.growth} color={$.green} bg={`${$.green}15`}/>
+                  <Chip text={"فشل "+s.failure_rate} color={$.red} bg={`${$.red}15`}/>
+                </div>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      <Sheet open={!!active} onClose={()=>{setActive(null);setDetail(null);}}>
+      <Sheet open={!!active} onClose={()=>setActive(null)}>
         {active && (
           <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-            <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[5]}}>
-              <IconBadge Icon={active.Icon} color={active.color} size={48}/>
-              <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
-            </div>
-            {busy && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[3],padding:`${sp[8]}px 0`}}><Spinner sz={28} clr={active.color}/><p style={{fontSize:14,color:$.L3}}>يحلل القطاع…</p></div>}
-            {err && <div style={{background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:sp[4],fontSize:13,color:$.red}}>{err}</div>}
-            {detail && !busy && (
-              <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
-                <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:sp[2]}}>نظرة عامة</div><p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{detail.overview}</p></Card>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-                  <Card style={{padding:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}><CheckCircle size={14} color={$.green}/><span style={{fontSize:11,fontWeight:600,color:$.green}}>الفرصة</span></div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{detail.opportunity}</p></Card>
-                  <Card style={{padding:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}><AlertTriangle size={14} color={$.red}/><span style={{fontSize:11,fontWeight:600,color:$.red}}>التحديات</span></div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{detail.challenges}</p></Card>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-                  <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:4}}>متوسط الاستثمار</div><div style={{fontSize:15,fontWeight:700,color:$.L1}}>{detail.avg_investment}</div></Card>
-                  <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:4}}>فترة الاسترداد</div><div style={{fontSize:15,fontWeight:700,color:$.L1}}>{detail.roi_period}</div></Card>
-                </div>
-                {detail.tips?.length>0 && <Card><div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[3]}px`,borderBottom:`0.5px solid ${$.sepL}`}}><span style={{fontSize:14,fontWeight:700,color:$.L1}}>نصائح للنجاح</span></div>{detail.tips.map((t,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],padding:`${sp[3]}px ${sp[5]}px`,borderBottom:i<detail.tips.length-1?`0.5px solid ${$.sepL}`:"none"}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:active.color}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.55}}>{t}</span></div>)}</Card>}
-                {detail.top_cities?.length>0 && <Card style={{padding:sp[4]}}><div style={{fontSize:11,fontWeight:600,color:$.L3,marginBottom:sp[3]}}>أفضل المدن</div><div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>{detail.top_cities.map(c=><Chip key={c} text={c} color={active.color} bg={`${active.color}14`} size={13}/>)}</div></Card>}
+            <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
+              <IconBadge Icon={active.Icon} color={active.color} size={52}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
+                <div style={{fontSize:11,color:$.L4,marginTop:2}}>آخر تحديث: {active.last_updated}</div>
               </div>
-            )}
+              <div style={{fontSize:32,fontWeight:800,color:active.color}}>{active.score}</div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
+              <Card style={{padding:sp[4]}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><TrendingUp size={14} color={$.green}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>النمو السنوي</span></div>
+                <div style={{fontSize:18,fontWeight:800,color:$.green}}>{active.growth}</div>
+              </Card>
+              <Card style={{padding:sp[4]}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><AlertTriangle size={14} color={$.red}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>معدل الفشل</span></div>
+                <div style={{fontSize:18,fontWeight:800,color:$.red}}>{active.failure_rate}</div>
+              </Card>
+              <Card style={{padding:sp[4]}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><DollarSign size={14} color={$.purple}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>متوسط الاستثمار</span></div>
+                <div style={{fontSize:13,fontWeight:700,color:$.L1,display:"inline-flex",alignItems:"center",gap:4}}><span>{active.investment}</span></div>
+                <div style={{fontSize:9,color:$.L4,marginTop:2,display:"inline-flex",alignItems:"center",gap:3}}><RiyalIcon size={10} color={$.L4}/><span>ريال</span></div>
+              </Card>
+              <Card style={{padding:sp[4]}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><Clock size={14} color={$.orange}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>فترة الاسترداد</span></div>
+                <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.payback}</div>
+              </Card>
+              <Card style={{padding:sp[4]}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><PieChart size={14} color={$.blue}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>هامش الربح</span></div>
+                <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.margin}</div>
+              </Card>
+              <Card style={{padding:sp[4]}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><Users size={14} color={$.teal}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>المنافسة</span></div>
+                <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.competition}</div>
+              </Card>
+            </div>
+
+            <Section title="الجمهور المستهدف" Icon={Users} color={$.blue}>
+              <p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{active.audience}</p>
+            </Section>
+
+            <Section title="أفضل المدن" Icon={MapPin} color={$.green}>
+              <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+                {active.top_cities.map((c,i)=>(<Chip key={c} text={`${i+1}. ${c}`} color={$.green} bg={`${$.green}15`} size={13}/>))}
+              </div>
+            </Section>
+
+            <Section title="عوامل النجاح" Icon={CheckCircle} color={$.green} subtitle={`${active.success_tips.length} نصيحة عملية`}>
+              {active.success_tips.map((t,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:$.green,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                  <span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{t}</span>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="أسباب الفشل الشائعة" Icon={XCircle} color={$.red} subtitle="تحذيرات مهمة قبل البدء">
+              {active.failure_reasons.map((t,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>×</div>
+                  <span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{t}</span>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="المنافسون المعروفون" Icon={Briefcase} color={$.orange}>
+              <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+                {active.competitors.map(c=>(<Chip key={c} text={c} color={$.orange} bg={`${$.orange}15`} size={12}/>))}
+              </div>
+            </Section>
+
+            <Section title="أفكار فرعية مقترحة" Icon={Lightbulb} color={$.purple} subtitle="فرص داخل القطاع">
+              {active.sub_ideas.map((idea,i)=>(
+                <div key={i} style={{background:`${$.purple}07`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10,marginBottom:sp[2]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                    <Sparkles size={14} color={$.purple}/>
+                    <span style={{fontSize:14,fontWeight:600,color:$.L1}}>{idea}</span>
+                  </div>
+                </div>
+              ))}
+            </Section>
           </div>
         )}
       </Sheet>
@@ -631,7 +900,7 @@ function LearningScreen() {
       <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>التعلم</h1>
       <p style={{fontSize:15,color:$.L3,marginBottom:sp[6]}}>اضغط على مقالة لقراءتها</p>
 
-      <div onClick={()=>open(feat)} style={{background:feat.grad,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],cursor:"pointer"}}>
+           <div onClick={()=>open(feat)} style={{background:feat.grad,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],cursor:"pointer"}}>
         <Chip text="مقالة مميزة" color="rgba(255,255,255,0.92)" bg="rgba(255,255,255,0.22)"/>
         <div style={{fontSize:20,fontWeight:800,color:"#fff",lineHeight:1.3,margin:`${sp[3]}px 0 ${sp[4]}px`}}>{feat.title}</div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -706,3 +975,4 @@ export default function HamourApp() {
     </>
   );
 }
+
