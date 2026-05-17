@@ -1,11 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Home, BarChart2, Grid, BookOpen, ChevronDown,
-  TrendingUp, Users, DollarSign, AlertTriangle,
-  MapPin, Coffee, ShoppingBag, Building2, Utensils,
-  Wifi, Car, Search, CheckCircle, XCircle, Clock,
-  Lightbulb, Zap, Shield, Sparkles, ChevronLeft, X
+  Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
+  AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
+  Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
+  Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star
 } from "lucide-react";
 
 const $ = {
@@ -13,7 +12,7 @@ const $ = {
   L1:"#1C1C1E", L2:"rgba(60,60,67,0.78)",
   L3:"rgba(60,60,67,0.54)", L4:"rgba(60,60,67,0.26)",
   blue:"#007AFF", green:"#34C759", red:"#FF3B30",
-  orange:"#FF9500", purple:"#AF52DE", teal:"#32ADE6", indigo:"#5856D6",
+  orange:"#FF9500", purple:"#AF52DE", teal:"#32ADE6", indigo:"#5856D6", pink:"#FF2D92",
   F3:"rgba(120,120,128,0.12)", F4:"rgba(120,120,128,0.08)", F5:"rgba(120,120,128,0.04)",
   sep:"rgba(60,60,67,0.29)", sepL:"rgba(60,60,67,0.10)",
 };
@@ -26,14 +25,15 @@ const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 
 async function apiCall(endpoint, body) {
   const res = await fetch(`/api/${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "خطأ في الخادم");
   return data;
 }
+
+const fmt = n => (n||0).toLocaleString("ar-SA");
 
 function Spinner({sz=20, clr="#fff"}) {
   return <div style={{width:sz,height:sz,flexShrink:0,border:`2.5px solid ${clr}28`,borderTop:`2.5px solid ${clr}`,borderRadius:"50%",animation:"_spin .72s linear infinite"}}/>;
@@ -77,13 +77,6 @@ function Chip({text, color=$.L3, bg=$.F4, size=11}) {
   return <span style={{display:"inline-flex",alignItems:"center",background:bg,color,borderRadius:99,padding:`${size>11?5:3}px ${size>11?14:10}px`,fontSize:size,fontWeight:600,lineHeight:1.2}}>{text}</span>;
 }
 
-function Spark({data, color=$.blue, w=68, h=30}) {
-  if (!data||data.length<2) return null;
-  const mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;
-  const pts=data.map((v,i)=>`${(i/(data.length-1))*(w-4)+2},${(h-6)-((v-mn)/rng)*(h-10)+3}`).join(" ");
-  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"><polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
-
 function IconBadge({Icon, color, size=36}) {
   return <div style={{width:size,height:size,borderRadius:size*.27,background:`${color}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon size={size*.48} color={color} strokeWidth={1.9}/></div>;
 }
@@ -96,11 +89,27 @@ function SectionLabel({children}) {
   return <div style={{fontSize:13,fontWeight:600,color:$.L3,letterSpacing:.4,textTransform:"uppercase",paddingRight:4,marginBottom:sp[2]}}>{children}</div>;
 }
 
-function Section({title, Icon, color=$.blue, children}) {
-  return <Card style={{marginBottom:sp[3]}}><div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[4]}px ${sp[5]}px ${sp[3]}px`,borderBottom:`0.5px solid ${$.sepL}`}}><IconBadge Icon={Icon} color={color} size={32}/><span style={{fontSize:15,fontWeight:700,color:$.L1,letterSpacing:"-0.2px"}}>{title}</span></div><div style={{padding:`${sp[4]}px ${sp[5]}px`}}>{children}</div></Card>;
+function Section({title, Icon, color=$.blue, children, subtitle}) {
+  return <Card style={{marginBottom:sp[3]}}>
+    <div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[4]}px ${sp[5]}px ${sp[3]}px`,borderBottom:`0.5px solid ${$.sepL}`}}>
+      <IconBadge Icon={Icon} color={color} size={32}/>
+      <div style={{flex:1}}>
+        <div style={{fontSize:15,fontWeight:700,color:$.L1,letterSpacing:"-0.2px"}}>{title}</div>
+        {subtitle && <div style={{fontSize:11,color:$.L3,marginTop:1}}>{subtitle}</div>}
+      </div>
+    </div>
+    <div style={{padding:`${sp[4]}px ${sp[5]}px`}}>{children}</div>
+  </Card>;
 }
 
-const iStyle = {width:"100%",boxSizing:"border-box",background:$.F5,border:"1.5px solid transparent",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:15,color:$.L1,fontFamily:"inherit",outline:"none",appearance:"none",WebkitAppearance:"none",transition:"border-color .15s,box-shadow .15s,background .15s"};
+function Row({label, value, valueColor=$.L1, bold=false}) {
+  return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`0.5px solid ${$.sepL}`}}>
+    <span style={{fontSize:13,color:$.L2}}>{label}</span>
+    <span style={{fontSize:bold?15:14,fontWeight:bold?800:600,color:valueColor}}>{value}</span>
+  </div>;
+}
+
+const iStyle = {width:"100%",boxSizing:"border-box",background:$.F5,border:"1.5px solid transparent",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:15,color:$.L1,fontFamily:"inherit",outline:"none",appearance:"none",WebkitAppearance:"none"};
 
 function FormField({label, icon, children}) {
   return <div style={{marginBottom:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>{icon}<label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>{label}</label></div>{children}</div>;
@@ -145,9 +154,9 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
       <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
         <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
         <div style={{position:"relative"}}>
-          <p style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)",marginBottom:sp[1]}}>مرحباً بعودتك</p>
+          <p style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)",marginBottom:sp[1]}}>تحليل احترافي بمستوى استشاري</p>
           <h1 style={{fontSize:38,fontWeight:800,color:"#fff",letterSpacing:"-1.2px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
-          <p style={{fontSize:15,color:"rgba(255,255,255,0.70)",lineHeight:1.6,maxWidth:240}}>منصة الذكاء الاصطناعي لتحليل المشاريع وقرارات استثمارية ذكية</p>
+          <p style={{fontSize:15,color:"rgba(255,255,255,0.70)",lineHeight:1.6,maxWidth:280}}>دراسة جدوى ذكية للسوق السعودي مدعومة ببيانات حقيقية وتحليل AI</p>
         </div>
       </div>
 
@@ -155,7 +164,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
         <Card style={{boxShadow:SH.lift,marginBottom:sp[4],marginTop:sp[5]}}>
           <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[4]}px`,borderBottom:`0.5px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:sp[3]}}>
             <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(145deg,#007AFF,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={17} color="#fff" strokeWidth={2}/></div>
-            <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل فكرتك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل بالذكاء الاصطناعي</div></div>
+            <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل مشروعك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل عميق على 4 أبعاد</div></div>
           </div>
           <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
             <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
@@ -172,7 +181,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
             </FormField>
             {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
             <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-              {busy?<><Spinner sz={17}/>جاري التحليل…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
+              {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
             </button>
           </div>
         </Card>
@@ -197,7 +206,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
   );
 }
 
-const TABS=["نظرة عامة","السوق","المالي","المخاطر"];
+const TABS=["نظرة","السوق","المالي","المخاطر"];
 
 function AnalysisScreen({result}) {
   const [tab,setTab]=useState(0);
@@ -205,11 +214,18 @@ function AnalysisScreen({result}) {
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[16]}px ${sp[5]}px`,gap:sp[3],color:$.L3}}>
       <BarChart2 size={48} strokeWidth={1.3}/>
       <p style={{fontSize:17,fontWeight:600,color:$.L2}}>لا يوجد تحليل بعد</p>
-      <p style={{fontSize:14,textAlign:"center"}}>ادخل لصفحة الرئيسية وحلّل فكرتك أولاً</p>
+      <p style={{fontSize:14,textAlign:"center"}}>ادخل للرئيسية وحلّل فكرتك أولاً</p>
     </div>
   );
   const pos=result.decision_type==="positive";
   const hGrad=pos?"linear-gradient(160deg,#2DD36F,#34C759,#1E9E40)":"linear-gradient(160deg,#FF4747,#FF3B30,#D42820)";
+  const m = result.market_analysis || {};
+  const f = result.financial_analysis || {};
+  const sc = f.setup_costs || {};
+  const mc = f.monthly_costs || {};
+  const rp = f.revenue_projection || {};
+  const sw = result.swot || {};
+  const loc = result.locations || {};
 
   return (
     <div>
@@ -217,8 +233,8 @@ function AnalysisScreen({result}) {
         <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
           <div style={{flex:1}}>
             <Chip text="نتيجة التحليل" color="rgba(255,255,255,0.88)" bg="rgba(255,255,255,0.20)"/>
-            <div style={{fontSize:28,fontWeight:800,color:"#fff",letterSpacing:"-0.6px",margin:`${sp[3]}px 0 ${sp[2]}px`}}>{result.decision}</div>
-            <p style={{fontSize:14,color:"rgba(255,255,255,0.76)",lineHeight:1.6,maxWidth:210}}>{result.summary}</p>
+            <div style={{fontSize:26,fontWeight:800,color:"#fff",letterSpacing:"-0.6px",margin:`${sp[3]}px 0 ${sp[2]}px`}}>{result.decision}</div>
+            <p style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.6,maxWidth:220}}>{result.summary}</p>
           </div>
           <ScoreRing value={result.score} size={104} track={9} color="rgba(255,255,255,0.95)"/>
         </div>
@@ -226,10 +242,15 @@ function AnalysisScreen({result}) {
 
       <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
-          {[{Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue,data:result.monthly_data},{Icon:Users,label:"المنافسة",val:result.competition,color:$.orange,data:[62,58,66,60,70,65]},{Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple,data:[42,46,50,48,54,52]},{Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red,data:[70,66,60,56,58,51]}].map(({Icon,label,val,color,data})=>(
+          {[
+            {Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue},
+            {Icon:Users,label:"المنافسة",val:result.competition,color:$.orange},
+            {Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple},
+            {Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red}
+          ].map(({Icon,label,val,color})=>(
             <Card key={label} style={{padding:`${sp[4]}px ${sp[4]}px ${sp[3]}px`}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[3]}}><IconBadge Icon={Icon} color={color} size={34}/><Spark data={data} color={color} w={58} h={26}/></div>
-              <div style={{fontSize:11,color:$.L3,marginBottom:3}}>{label}</div>
+              <IconBadge Icon={Icon} color={color} size={34}/>
+              <div style={{fontSize:11,color:$.L3,marginTop:sp[2],marginBottom:3}}>{label}</div>
               <div style={{fontSize:16,fontWeight:700,color:$.L1}}>{val}</div>
             </Card>
           ))}
@@ -241,39 +262,165 @@ function AnalysisScreen({result}) {
 
         {tab===0 && (
           <>
-            {result.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>{result.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
-            <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.orange}>
-              <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div></div>
-              <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div></div>
-            </Section>
+            {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>
+              {sw.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
+            </Section>}
+            {sw.weaknesses?.length>0 && <Section title="نقاط الضعف" Icon={TrendingDown} color={$.orange}>
+              {sw.weaknesses.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.orange,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
+            </Section>}
+            {sw.opportunities?.length>0 && <Section title="الفرص" Icon={Target} color={$.blue}>
+              {sw.opportunities.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.blue,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
+            </Section>}
+            {sw.threats?.length>0 && <Section title="التهديدات" Icon={AlertTriangle} color={$.red}>
+              {sw.threats.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.red,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
+            </Section>}
+            {result.recommendations?.length>0 && <Section title="التوصيات الاستراتيجية" Icon={Lightbulb} color={$.purple}>
+              {result.recommendations.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10}}><div style={{width:22,height:22,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}
+            </Section>}
+            {result.kpis?.length>0 && <Section title="مؤشرات الأداء" Icon={Activity} color={$.teal}>
+              {result.kpis.map((k,i)=><Row key={i} label={k.name} value={k.target} valueColor={$.teal}/>)}
+            </Section>}
           </>
         )}
+
         {tab===1 && (
           <>
-            <Section title="تحليل السوق" Icon={TrendingUp} color={$.blue}><p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{result.market_insight}</p></Section>
+            <Section title="حجم السوق والجمهور" Icon={Users} color={$.blue}>
+              <Row label="حجم السوق" value={m.market_size||"-"}/>
+              <Row label="الفئة المستهدفة" value={m.target_audience||"-"}/>
+              <Row label="أنماط الشراء" value={m.buying_patterns||"-"}/>
+              <Row label="الموسمية" value={m.seasonality||"-"}/>
+              <Row label="الحصة المتوقعة" value={m.expected_market_share||"-"} valueColor={$.blue} bold/>
+              <Row label="إمكانيات النمو" value={m.growth_potential||"-"}/>
+            </Section>
+            {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange}>
+              {m.competitors.map((c,i)=><div key={i} style={{padding:`${sp[3]}px 0`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:4}}>
+                  <Star size={14} color={$.orange}/>
+                  <span style={{fontSize:14,fontWeight:700,color:$.L1}}>{c.name}</span>
+                </div>
+                <p style={{fontSize:13,color:$.L3,lineHeight:1.5,paddingRight:sp[5]}}>{c.strength}</p>
+              </div>)}
+            </Section>}
             <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
-              {[{type:"الأفضل",color:$.green,loc:result.best_location},{type:"الأقل ملاءمة",color:$.red,loc:result.worst_location}].map(({type,color,loc})=>(
+              {[
+                {type:"الموقع الأفضل",color:$.green,d:loc.best},
+                {type:"الموقع الأسوأ",color:$.red,d:loc.worst}
+              ].map(({type,color,d})=>d && (
                 <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}><div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{loc?.name}</div></div><div style={{fontSize:28,fontWeight:800,color}}>{loc?.score}%</div></div>
-                  <Bar pct={loc?.score||0} color={color}/>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}>
+                    <div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{d.name}</div></div>
+                    <div style={{fontSize:26,fontWeight:800,color}}>{d.score}%</div>
+                  </div>
+                  <Bar pct={d.score||0} color={color}/>
+                  {d.reason && <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginTop:sp[3]}}>{d.reason}</p>}
                 </div>
               ))}
             </Section>
           </>
         )}
+
         {tab===2 && (
-          <Section title="التحليل المالي" Icon={DollarSign} color={$.green}>
-            <p style={{fontSize:14,color:$.L2,lineHeight:1.7,marginBottom:sp[5]}}>{result.financial_insight}</p>
-            {[{label:"الإيجار",val:result.costs?.rent||0,color:$.blue},{label:"التشغيل",val:result.costs?.operations||0,color:$.orange},{label:"الرواتب",val:result.costs?.salaries||0,color:$.purple}].map(({label,val,color})=>{const max=Math.max(result.costs?.rent||0,result.costs?.operations||0,result.costs?.salaries||0)||1;return(<div key={label} style={{marginBottom:sp[4]}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[2]}}><span style={{fontSize:14,color:$.L2}}>{label}</span><span style={{fontSize:14,fontWeight:700,color:$.L1}}>{val.toLocaleString("ar-SA")} ر.س</span></div><Bar pct={(val/max)*100} color={color}/></div>);})}
-            <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[4],display:"flex",justifyContent:"space-between"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span><span style={{fontSize:20,fontWeight:800,color:$.blue}}>{(result.costs?.total||0).toLocaleString("ar-SA")} ر.س</span></div>
-          </Section>
+          <>
+            <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="تكاليف لمرة واحدة">
+              <Row label="ضمان الإيجار" value={fmt(sc.rent_deposit)+" ر.س"}/>
+              <Row label="التجهيز والديكور" value={fmt(sc.renovation)+" ر.س"}/>
+              <Row label="المعدات" value={fmt(sc.equipment)+" ر.س"}/>
+              <Row label="التراخيص" value={fmt(sc.licenses)+" ر.س"}/>
+              <Row label="المخزون الأولي" value={fmt(sc.initial_inventory)+" ر.س"}/>
+              <Row label="تسويق الإطلاق" value={fmt(sc.marketing_launch)+" ر.س"}/>
+              <Row label="رأس مال تشغيلي" value={fmt(sc.working_capital)+" ر.س"}/>
+              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي</span>
+                <span style={{fontSize:20,fontWeight:800,color:$.purple}}>{fmt(sc.total)} ر.س</span>
+              </div>
+            </Section>
+
+            <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange}>
+              <Row label="الإيجار" value={fmt(mc.rent)+" ر.س"}/>
+              <Row label="الرواتب" value={fmt(mc.salaries)+" ر.س"}/>
+              <Row label="فواتير الخدمات" value={fmt(mc.utilities)+" ر.س"}/>
+              <Row label="المواد الخام" value={fmt(mc.materials)+" ر.س"}/>
+              <Row label="التسويق" value={fmt(mc.marketing)+" ر.س"}/>
+              <Row label="الصيانة" value={fmt(mc.maintenance)+" ر.س"}/>
+              <Row label="مصاريف أخرى" value={fmt(mc.other)+" ر.س"}/>
+              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span>
+                <span style={{fontSize:20,fontWeight:800,color:$.orange}}>{fmt(mc.total)} ر.س</span>
+              </div>
+            </Section>
+
+            <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
+              <Row label="الشهر الأول" value={fmt(rp.month_1)+" ر.س"}/>
+              <Row label="الشهر الثالث" value={fmt(rp.month_3)+" ر.س"}/>
+              <Row label="الشهر السادس" value={fmt(rp.month_6)+" ر.س"}/>
+              <Row label="الشهر الـ12" value={fmt(rp.month_12)+" ر.س"} valueColor={$.green} bold/>
+              <Row label="السنة الثانية (شهرياً)" value={fmt(rp.year_2_monthly)+" ر.س"}/>
+              <Row label="السنة الثالثة (شهرياً)" value={fmt(rp.year_3_monthly)+" ر.س"} valueColor={$.green} bold/>
+            </Section>
+
+            <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue}>
+              <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold/>
+              <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold/>
+              <Row label="الربح السنوي - السنة 1" value={fmt(f.annual_profit_year1)+" ر.س"}/>
+              <Row label="الربح السنوي - السنة 3" value={fmt(f.annual_profit_year3)+" ر.س"} valueColor={$.green} bold/>
+            </Section>
+
+            <Card style={{background:`${$.blue}07`,border:`1px solid ${$.blue}25`,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:sp[3]}}>
+                <Lightbulb size={18} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
+                <p style={{fontSize:13,color:$.L2,lineHeight:1.65}}>{result.financial_insight || "تحليل مالي شامل بناءً على بيانات السوق الحقيقية"}</p>
+              </div>
+            </Card>
+          </>
         )}
+
         {tab===3 && (
-          <Section title="تحليل المخاطر" Icon={AlertTriangle} color={$.red}>
-            <p style={{fontSize:14,color:$.L2,lineHeight:1.7,marginBottom:sp[4]}}>{result.risk_insight}</p>
-            {(result.risks||[]).map((r,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],background:`${$.red}07`,border:`1px solid ${$.red}18`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}><XCircle size={15} color={$.red} style={{flexShrink:0,marginTop:1}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.5}}>{r}</span></div>)}
-          </Section>
+          <>
+            <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle="5 مخاطر مصنّفة مع خطط التخفيف">
+              {(result.risk_analysis||[]).map((r,i)=>{
+                const probColor = r.probability==="عالي"?$.red:r.probability==="متوسط"?$.orange:$.green;
+                const impColor = r.impact==="شديد"?$.red:r.impact==="متوسط"?$.orange:$.green;
+                return (
+                  <div key={i} style={{background:$.F5,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
+                    <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+                      <div style={{width:26,height:26,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                      <span style={{fontSize:14,fontWeight:700,color:$.L1,flex:1}}>{r.risk}</span>
+                    </div>
+                    <div style={{display:"flex",gap:sp[2],marginBottom:sp[3],flexWrap:"wrap"}}>
+                      <Chip text={"احتمالية: "+r.probability} color={probColor} bg={`${probColor}15`}/>
+                      <Chip text={"التأثير: "+r.impact} color={impColor} bg={`${impColor}15`}/>
+                    </div>
+                    <div style={{background:`${$.green}07`,borderRight:`3px solid ${$.green}`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:8}}>
+                      <div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:4}}>خطة التخفيف</div>
+                      <p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{r.mitigation}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </Section>
+
+            {result.risk_insight && <Card style={{background:`${$.red}07`,border:`1px solid ${$.red}25`,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:sp[3]}}>
+                <Shield size={18} color={$.red} style={{flexShrink:0,marginTop:2}}/>
+                <p style={{fontSize:13,color:$.L2,lineHeight:1.65}}>{result.risk_insight}</p>
+              </div>
+            </Card>}
+          </>
         )}
+
+        <div style={{marginTop:sp[5]}}>
+          <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple}>
+            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}>
+              <div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div>
+              <div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div>
+            </div>
+            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}>
+              <div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div>
+              <div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div>
+            </div>
+          </Section>
+        </div>
       </div>
     </div>
   );
@@ -321,7 +468,7 @@ function SectorsScreen() {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[2]}}><span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span><span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}%</span></div>
                 <Bar pct={s.score} color={sc(s)}/>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}><Chip text={"منافسة "+s.comp} color={cc(s)} bg={`${cc(s)}15`}/><Spark data={s.data} color={sc(s)} w={60} h={22}/></div>
+                <div style={{marginTop:sp[2]}}><Chip text={"منافسة "+s.comp} color={cc(s)} bg={`${cc(s)}15`}/></div>
               </div>
             </div>
           </Card>
