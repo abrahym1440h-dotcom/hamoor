@@ -35,7 +35,28 @@ async function apiCall(endpoint, body) {
 
 const fmt = n => (n||0).toLocaleString("en-US");
 
-function RiyalIcon({size=14, color="currentColor", style={}}) {
+function function RiyalIcon({size=14, color="currentColor", style={}}) {
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 100 100" 
+      fill="none"
+      style={{display:"inline-block", verticalAlign:"middle", ...style}}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path 
+        d="M 20 30 L 80 30 M 20 50 L 80 50 M 35 15 L 35 75 Q 35 85 45 85 L 65 85 M 55 15 L 55 65" 
+        stroke={color} 
+        strokeWidth="8" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
   return (
     <svg 
       width={size} 
