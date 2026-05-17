@@ -33,7 +33,24 @@ async function apiCall(endpoint, body) {
   return data;
 }
 
-const fmt = n => (n||0).toLocaleString("ar-SA");
+const fmt = n => (n||0).toLocaleString("en-US");
+
+function RiyalIcon({size=14, color="currentColor", style={}}) {
+  return (
+    <svg 
+      width={size} 
+      height={size * 1.1} 
+      viewBox="0 0 1124.14 1256.39" 
+      fill={color}
+      style={{display:"inline-block", verticalAlign:"middle", ...style}}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/>
+      <path d="M1085.73,895.94c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.39L0,698.51c20.06,44.47,33.32,92.75,38.4,143.37l violations.49-65.04v176.13Z"/>
+      <path d="M1085.73,895.94c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.39L0,698.51c20.06,44.47,33.32,92.75,38.4,143.37l428.39-91.04v435.04c132.25-29.04,132.25-130.59,132.25-189.61v-273.5l132.25-28.11v359.4l253.44-53.85Z"/>
+    </svg>
+  );
+}
 
 function Spinner({sz=20, clr="#fff"}) {
   return <div style={{width:sz,height:sz,flexShrink:0,border:`2.5px solid ${clr}28`,borderTop:`2.5px solid ${clr}`,borderRadius:"50%",animation:"_spin .72s linear infinite"}}/>;
@@ -102,6 +119,16 @@ function Section({title, Icon, color=$.blue, children, subtitle}) {
   </Card>;
 }
 
+function MoneyRow({label, value, valueColor=$.L1, bold=false, big=false}) {
+  return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`0.5px solid ${$.sepL}`}}>
+    <span style={{fontSize:13,color:$.L2}}>{label}</span>
+    <span style={{fontSize:big?17:(bold?15:14),fontWeight:bold?800:600,color:valueColor,display:"inline-flex",alignItems:"center",gap:5}}>
+      <span>{fmt(value)}</span>
+      <RiyalIcon size={big?16:13} color={valueColor}/>
+    </span>
+  </div>;
+}
+
 function Row({label, value, valueColor=$.L1, bold=false}) {
   return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`0.5px solid ${$.sepL}`}}>
     <span style={{fontSize:13,color:$.L2}}>{label}</span>
@@ -133,18 +160,29 @@ const CITIES=["الرياض","جدة","الدمام","مكة المكرمة","ا
 
 function HomeScreen({onAnalyze, lastResult, onViewLast}) {
   const [idea,setIdea]=useState("");
+  const [details,setDetails]=useState("");
   const [city,setCity]=useState("الرياض");
+  const [neighborhood,setNeighborhood]=useState("");
   const [budget,setBudget]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
   const canGo = idea.trim()&&budget.trim()&&!busy;
 
+  function handleBudgetChange(e) {
+    const raw = e.target.value.replace(/\D/g, "");
+    if (raw === "") { setBudget(""); return; }
+    setBudget(parseInt(raw).toLocaleString("en-US"));
+  }
+
   async function go() {
     if (!canGo) return;
     setBusy(true); setErr(null);
     try {
-      const r = await apiCall("analyze", { idea, city, budget });
-      onAnalyze({...r,idea,city,budget});
+      const cleanBudget = budget.replace(/,/g, "");
+      const fullIdea = details.trim() ? `${idea} - تفاصيل: ${details}` : idea;
+      const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
+      const r = await apiCall("analyze", { idea: fullIdea, city: fullLocation, budget: cleanBudget });
+      onAnalyze({...r, idea: fullIdea, city: fullLocation, budget: cleanBudget});
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
   }
@@ -167,19 +205,58 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
             <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل مشروعك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل عميق على 4 أبعاد</div></div>
           </div>
           <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
+            
             <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
-              <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص…" style={iStyle}/>
+              <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
             </FormField>
+
+            <div style={{marginBottom:sp[4]}}>
+              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+                <Sparkles size={14} color={$.L4}/>
+                <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>تفاصيل المشروع</label>
+                <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+              </div>
+              <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية، يستهدف الشباب" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
+              <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4}}>💡 كل ما زادت التفاصيل، زادت دقة التحليل</div>
+            </div>
+
             <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
               <div style={{position:"relative"}}>
                 <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
                 <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
               </div>
             </FormField>
-            <FormField label="الميزانية" icon={<DollarSign size={14} color={$.L4}/>}>
-              <input value={budget} onChange={e=>setBudget(e.target.value)} placeholder="مثال: 150,000 ريال" style={iStyle}/>
-            </FormField>
+
+            <div style={{marginBottom:sp[4]}}>
+              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+                <MapPin size={14} color={$.L4}/>
+                <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الحي</label>
+                <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+              </div>
+              <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا، الملقا، النخيل" style={iStyle}/>
+            </div>
+
+            <div style={{marginBottom:sp[4]}}>
+              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+                <DollarSign size={14} color={$.L4}/>
+                <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الميزانية</label>
+              </div>
+              <div style={{position:"relative"}}>
+                <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
+                <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}>
+                  <RiyalIcon size={20} color={$.L3}/>
+                </div>
+              </div>
+              {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                <span>💰</span>
+                <span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span>
+                <RiyalIcon size={11} color={$.L2}/>
+                <span>سعودي</span>
+              </div>}
+            </div>
+
             {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+            
             <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
               {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
             </button>
@@ -242,12 +319,7 @@ function AnalysisScreen({result}) {
 
       <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
-          {[
-            {Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue},
-            {Icon:Users,label:"المنافسة",val:result.competition,color:$.orange},
-            {Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple},
-            {Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red}
-          ].map(({Icon,label,val,color})=>(
+          {[{Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue},{Icon:Users,label:"المنافسة",val:result.competition,color:$.orange},{Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple},{Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red}].map(({Icon,label,val,color})=>(
             <Card key={label} style={{padding:`${sp[4]}px ${sp[4]}px ${sp[3]}px`}}>
               <IconBadge Icon={Icon} color={color} size={34}/>
               <div style={{fontSize:11,color:$.L3,marginTop:sp[2],marginBottom:3}}>{label}</div>
@@ -303,10 +375,7 @@ function AnalysisScreen({result}) {
               </div>)}
             </Section>}
             <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
-              {[
-                {type:"الموقع الأفضل",color:$.green,d:loc.best},
-                {type:"الموقع الأسوأ",color:$.red,d:loc.worst}
-              ].map(({type,color,d})=>d && (
+              {[{type:"الموقع الأفضل",color:$.green,d:loc.best},{type:"الموقع الأسوأ",color:$.red,d:loc.worst}].map(({type,color,d})=>d && (
                 <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}>
                     <div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{d.name}</div></div>
@@ -323,47 +392,53 @@ function AnalysisScreen({result}) {
         {tab===2 && (
           <>
             <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="تكاليف لمرة واحدة">
-              <Row label="ضمان الإيجار" value={fmt(sc.rent_deposit)+" ر.س"}/>
-              <Row label="التجهيز والديكور" value={fmt(sc.renovation)+" ر.س"}/>
-              <Row label="المعدات" value={fmt(sc.equipment)+" ر.س"}/>
-              <Row label="التراخيص" value={fmt(sc.licenses)+" ر.س"}/>
-              <Row label="المخزون الأولي" value={fmt(sc.initial_inventory)+" ر.س"}/>
-              <Row label="تسويق الإطلاق" value={fmt(sc.marketing_launch)+" ر.س"}/>
-              <Row label="رأس مال تشغيلي" value={fmt(sc.working_capital)+" ر.س"}/>
-              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between"}}>
+              <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit}/>
+              <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
+              <MoneyRow label="المعدات" value={sc.equipment}/>
+              <MoneyRow label="التراخيص" value={sc.licenses}/>
+              <MoneyRow label="المخزون الأولي" value={sc.initial_inventory}/>
+              <MoneyRow label="تسويق الإطلاق" value={sc.marketing_launch}/>
+              <MoneyRow label="رأس مال تشغيلي" value={sc.working_capital}/>
+              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي</span>
-                <span style={{fontSize:20,fontWeight:800,color:$.purple}}>{fmt(sc.total)} ر.س</span>
+                <span style={{fontSize:20,fontWeight:800,color:$.purple,display:"inline-flex",alignItems:"center",gap:6}}>
+                  <span>{fmt(sc.total)}</span>
+                  <RiyalIcon size={18} color={$.purple}/>
+                </span>
               </div>
             </Section>
 
             <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange}>
-              <Row label="الإيجار" value={fmt(mc.rent)+" ر.س"}/>
-              <Row label="الرواتب" value={fmt(mc.salaries)+" ر.س"}/>
-              <Row label="فواتير الخدمات" value={fmt(mc.utilities)+" ر.س"}/>
-              <Row label="المواد الخام" value={fmt(mc.materials)+" ر.س"}/>
-              <Row label="التسويق" value={fmt(mc.marketing)+" ر.س"}/>
-              <Row label="الصيانة" value={fmt(mc.maintenance)+" ر.س"}/>
-              <Row label="مصاريف أخرى" value={fmt(mc.other)+" ر.س"}/>
-              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between"}}>
+              <MoneyRow label="الإيجار" value={mc.rent}/>
+              <MoneyRow label="الرواتب" value={mc.salaries}/>
+              <MoneyRow label="فواتير الخدمات" value={mc.utilities}/>
+              <MoneyRow label="المواد الخام" value={mc.materials}/>
+              <MoneyRow label="التسويق" value={mc.marketing}/>
+              <MoneyRow label="الصيانة" value={mc.maintenance}/>
+              <MoneyRow label="مصاريف أخرى" value={mc.other}/>
+              <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span>
-                <span style={{fontSize:20,fontWeight:800,color:$.orange}}>{fmt(mc.total)} ر.س</span>
+                <span style={{fontSize:20,fontWeight:800,color:$.orange,display:"inline-flex",alignItems:"center",gap:6}}>
+                  <span>{fmt(mc.total)}</span>
+                  <RiyalIcon size={18} color={$.orange}/>
+                </span>
               </div>
             </Section>
 
             <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
-              <Row label="الشهر الأول" value={fmt(rp.month_1)+" ر.س"}/>
-              <Row label="الشهر الثالث" value={fmt(rp.month_3)+" ر.س"}/>
-              <Row label="الشهر السادس" value={fmt(rp.month_6)+" ر.س"}/>
-              <Row label="الشهر الـ12" value={fmt(rp.month_12)+" ر.س"} valueColor={$.green} bold/>
-              <Row label="السنة الثانية (شهرياً)" value={fmt(rp.year_2_monthly)+" ر.س"}/>
-              <Row label="السنة الثالثة (شهرياً)" value={fmt(rp.year_3_monthly)+" ر.س"} valueColor={$.green} bold/>
+              <MoneyRow label="الشهر الأول" value={rp.month_1}/>
+              <MoneyRow label="الشهر الثالث" value={rp.month_3}/>
+              <MoneyRow label="الشهر السادس" value={rp.month_6}/>
+              <MoneyRow label="الشهر الـ12" value={rp.month_12} valueColor={$.green} bold/>
+              <MoneyRow label="السنة الثانية (شهرياً)" value={rp.year_2_monthly}/>
+              <MoneyRow label="السنة الثالثة (شهرياً)" value={rp.year_3_monthly} valueColor={$.green} bold/>
             </Section>
 
             <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue}>
               <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold/>
               <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold/>
-              <Row label="الربح السنوي - السنة 1" value={fmt(f.annual_profit_year1)+" ر.س"}/>
-              <Row label="الربح السنوي - السنة 3" value={fmt(f.annual_profit_year3)+" ر.س"} valueColor={$.green} bold/>
+              <MoneyRow label="الربح السنوي - السنة 1" value={f.annual_profit_year1}/>
+              <MoneyRow label="الربح السنوي - السنة 3" value={f.annual_profit_year3} valueColor={$.green} bold/>
             </Section>
 
             <Card style={{background:`${$.blue}07`,border:`1px solid ${$.blue}25`,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
