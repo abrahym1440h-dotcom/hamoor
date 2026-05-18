@@ -10,6 +10,11 @@ import {
   ChevronRight, BookmarkPlus, Share2
 } from "lucide-react";
 
+const CATEGORY_ICONS = {
+  Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell,
+  Briefcase, Activity, PieChart, BookOpen
+};
+
 const $ = {
   bg:"#F2F2F7", surface:"#FFFFFF",
   L1:"#1C1C1E", L2:"rgba(60,60,67,0.78)",
@@ -408,6 +413,7 @@ function AnalysisScreen({result}) {
     </div>
   );
 }
+
 const CATEGORIES = [
   {id:"all", name:"الكل", color:$.blue},
   {id:"food", name:"أطعمة", color:$.orange},
@@ -710,7 +716,7 @@ function LearningScreen() {
   const [activeCat,setActiveCat]=useState("all");
   const [activeArticle,setActiveArticle]=useState(null);
 
-  const allCategories = [{id:"all", name:"الكل", icon:"📚", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)"}, ...ARTICLE_CATEGORIES];
+  const allCategories = [{id:"all", name:"الكل", iconName:"BookOpen", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)"}, ...ARTICLE_CATEGORIES];
   
   const filteredArticles = ARTICLES.filter(a => {
     if (activeCat !== "all" && a.category !== activeCat) return false;
@@ -731,7 +737,7 @@ function LearningScreen() {
   }
 
   function getCategoryInfo(catId) {
-    return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)"};
+    return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
   }
 
   return (
@@ -766,24 +772,30 @@ function LearningScreen() {
         <>
           <SectionLabel>تصفّح حسب الفئة</SectionLabel>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[6]}}>
-            {categoryStats.map(c => (
-              <Card key={c.id} onClick={()=>setActiveCat(c.id)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
-                <div style={{fontSize:28,marginBottom:sp[2]}}>{c.icon}</div>
-                <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:4,lineHeight:1.3}}>{c.name}</div>
-                <div style={{fontSize:11,color:$.L3}}>{c.count} مقالات</div>
-              </Card>
-            ))}
+            {categoryStats.map(c => {
+              const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
+              return (
+                <Card key={c.id} onClick={()=>setActiveCat(c.id)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                  <IconBadge Icon={CatIcon} color={c.color} size={42}/>
+                  <div style={{fontSize:14,fontWeight:700,color:$.L1,marginTop:sp[3],marginBottom:4,lineHeight:1.3}}>{c.name}</div>
+                  <div style={{fontSize:11,color:$.L3}}>{c.count} مقالات</div>
+                </Card>
+              );
+            })}
           </div>
         </>
       )}
 
       <div style={{display:"flex",gap:sp[2],marginBottom:sp[4],overflowX:"auto",paddingBottom:4}}>
-        {allCategories.map(c => (
-          <button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:activeCat===c.id?c.color:$.F4,color:activeCat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
-            {c.icon && <span>{c.icon}</span>}
-            <span>{c.name}</span>
-          </button>
-        ))}
+        {allCategories.map(c => {
+          const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
+          return (
+            <button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:activeCat===c.id?c.color:$.F4,color:activeCat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
+              <CatIcon size={13} strokeWidth={2}/>
+              <span>{c.name}</span>
+            </button>
+          );
+        })}
       </div>
 
       <SectionLabel>{activeCat === "all" ? `جميع المقالات (${filteredArticles.length})` : `${getCategoryInfo(activeCat).name} (${filteredArticles.length})`}</SectionLabel>
@@ -794,11 +806,12 @@ function LearningScreen() {
         <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
           {filteredArticles.map(article => {
             const catInfo = getCategoryInfo(article.category);
+            const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
             return (
               <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
-                  <div style={{width:56,height:56,borderRadius:14,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>
-                    {catInfo.icon}
+                  <div style={{width:56,height:56,borderRadius:14,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <CatIcon size={26} color="#fff" strokeWidth={2}/>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4}}>{article.title}</div>
@@ -821,13 +834,17 @@ function LearningScreen() {
           <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
             {(() => {
               const catInfo = getCategoryInfo(activeArticle.category);
+              const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
               return (
                 <>
                   <div style={{background:catInfo.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:-40,left:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
                     <div style={{position:"relative"}}>
                       <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-                        <Chip text={catInfo.icon+" "+catInfo.name} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
+                          <CatIcon size={13} color="#fff" strokeWidth={2}/>
+                          <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{catInfo.name}</span>
+                        </div>
                         <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
                       </div>
                       <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{activeArticle.title}</h2>
@@ -922,4 +939,3 @@ export default function HamourApp() {
     </>
   );
 }
-
