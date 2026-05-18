@@ -7,7 +7,8 @@ import {
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
-  ChevronRight, BookmarkPlus, Share2, Trash2, Archive, FileText, Plus, Eye
+  ChevronRight, BookmarkPlus, Share2, Trash2, Archive, FileText, Plus, Eye,
+  ArrowRight, BarChart3, Flame, Layers
 } from "lucide-react";
 
 const CATEGORY_ICONS = {
@@ -31,20 +32,12 @@ const SH = {
 };
 const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 
-// ═══════════════════════════════════════
-// 📱 Hook للكشف عن حجم الشاشة
-// ═══════════════════════════════════════
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
   useEffect(() => {
     function handleResize() {
       const w = window.innerWidth;
-      setSize({
-        width: w,
-        isMobile: w < 768,
-        isTablet: w >= 768 && w < 1280,
-        isDesktop: w >= 1280
-      });
+      setSize({ width: w, isMobile: w < 768, isTablet: w >= 768 && w < 1280, isDesktop: w >= 1280 });
     }
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -53,9 +46,6 @@ function useScreenSize() {
   return size;
 }
 
-// ═══════════════════════════════════════
-// 💾 نظام حفظ التحليلات
-// ═══════════════════════════════════════
 const STORAGE_KEY = "hamour_analyses";
 
 function saveAnalysis(analysis) {
@@ -171,8 +161,11 @@ function Card({children, style, onClick}) {
   return <div onClick={onClick} style={{background:$.surface,borderRadius:20,boxShadow:SH.card,overflow:"hidden",...style}}>{children}</div>;
 }
 
-function SectionLabel({children}) {
-  return <div style={{fontSize:13,fontWeight:600,color:$.L3,letterSpacing:.4,textTransform:"uppercase",paddingRight:4,marginBottom:sp[2]}}>{children}</div>;
+function SectionLabel({children, action}) {
+  return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[3]}}>
+    <div style={{fontSize:13,fontWeight:700,color:$.L1,letterSpacing:"-0.1px"}}>{children}</div>
+    {action}
+  </div>;
 }
 
 function Section({title, Icon, color=$.blue, children, subtitle}) {
@@ -227,8 +220,7 @@ function Sheet({open, onClose, children}) {
 
 const CITIES=["الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","تبوك","أبها","القصيم","الخبر","نجران"];
 
-function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
-  const screen = useScreenSize();
+function AnalyzeForm({onAnalyze, onClose}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
   const [city,setCity]=useState("الرياض");
@@ -236,10 +228,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
   const [budget,setBudget]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
-  const [savedCount,setSavedCount]=useState(0);
   const canGo = idea.trim()&&budget.trim()&&!busy;
-
-  useEffect(() => { setSavedCount(getSavedAnalyses().length); }, [lastResult]);
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -258,115 +247,265 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
       const analysis = {...r, idea: fullIdea, city: fullLocation, budget: cleanBudget};
       const savedAnalysis = saveAnalysis(analysis);
       onAnalyze(savedAnalysis || analysis);
+      if (onClose) onClose();
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
   }
 
-  const containerStyle = screen.isDesktop 
-    ? {maxWidth:1100, margin:"0 auto"}
-    : screen.isTablet 
-    ? {maxWidth:720, margin:"0 auto"}
-    : {};
-
   return (
-    <div>
-      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:screen.isDesktop?`${sp[16]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
-        <div style={{...containerStyle, position:"relative"}}>
-          <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
-          <div style={{position:"relative"}}>
-            <p style={{fontSize:screen.isDesktop?15:13,fontWeight:500,color:"rgba(255,255,255,0.65)",marginBottom:sp[1]}}>تحليل احترافي بمستوى استشاري</p>
-            <h1 style={{fontSize:screen.isDesktop?56:screen.isTablet?46:38,fontWeight:800,color:"#fff",letterSpacing:"-1.5px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
-            <p style={{fontSize:screen.isDesktop?18:15,color:"rgba(255,255,255,0.70)",lineHeight:1.6,maxWidth:screen.isDesktop?480:280}}>دراسة جدوى ذكية للسوق السعودي مدعومة ببيانات حقيقية وتحليل AI</p>
-          </div>
+    <div style={{padding:`${sp[3]}px ${sp[5]}px ${sp[6]}px`}}>
+      <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[5]}}>
+        <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(145deg,#007AFF,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={20} color="#fff" strokeWidth={2}/></div>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:$.L1}}>حلّل مشروعك</div>
+          <div style={{fontSize:12,color:$.L3,marginTop:2}}>تحليل عميق على 4 أبعاد بالذكاء الاصطناعي</div>
         </div>
       </div>
 
-      <div style={{padding:screen.isDesktop?`${sp[8]}px ${sp[10]}px ${sp[16]}px`:`${sp[5]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
-        <div style={containerStyle}>
-          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1.2fr 1fr":"1fr",gap:sp[5]}}>
-            <Card style={{boxShadow:SH.lift,marginTop:sp[5]}}>
-              <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[4]}px`,borderBottom:`0.5px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:sp[3]}}>
-                <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(145deg,#007AFF,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={17} color="#fff" strokeWidth={2}/></div>
-                <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل مشروعك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل عميق على 4 أبعاد</div></div>
-              </div>
-              <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
-                <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
-                  <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
-                </FormField>
-                <div style={{marginBottom:sp[4]}}>
-                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
-                    <Sparkles size={14} color={$.L4}/>
-                    <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>تفاصيل المشروع</label>
-                    <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
-                  </div>
-                  <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية، يستهدف الشباب" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
-                  <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:4}}><Lightbulb size={11} color={$.L4}/><span>كل ما زادت التفاصيل، زادت دقة التحليل</span></div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:screen.isMobile?"1fr":"1fr 1fr",gap:sp[3]}}>
-                  <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
-                    <div style={{position:"relative"}}>
-                      <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
-                      <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-                    </div>
-                  </FormField>
-                  <div style={{marginBottom:sp[4]}}>
-                    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
-                      <MapPin size={14} color={$.L4}/>
-                      <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الحي</label>
-                      <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
-                    </div>
-                    <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا" style={iStyle}/>
-                  </div>
-                </div>
-                <div style={{marginBottom:sp[4]}}>
-                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
-                    <DollarSign size={14} color={$.L4}/>
-                    <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الميزانية</label>
-                  </div>
-                  <div style={{position:"relative"}}>
-                    <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
-                    <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><RiyalIcon size={20} color={$.L3}/></div>
-                  </div>
-                  {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}><DollarSign size={11} color={$.L3}/><span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span><RiyalIcon size={11} color={$.L2}/><span>سعودي</span></div>}
-                </div>
-                {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-                <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-                  {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
-                </button>
-              </div>
-            </Card>
+      <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
+        <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
+      </FormField>
+      <div style={{marginBottom:sp[4]}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+          <Sparkles size={14} color={$.L4}/>
+          <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>تفاصيل المشروع</label>
+          <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+        </div>
+        <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
+        <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:4}}><Lightbulb size={11} color={$.L4}/><span>كل ما زادت التفاصيل، زادت دقة التحليل</span></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+        <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
+          <div style={{position:"relative"}}>
+            <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+            <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+          </div>
+        </FormField>
+        <div style={{marginBottom:sp[4]}}>
+          <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+            <MapPin size={14} color={$.L4}/>
+            <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الحي</label>
+            <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+          </div>
+          <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا" style={iStyle}/>
+        </div>
+      </div>
+      <div style={{marginBottom:sp[4]}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+          <DollarSign size={14} color={$.L4}/>
+          <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الميزانية</label>
+        </div>
+        <div style={{position:"relative"}}>
+          <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
+          <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><RiyalIcon size={20} color={$.L3}/></div>
+        </div>
+      </div>
+      {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+      <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+        {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
+      </button>
+    </div>
+  );
+}
 
-            <div style={{display:"flex",flexDirection:"column",gap:sp[4],marginTop:screen.isDesktop?sp[5]:0}}>
-              {savedCount > 0 && (
-                <Card onClick={onViewSaved} style={{cursor:"pointer",padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3]}}>
-                  <IconBadge Icon={Archive} color={$.purple} size={42}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:2}}>تحليلاتي المحفوظة</div>
-                    <div style={{fontSize:12,color:$.L3}}>{savedCount} {savedCount === 1 ? "تحليل" : "تحليلات"} محفوظة</div>
-                  </div>
-                  <ChevronRight size={18} color={$.L4}/>
-                </Card>
-              )}
+function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors, onGoLearning, savedAnalyses}) {
+  const screen = useScreenSize();
+  const [showFormSheet, setShowFormSheet] = useState(false);
 
-              {lastResult && (
-                <div>
-                  <SectionLabel>آخر تحليل</SectionLabel>
-                  <Card onClick={onViewLast} style={{cursor:"pointer"}}>
-                    <div style={{padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
-                      <ScoreRing value={lastResult.score} size={64} track={6} color={lastResult.decision_type==="positive"?$.green:$.red} noAnim/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:11,color:$.L3,marginBottom:3}}>{lastResult.idea} · {lastResult.city}</div>
-                        <div style={{fontSize:17,fontWeight:700,marginBottom:4,color:lastResult.decision_type==="positive"?$.green:$.red}}>{lastResult.decision}</div>
-                        <div style={{fontSize:13,color:$.L3,lineHeight:1.45,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{lastResult.summary}</div>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              )}
+  const totalAnalyses = savedAnalyses.length;
+  const positiveCount = savedAnalyses.filter(a => a.decision_type === "positive").length;
+  const successRate = totalAnalyses > 0 ? Math.round((positiveCount / totalAnalyses) * 100) : 0;
+  const lastSaved = savedAnalyses[0];
+
+  const featuredSectors = [
+    {id:"tech", name:"خدمات تقنية", Icon:Wifi, color:$.indigo, score:85, growth:"+25%"},
+    {id:"edu", name:"تعليم وتدريب", Icon:GraduationCap, color:$.blue, score:82, growth:"+22%"},
+    {id:"fit", name:"لياقة ورياضة", Icon:Dumbbell, color:$.green, score:78, growth:"+20%"},
+    {id:"sweets", name:"حلويات ومخبوزات", Icon:Cake, color:$.pink, score:72, growth:"+18%"}
+  ];
+
+  const featuredArticles = ARTICLES.slice(0, 3);
+  
+  function getCategoryInfo(catId) {
+    return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
+  }
+
+  function getLevelColor(level) {
+    if (level === "مبتدئ") return $.green;
+    if (level === "متوسط") return $.orange;
+    return $.red;
+  }
+
+  const containerStyle = screen.isDesktop ? {maxWidth:1200, margin:"0 auto"} : screen.isTablet ? {maxWidth:900, margin:"0 auto"} : {};
+
+  return (
+    <div>
+      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <div style={{...containerStyle, position:"relative"}}>
+          <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
+          <div style={{position:"absolute",bottom:-100,right:-80,width:280,height:280,borderRadius:"50%",background:"rgba(255,255,255,0.04)"}}/>
+          <div style={{position:"relative"}}>
+            <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:$.green,boxShadow:`0 0 12px ${$.green}`}}/>
+              <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.85)"}}>جاهز للتحليل</span>
+            </div>
+            <h1 style={{fontSize:screen.isDesktop?52:screen.isTablet?44:38,fontWeight:800,color:"#fff",letterSpacing:"-1.4px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
+            <p style={{fontSize:screen.isDesktop?17:14,color:"rgba(255,255,255,0.75)",lineHeight:1.6,maxWidth:screen.isDesktop?480:280,marginBottom:sp[5]}}>دراسة جدوى ذكية للسوق السعودي مدعومة ببيانات حقيقية وتحليل AI</p>
+
+            <div style={{display:"flex",gap:sp[2],flexWrap:"wrap",marginBottom:sp[2]}}>
+              <div style={{background:"rgba(255,255,255,0.15)",backdropFilter:"blur(10px)",borderRadius:99,padding:`${sp[2]}px ${sp[3]}px`,display:"flex",alignItems:"center",gap:5}}>
+                <BarChart3 size={12} color="#fff" strokeWidth={2.2}/>
+                <span style={{fontSize:11,fontWeight:700,color:"#fff"}}>{totalAnalyses} تحليل</span>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.15)",backdropFilter:"blur(10px)",borderRadius:99,padding:`${sp[2]}px ${sp[3]}px`,display:"flex",alignItems:"center",gap:5}}>
+                <Layers size={12} color="#fff" strokeWidth={2.2}/>
+                <span style={{fontSize:11,fontWeight:700,color:"#fff"}}>12 قطاع</span>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.15)",backdropFilter:"blur(10px)",borderRadius:99,padding:`${sp[2]}px ${sp[3]}px`,display:"flex",alignItems:"center",gap:5}}>
+                <BookOpen size={12} color="#fff" strokeWidth={2.2}/>
+                <span style={{fontSize:11,fontWeight:700,color:"#fff"}}>{ARTICLES.length} مقالة</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <div style={{padding:screen.isDesktop?`${sp[6]}px ${sp[10]}px ${sp[16]}px`:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[5]}}>
+        <div style={containerStyle}>
+          
+          <Card onClick={()=>setShowFormSheet(true)} style={{cursor:"pointer",boxShadow:SH.lift,marginBottom:sp[5],background:"linear-gradient(145deg,#FFFFFF 0%,#F8FAFF 100%)",border:`1.5px solid ${$.blue}15`}}>
+            <div style={{padding:screen.isDesktop?`${sp[6]}px ${sp[7]}px`:`${sp[5]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
+              <div style={{width:screen.isDesktop?72:56,height:screen.isDesktop?72:56,borderRadius:18,background:"linear-gradient(145deg,#007AFF,#0050C0)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:SH.blue,flexShrink:0}}>
+                <Sparkles size={screen.isDesktop?32:26} color="#fff" strokeWidth={2}/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:screen.isDesktop?22:18,fontWeight:800,color:$.L1,letterSpacing:"-0.4px",marginBottom:4}}>حلّل مشروعك الآن</div>
+                <p style={{fontSize:screen.isDesktop?14:12,color:$.L3,lineHeight:1.5}}>تحليل عميق بالذكاء الاصطناعي في 30 ثانية</p>
+              </div>
+              <div style={{width:44,height:44,borderRadius:14,background:$.blue,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:SH.blue}}>
+                <ArrowRight size={20} color="#fff" strokeWidth={2.5} style={{transform:"scaleX(-1)"}}/>
+              </div>
+            </div>
+          </Card>
+
+          {totalAnalyses > 0 && (
+            <div style={{display:"grid",gridTemplateColumns:screen.isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:sp[3],marginBottom:sp[6]}}>
+              <Card style={{padding:`${sp[4]}px`}}>
+                <IconBadge Icon={Archive} color={$.purple} size={36}/>
+                <div style={{fontSize:24,fontWeight:800,color:$.L1,marginTop:sp[2],letterSpacing:"-0.5px"}}>{totalAnalyses}</div>
+                <div style={{fontSize:11,color:$.L3,marginTop:2,fontWeight:600}}>تحليل محفوظ</div>
+              </Card>
+              <Card style={{padding:`${sp[4]}px`}}>
+                <IconBadge Icon={CheckCircle} color={$.green} size={36}/>
+                <div style={{fontSize:24,fontWeight:800,color:$.green,marginTop:sp[2],letterSpacing:"-0.5px"}}>{successRate}%</div>
+                <div style={{fontSize:11,color:$.L3,marginTop:2,fontWeight:600}}>معدل النجاح</div>
+              </Card>
+              <Card style={{padding:`${sp[4]}px`}}>
+                <IconBadge Icon={Flame} color={$.orange} size={36}/>
+                <div style={{fontSize:24,fontWeight:800,color:$.orange,marginTop:sp[2],letterSpacing:"-0.5px"}}>{positiveCount}</div>
+                <div style={{fontSize:11,color:$.L3,marginTop:2,fontWeight:600}}>مشروع واعد</div>
+              </Card>
+              <Card style={{padding:`${sp[4]}px`}}>
+                <IconBadge Icon={Clock} color={$.blue} size={36}/>
+                <div style={{fontSize:13,fontWeight:800,color:$.L1,marginTop:sp[2],letterSpacing:"-0.3px",lineHeight:1.3}}>{lastSaved ? formatDate(lastSaved.savedAt) : "-"}</div>
+                <div style={{fontSize:11,color:$.L3,marginTop:2,fontWeight:600}}>آخر تحليل</div>
+              </Card>
+            </div>
+          )}
+
+          {savedAnalyses.length > 0 && (
+            <div style={{marginBottom:sp[6]}}>
+              <SectionLabel action={
+                <button onClick={onViewSaved} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:600,color:$.blue,fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}>
+                  <span>عرض الكل</span>
+                  <ChevronRight size={14}/>
+                </button>
+              }>آخر تحليلاتك</SectionLabel>
+              
+              <div style={{display:"flex",gap:sp[3],overflowX:"auto",paddingBottom:sp[2],scrollSnapType:"x mandatory"}}>
+                {savedAnalyses.slice(0,5).map(a => {
+                  const pos = a.decision_type === "positive";
+                  const color = pos ? $.green : $.red;
+                  return (
+                    <Card key={a.id} onClick={()=>{onViewLast(a);}} style={{flex:"none",width:screen.isMobile?260:280,padding:`${sp[4]}px`,cursor:"pointer",scrollSnapAlign:"start"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[3]}}>
+                        <ScoreRing value={a.score} size={52} track={5} color={color} noAnim/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
+                          <div style={{fontSize:11,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={10}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.city}</span></div>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:sp[2],borderTop:`0.5px solid ${$.sepL}`}}>
+                        <Chip text={pos?"مشروع واعد":"مشروع متعثر"} color={color} bg={`${color}15`} size={10}/>
+                        <div style={{fontSize:10,color:$.L4,display:"flex",alignItems:"center",gap:3}}><Clock size={9}/>{formatDate(a.savedAt)}</div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{marginBottom:sp[6]}}>
+            <SectionLabel action={
+              <button onClick={onGoSectors} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:600,color:$.blue,fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}>
+                <span>عرض الكل</span>
+                <ChevronRight size={14}/>
+              </button>
+            }>قطاعات مميزة هذا الشهر</SectionLabel>
+            
+            <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr 1fr":screen.isTablet?"1fr 1fr 1fr 1fr":"1fr 1fr",gap:sp[3]}}>
+              {featuredSectors.map(s => (
+                <Card key={s.id} onClick={onGoSectors} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                  <IconBadge Icon={s.Icon} color={s.color} size={44}/>
+                  <div style={{fontSize:13,fontWeight:700,color:$.L1,marginTop:sp[3],marginBottom:6,lineHeight:1.3}}>{s.name}</div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <Chip text={s.growth} color={$.green} bg={`${$.green}15`} size={10}/>
+                    <div style={{fontSize:15,fontWeight:800,color:s.color}}>{s.score}<span style={{fontSize:10,color:$.L4,fontWeight:600}}>/100</span></div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom:sp[5]}}>
+            <SectionLabel action={
+              <button onClick={onGoLearning} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:600,color:$.blue,fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}>
+                <span>عرض الكل</span>
+                <ChevronRight size={14}/>
+              </button>
+            }>مقالات مختارة لك</SectionLabel>
+            
+            <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+              {featuredArticles.map(article => {
+                const catInfo = getCategoryInfo(article.category);
+                const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
+                return (
+                  <Card key={article.id} onClick={onGoLearning} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                    <div style={{display:"flex",alignItems:"flex-start",gap:sp[3]}}>
+                      <div style={{width:54,height:54,borderRadius:14,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 4px 12px ${catInfo.color}33`}}>
+                        <CatIcon size={26} color="#ffffff" strokeWidth={2.4} absoluteStrokeWidth/>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{article.title}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                          <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={10}/>
+                          <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4}}><Clock size={10}/><span style={{fontSize:10,fontWeight:600}}>{article.readTime} د</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <Sheet open={showFormSheet} onClose={()=>setShowFormSheet(false)}>
+        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowFormSheet(false)}/>
+      </Sheet>
     </div>
   );
 }
@@ -1047,7 +1186,7 @@ function LearningScreen() {
 
         {activeCat === "all" && !q && (
           <>
-            <SectionLabel>تصفّح حسب الفئة</SectionLabel>
+            <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>تصفّح حسب الفئة</div>
             <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"repeat(4,1fr)":screen.isTablet?"repeat(3,1fr)":"1fr 1fr",gap:sp[3],marginBottom:sp[6]}}>
               {categoryStats.map(c => {
                 const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
@@ -1075,165 +1214,10 @@ function LearningScreen() {
           })}
         </div>
 
-        <SectionLabel>{activeCat === "all" ? `جميع المقالات (${filteredArticles.length})` : `${getCategoryInfo(activeCat).name} (${filteredArticles.length})`}</SectionLabel>
+        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>{activeCat === "all" ? `جميع المقالات (${filteredArticles.length})` : `${getCategoryInfo(activeCat).name} (${filteredArticles.length})`}</div>
         
         {filteredArticles.length === 0 ? (
           <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد مقالات مطابقة</div>
         ) : (
-          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
-            {filteredArticles.map(article => {
-              const catInfo = getCategoryInfo(article.category);
-              const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-              return (
-                <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
-                  <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
-                    <div style={{width:60,height:60,borderRadius:16,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 4px 12px ${catInfo.color}33`}}>
-                      <CatIcon size={30} color="#ffffff" strokeWidth={2.4} absoluteStrokeWidth/>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4}}>{article.title}</div>
-                      <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginBottom:sp[2],overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{article.excerpt}</p>
-                      <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
-                        <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={11}/>
-                        <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4}}><Clock size={11}/><span style={{fontSize:11,fontWeight:600}}>{article.readTime} د</span></div>
-                        <Chip text={article.level} color={getLevelColor(article.level)} bg={`${getLevelColor(article.level)}15`} size={11}/>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}​​​​​​​​​​​​​​​​
 
-        <Sheet open={!!activeArticle} onClose={()=>setActiveArticle(null)}>
-          {activeArticle && (
-            <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-              {(() => {
-                const catInfo = getCategoryInfo(activeArticle.category);
-                const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-                return (
-                  <>
-                    <div style={{background:catInfo.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],position:"relative",overflow:"hidden"}}>
-                      <div style={{position:"absolute",top:-40,left:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
-                      <div style={{position:"relative"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-                          <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
-                            <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
-                            <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{catInfo.name}</span>
-                          </div>
-                          <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
-                        </div>
-                        <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{activeArticle.title}</h2>
-                        <div style={{display:"flex",alignItems:"center",gap:sp[4],color:"rgba(255,255,255,0.85)"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:5}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.readTime} دقائق</span></div>
-                          <div style={{display:"flex",alignItems:"center",gap:5}}><Calendar size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.date}</span></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{fontSize:15,color:$.L2,lineHeight:1.9,fontWeight:400}}>
-                      {activeArticle.content.split("\n\n").filter(p=>p.trim()).map((paragraph,i) => {
-                        const trimmed = paragraph.trim();
-                        if (trimmed.startsWith("═══")) {
-                          const headerText = trimmed.replace(/═/g,"").trim();
-                          return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3],paddingBottom:sp[2],borderBottom:`2px solid ${catInfo.color}30`,letterSpacing:"-0.3px"}}>{headerText}</h3>;
-                        }
-                        if (trimmed.includes("•") || trimmed.match(/^[-*]/m)) {
-                          return <div key={i} style={{marginBottom:sp[4]}}>
-                            {trimmed.split("\n").map((line,j) => {
-                              const l = line.trim();
-                              if (!l) return null;
-                              if (l.startsWith("•") || l.startsWith("-")) {
-                                return <div key={j} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2]}}>
-                                  <div style={{marginTop:8,width:5,height:5,borderRadius:"50%",background:catInfo.color,flexShrink:0}}/>
-                                  <span style={{flex:1}}>{l.replace(/^[•-]\s*/,"")}</span>
-                                </div>;
-                              }
-                              return <p key={j} style={{marginBottom:sp[2]}}>{l}</p>;
-                            })}
-                          </div>;
-                        }
-                        return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          )}
-        </Sheet>
-      </div>
-    </div>
-  );
-}
-
-const NAV=[
-  {id:"home",label:"الرئيسية",Icon:Home},
-  {id:"analysis",label:"التحليل",Icon:BarChart2},
-  {id:"saved",label:"تحليلاتي",Icon:Archive},
-  {id:"sectors",label:"القطاعات",Icon:Grid},
-  {id:"learning",label:"التعلم",Icon:BookOpen}
-];
-
-function BottomNav({tab,setTab}) {
-  return (
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:"rgba(246,246,248,0.88)",backdropFilter:"saturate(180%) blur(28px)",WebkitBackdropFilter:"saturate(180%) blur(28px)",borderTop:`0.5px solid rgba(60,60,67,0.18)`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
-      {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={20} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:9,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
-    </nav>
-  );
-}
-
-function SideNav({tab,setTab}) {
-  return (
-    <nav style={{position:"fixed",top:0,right:0,bottom:0,width:240,zIndex:999,display:"flex",flexDirection:"column",background:$.surface,borderLeft:`0.5px solid ${$.sepL}`,padding:`${sp[6]}px ${sp[4]}px`,boxShadow:"-2px 0 20px rgba(0,0,0,0.03)"}}>
-      <div style={{padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[6]}}>
-        <h2 style={{fontSize:24,fontWeight:800,color:$.blue,letterSpacing:"-0.8px"}}>هامور</h2>
-        <p style={{fontSize:11,color:$.L4,marginTop:2}}>دراسة جدوى ذكية</p>
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:sp[1]}}>
-        {NAV.map(({id,label,Icon})=>{
-          const on=tab===id;
-          return (
-            <button key={id} onClick={()=>setTab(id)} style={{display:"flex",alignItems:"center",gap:sp[3],background:on?`${$.blue}12`:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit",transition:"all 0.2s"}}>
-              <Icon size={20} color={on?$.blue:$.L3} strokeWidth={on?2.1:1.8}/>
-              <span style={{fontSize:14,fontWeight:on?700:500,color:on?$.blue:$.L2}}>{label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
-export default function HamourApp() {
-  const screen = useScreenSize();
-  const [tab,setTab]=useState("home");
-  const [result,setResult]=useState(null);
-  
-  const handleAnalyze=useCallback((data)=>{setResult(data);setTab("analysis");},[]);
-  const handleViewSaved=useCallback((analysis)=>{setResult(analysis);setTab("analysis");},[]);
-
-  const useSideNav = screen.isDesktop;
-
-  return (
-    <>
-      <style>{`
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        html,body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;direction:rtl;background:${$.bg};color:${$.L1};-webkit-font-smoothing:antialiased;}
-        button,input,select,textarea{font-family:inherit;}
-        select option{background:#fff;color:${$.L1};}
-        ::-webkit-scrollbar{width:0;height:0;}
-        *{-webkit-tap-highlight-color:transparent;}
-        @keyframes _spin{to{transform:rotate(360deg);}}
-      `}</style>
-      <div style={{minHeight:"100vh",background:$.bg,position:"relative",paddingBottom:useSideNav?0:90,marginRight:useSideNav?240:0}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={()=>setTab("analysis")} onViewSaved={()=>setTab("saved")}/>}
-        {tab==="analysis" && <AnalysisScreen result={result}/>}
-        {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewSaved}/>}
-        {tab==="sectors" && <SectorsScreen/>}
-        {tab==="learning" && <LearningScreen/>}
-        {useSideNav ? <SideNav tab={tab} setTab={setTab}/> : <BottomNav tab={tab} setTab={setTab}/>}
-      </div>
-    </>
-  );
-}
