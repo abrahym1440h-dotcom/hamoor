@@ -7,7 +7,7 @@ import {
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
-  ChevronRight, BookmarkPlus, Share2
+  ChevronRight, BookmarkPlus, Share2, Trash2, Archive, FileText, Plus, Eye
 } from "lucide-react";
 
 const CATEGORY_ICONS = {
@@ -30,6 +30,56 @@ const SH = {
   blue: "0 2px 8px rgba(0,122,255,0.22),0 8px 32px rgba(0,122,255,0.28)",
 };
 const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
+
+// ═══════════════════════════════════════
+// 💾 نظام حفظ التحليلات (localStorage)
+// ═══════════════════════════════════════
+const STORAGE_KEY = "hamour_analyses";
+
+function saveAnalysis(analysis) {
+  if (typeof window === "undefined") return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const newAnalysis = {
+      ...analysis,
+      id: Date.now().toString(),
+      savedAt: new Date().toISOString(),
+    };
+    saved.unshift(newAnalysis);
+    if (saved.length > 50) saved.splice(50);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    return newAnalysis;
+  } catch(e) { console.error("Error saving:", e); return null; }
+}
+
+function getSavedAnalyses() {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+  catch(e) { return []; }
+}
+
+function deleteAnalysis(id) {
+  if (typeof window === "undefined") return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const filtered = saved.filter(a => a.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  } catch(e) { console.error("Error deleting:", e); }
+}
+
+function formatDate(isoString) {
+  if (!isoString) return "";
+  try {
+    const d = new Date(isoString);
+    const now = new Date();
+    const diff = (now - d) / (1000 * 60);
+    if (diff < 1) return "الآن";
+    if (diff < 60) return `قبل ${Math.floor(diff)} دقيقة`;
+    if (diff < 1440) return `قبل ${Math.floor(diff/60)} ساعة`;
+    if (diff < 10080) return `قبل ${Math.floor(diff/1440)} يوم`;
+    return d.toLocaleDateString("ar-SA", {year:"numeric", month:"short", day:"numeric"});
+  } catch(e) { return ""; }
+}
 
 async function apiCall(endpoint, body) {
   const res = await fetch(`/api/${endpoint}`, {
@@ -160,7 +210,7 @@ function Sheet({open, onClose, children}) {
 
 const CITIES=["الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","تبوك","أبها","القصيم","الخبر","نجران"];
 
-function HomeScreen({onAnalyze, lastResult, onViewLast}) {
+function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
   const [city,setCity]=useState("الرياض");
@@ -168,7 +218,12 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
   const [budget,setBudget]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
+  const [savedCount,setSavedCount]=useState(0);
   const canGo = idea.trim()&&budget.trim()&&!busy;
+
+  useEffect(() => {
+    setSavedCount(getSavedAnalyses().length);
+  }, [lastResult]);
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -184,7 +239,9 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
       const fullIdea = details.trim() ? `${idea} - تفاصيل: ${details}` : idea;
       const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
       const r = await apiCall("analyze", { idea: fullIdea, city: fullLocation, budget: cleanBudget });
-      onAnalyze({...r, idea: fullIdea, city: fullLocation, budget: cleanBudget});
+      const analysis = {...r, idea: fullIdea, city: fullLocation, budget: cleanBudget};
+      const savedAnalysis = saveAnalysis(analysis);
+      onAnalyze(savedAnalysis || analysis);
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
   }
@@ -217,7 +274,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
                 <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
               </div>
               <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية، يستهدف الشباب" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
-              <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4}}>💡 كل ما زادت التفاصيل، زادت دقة التحليل</div>
+              <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:4}}><Lightbulb size={11} color={$.L4}/><span>كل ما زادت التفاصيل، زادت دقة التحليل</span></div>
             </div>
             <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
               <div style={{position:"relative"}}>
@@ -242,7 +299,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
                 <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
                 <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><RiyalIcon size={20} color={$.L3}/></div>
               </div>
-              {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}><span>💰</span><span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span><RiyalIcon size={11} color={$.L2}/><span>سعودي</span></div>}
+              {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}><DollarSign size={11} color={$.L3}/><span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span><RiyalIcon size={11} color={$.L2}/><span>سعودي</span></div>}
             </div>
             {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
             <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
@@ -250,6 +307,17 @@ function HomeScreen({onAnalyze, lastResult, onViewLast}) {
             </button>
           </div>
         </Card>
+
+        {savedCount > 0 && (
+          <Card onClick={onViewSaved} style={{cursor:"pointer",marginBottom:sp[4],padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3]}}>
+            <IconBadge Icon={Archive} color={$.purple} size={38}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:2}}>تحليلاتي المحفوظة</div>
+              <div style={{fontSize:12,color:$.L3}}>{savedCount} {savedCount === 1 ? "تحليل" : "تحليلات"} محفوظة</div>
+            </div>
+            <ChevronRight size={18} color={$.L4}/>
+          </Card>
+        )}
 
         {lastResult && (
           <div style={{marginBottom:sp[5]}}>
@@ -410,6 +478,169 @@ function AnalysisScreen({result}) {
           </Section>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// 💾 شاشة "تحليلاتي" الجديدة
+// ═══════════════════════════════════════
+function SavedAnalysesScreen({onViewAnalysis}) {
+  const [analyses, setAnalyses] = useState([]);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  useEffect(() => {
+    setAnalyses(getSavedAnalyses());
+  }, []);
+
+  function handleDelete(id) {
+    deleteAnalysis(id);
+    setAnalyses(getSavedAnalyses());
+    setConfirmDelete(null);
+  }
+
+  function handleClearAll() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+      setAnalyses([]);
+    }
+  }
+
+  const filtered = analyses.filter(a => {
+    if (filter === "positive" && a.decision_type !== "positive") return false;
+    if (filter === "negative" && a.decision_type !== "negative") return false;
+    if (q && !a.idea?.includes(q) && !a.city?.includes(q)) return false;
+    return true;
+  });
+
+  const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
+  const negativeCount = analyses.filter(a => a.decision_type === "negative").length;
+
+  if (analyses.length === 0) {
+    return (
+      <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+        <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>تحليلاتي</h1>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[8]}}>جميع تحليلاتك في مكان واحد</p>
+        
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[12]}px ${sp[5]}px`,textAlign:"center"}}>
+          <div style={{width:80,height:80,borderRadius:24,background:`${$.purple}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:sp[5]}}>
+            <Archive size={36} color={$.purple} strokeWidth={1.5}/>
+          </div>
+          <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>لا توجد تحليلات بعد</h3>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:280}}>عند تحليل أي مشروع، سيتم حفظه تلقائياً هنا للرجوع إليه لاحقاً</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[5]}}>
+        <div>
+          <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>تحليلاتي</h1>
+          <p style={{fontSize:14,color:$.L3}}>{analyses.length} {analyses.length === 1 ? "تحليل محفوظ" : "تحليلات محفوظة"}</p>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[3],marginBottom:sp[5]}}>
+        <Card style={{padding:sp[4]}}>
+          <IconBadge Icon={Archive} color={$.blue} size={32}/>
+          <div style={{fontSize:24,fontWeight:800,color:$.L1,marginTop:sp[2]}}>{analyses.length}</div>
+          <div style={{fontSize:11,color:$.L3,marginTop:2}}>المجموع</div>
+        </Card>
+        <Card style={{padding:sp[4]}}>
+          <IconBadge Icon={CheckCircle} color={$.green} size={32}/>
+          <div style={{fontSize:24,fontWeight:800,color:$.green,marginTop:sp[2]}}>{positiveCount}</div>
+          <div style={{fontSize:11,color:$.L3,marginTop:2}}>إيجابي</div>
+        </Card>
+        <Card style={{padding:sp[4]}}>
+          <IconBadge Icon={XCircle} color={$.red} size={32}/>
+          <div style={{fontSize:24,fontWeight:800,color:$.red,marginTop:sp[2]}}>{negativeCount}</div>
+          <div style={{fontSize:11,color:$.L3,marginTop:2}}>سلبي</div>
+        </Card>
+      </div>
+
+      <div style={{position:"relative",marginBottom:sp[4]}}>
+        <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في تحليلاتك…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+      </div>
+
+      <div style={{display:"flex",gap:sp[2],marginBottom:sp[5],overflowX:"auto",paddingBottom:4}}>
+        {[
+          {id:"all", name:"الكل", color:$.blue},
+          {id:"positive", name:"إيجابي", color:$.green},
+          {id:"negative", name:"سلبي", color:$.red}
+        ].map(f => (
+          <button key={f.id} onClick={()=>setFilter(f.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:filter===f.id?f.color:$.F4,color:filter===f.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{f.name}</button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد نتائج مطابقة</div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
+          {filtered.map(a => {
+            const pos = a.decision_type === "positive";
+            const color = pos ? $.green : $.red;
+            return (
+              <Card key={a.id} style={{padding:0,overflow:"hidden"}}>
+                <div onClick={()=>onViewAnalysis(a)} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
+                    <ScoreRing value={a.score} size={56} track={5} color={color} noAnim/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
+                      <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{a.city}</span></div>
+                        <span>·</span>
+                        <div style={{display:"flex",alignItems:"center",gap:3}}><RiyalIcon size={10}/><span>{fmt(parseInt(a.budget))}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                    <Chip text={a.decision} color={color} bg={`${color}15`} size={11}/>
+                    <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4,fontSize:11}}>
+                      <Clock size={10}/>
+                      <span>{formatDate(a.savedAt)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{display:"flex",borderTop:`0.5px solid ${$.sepL}`}}>
+                  <button onClick={()=>onViewAnalysis(a)} style={{flex:1,padding:`${sp[3]}px`,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.blue,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                    <Eye size={14}/>
+                    <span>عرض التحليل</span>
+                  </button>
+                  <div style={{width:"0.5px",background:$.sepL}}/>
+                  <button onClick={()=>setConfirmDelete(a.id)} style={{flex:"none",padding:`${sp[3]}px ${sp[5]}px`,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.red,display:"flex",alignItems:"center",gap:5}}>
+                    <Trash2 size={14}/>
+                  </button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {analyses.length > 0 && (
+        <button onClick={handleClearAll} style={{marginTop:sp[6],width:"100%",background:"transparent",color:$.L4,border:`1.5px dashed ${$.L4}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+          حذف كل التحليلات
+        </button>
+      )}
+
+      <Sheet open={!!confirmDelete} onClose={()=>setConfirmDelete(null)}>
+        <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
+          <div style={{width:64,height:64,borderRadius:20,background:`${$.red}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
+            <AlertTriangle size={30} color={$.red} strokeWidth={1.8}/>
+          </div>
+          <h3 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>حذف التحليل؟</h3>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.6,marginBottom:sp[6]}}>سيتم حذف هذا التحليل نهائياً ولا يمكن استرجاعه</p>
+          <div style={{display:"flex",gap:sp[3]}}>
+            <button onClick={()=>setConfirmDelete(null)} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
+            <button onClick={()=>handleDelete(confirmDelete)} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>حذف</button>
+          </div>
+        </div>
+      </Sheet>
     </div>
   );
 }
@@ -750,23 +981,30 @@ function LearningScreen() {
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في المقالات…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
       </div>
 
-      {activeCat === "all" && !q && (
-        <div onClick={()=>setActiveArticle(featuredArticle)} style={{background:getCategoryInfo(featuredArticle.category).gradient,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[6],cursor:"pointer",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:-60,left:-60,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
-          <div style={{position:"relative"}}>
-            <Chip text="⭐ مقالة مميزة" color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.25)"/>
-            <div style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,margin:`${sp[3]}px 0 ${sp[3]}px`,letterSpacing:"-0.4px"}}>{featuredArticle.title}</div>
-            <p style={{fontSize:13,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:sp[4]}}>{featuredArticle.excerpt}</p>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
-                <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.readTime} دقائق</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Activity size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.level}</span></div>
+      {activeCat === "all" && !q && (() => {
+        const FeatCatInfo = getCategoryInfo(featuredArticle.category);
+        const FeatIcon = CATEGORY_ICONS[FeatCatInfo.iconName] || BookOpen;
+        return (
+          <div onClick={()=>setActiveArticle(featuredArticle)} style={{background:FeatCatInfo.gradient,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[6],cursor:"pointer",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:-60,left:-60,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
+            <div style={{position:"relative"}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.25)",borderRadius:99,padding:"6px 14px",marginBottom:sp[3]}}>
+                <Star size={13} color="#fff" strokeWidth={2.2}/>
+                <span style={{fontSize:12,fontWeight:700,color:"#fff"}}>مقالة مميزة</span>
               </div>
-              <div style={{background:"rgba(255,255,255,0.25)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",gap:4}}>اقرأ <ChevronRight size={14}/></div>
+              <div style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{featuredArticle.title}</div>
+              <p style={{fontSize:13,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:sp[4]}}>{featuredArticle.excerpt}</p>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.readTime} دقائق</span></div>
+                  <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Activity size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.level}</span></div>
+                </div>
+                <div style={{background:"rgba(255,255,255,0.25)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",gap:4}}>اقرأ <ChevronRight size={14}/></div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {activeCat === "all" && !q && (
         <>
@@ -791,7 +1029,7 @@ function LearningScreen() {
           const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
           return (
             <button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:activeCat===c.id?c.color:$.F4,color:activeCat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
-              <CatIcon size={13} strokeWidth={2}/>
+              <CatIcon size={14} strokeWidth={2.2}/>
               <span>{c.name}</span>
             </button>
           );
@@ -810,8 +1048,8 @@ function LearningScreen() {
             return (
               <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
-                  <div style={{width:56,height:56,borderRadius:14,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <CatIcon size={26} color="#fff" strokeWidth={2}/>
+                  <div style={{width:60,height:60,borderRadius:16,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 4px 12px ${catInfo.color}33`}}>
+                    <CatIcon size={30} color="#ffffff" strokeWidth={2.4} absoluteStrokeWidth/>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4}}>{article.title}</div>
@@ -842,7 +1080,7 @@ function LearningScreen() {
                     <div style={{position:"relative"}}>
                       <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
                         <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
-                          <CatIcon size={13} color="#fff" strokeWidth={2}/>
+                          <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
                           <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{catInfo.name}</span>
                         </div>
                         <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
@@ -877,9 +1115,6 @@ function LearningScreen() {
                           })}
                         </div>;
                       }
-                      if (trimmed.match(/^(💡|✅|⚠️|❌|🎯|📊|💰|📱|🔧|👥|📈|🏪|🎨|📝|⚖️|⏰|🚀|📌|📑|🛠|💵|💼|👨‍🏫|👩‍🏫|🏛|🏢|🤝|💎|🌍|📦|🎬|📸|🍴|🚚|💄|🧘|🏗|🏠|🏦|🧪|🤖|💌|📆|📅|🍔|🧵|⚙️|🎓|🏋️|💪|🧐|🍰|🎂|☕|🏪|🎁|🎯|👨‍👩‍👧|🏟|⭐|🔥|🎉|💬|📞|📋|📐|🍵|🛒|🌐)/)) {
-                        return <p key={i} style={{marginBottom:sp[3],fontSize:14,padding:`${sp[2]}px ${sp[3]}px`,background:$.F5,borderRadius:10}}>{trimmed}</p>;
-                      }
                       return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
                     })}
                   </div>
@@ -903,12 +1138,18 @@ function LearningScreen() {
   );
 }
 
-const NAV=[{id:"home",label:"الرئيسية",Icon:Home},{id:"analysis",label:"التحليل",Icon:BarChart2},{id:"sectors",label:"القطاعات",Icon:Grid},{id:"learning",label:"التعلم",Icon:BookOpen}];
+const NAV=[
+  {id:"home",label:"الرئيسية",Icon:Home},
+  {id:"analysis",label:"التحليل",Icon:BarChart2},
+  {id:"saved",label:"تحليلاتي",Icon:Archive},
+  {id:"sectors",label:"القطاعات",Icon:Grid},
+  {id:"learning",label:"التعلم",Icon:BookOpen}
+];
 
 function BottomNav({tab,setTab}) {
   return (
     <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:"rgba(246,246,248,0.88)",backdropFilter:"saturate(180%) blur(28px)",WebkitBackdropFilter:"saturate(180%) blur(28px)",borderTop:`0.5px solid rgba(60,60,67,0.18)`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
-      {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[4]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={22} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:10,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
+      {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={20} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:9,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
     </nav>
   );
 }
@@ -916,7 +1157,9 @@ function BottomNav({tab,setTab}) {
 export default function HamourApp() {
   const [tab,setTab]=useState("home");
   const [result,setResult]=useState(null);
+  
   const handleAnalyze=useCallback((data)=>{setResult(data);setTab("analysis");},[]);
+  const handleViewSaved=useCallback((analysis)=>{setResult(analysis);setTab("analysis");},[]);
 
   return (
     <>
@@ -930,8 +1173,9 @@ export default function HamourApp() {
         @keyframes _spin{to{transform:rotate(360deg);}}
       `}</style>
       <div style={{minHeight:"100vh",maxWidth:430,margin:"0 auto",background:$.bg,position:"relative",paddingBottom:90}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={()=>setTab("analysis")}/>}
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={()=>setTab("analysis")} onViewSaved={()=>setTab("saved")}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
+        {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewSaved}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen/>}
         <BottomNav tab={tab} setTab={setTab}/>
