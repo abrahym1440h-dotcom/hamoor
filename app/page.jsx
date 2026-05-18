@@ -1,11 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
-  Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle
+  Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
+  ChevronRight, BookmarkPlus, Share2
 } from "lucide-react";
 
 const $ = {
@@ -38,22 +40,11 @@ const fmt = n => (n||0).toLocaleString("en-US");
 
 function RiyalIcon({size=14, color="currentColor", style={}}) {
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 100 100" 
-      fill="none"
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none"
       style={{display:"inline-block", verticalAlign:"middle", ...style}}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path 
-        d="M 20 30 L 80 30 M 20 50 L 80 50 M 35 15 L 35 75 Q 35 85 45 85 L 65 85 M 55 15 L 55 65" 
-        stroke={color} 
-        strokeWidth="8" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-        fill="none"
-      />
+      xmlns="http://www.w3.org/2000/svg">
+      <path d="M 20 30 L 80 30 M 20 50 L 80 50 M 35 15 L 35 75 Q 35 85 45 85 L 65 85 M 55 15 L 55 65"
+        stroke={color} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   );
 }
@@ -153,9 +144,9 @@ function Sheet({open, onClose, children}) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.40)",backdropFilter:"blur(4px)"}}/>
-      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"88vh",overflowY:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.18)"}}>
-        <div style={{display:"flex",justifyContent:"center",padding:`${sp[3]}px 0 ${sp[2]}px`}}><div style={{width:36,height:4,borderRadius:99,background:$.F3}}/></div>
-        <button onClick={onClose} style={{position:"absolute",top:sp[3],left:sp[4],background:$.F3,border:"none",borderRadius:99,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={16} color={$.L3}/></button>
+      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.18)"}}>
+        <div style={{display:"flex",justifyContent:"center",padding:`${sp[3]}px 0 ${sp[2]}px`,position:"sticky",top:0,background:$.surface,zIndex:10}}><div style={{width:36,height:4,borderRadius:99,background:$.F3}}/></div>
+        <button onClick={onClose} style={{position:"sticky",top:sp[3],left:sp[4],background:$.F3,border:"none",borderRadius:99,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",marginLeft:sp[4],marginRight:"auto",zIndex:11}}><X size={16} color={$.L3}/></button>
         {children}
       </div>
     </div>
@@ -417,7 +408,6 @@ function AnalysisScreen({result}) {
     </div>
   );
 }
-
 const CATEGORIES = [
   {id:"all", name:"الكل", color:$.blue},
   {id:"food", name:"أطعمة", color:$.orange},
@@ -433,21 +423,8 @@ const SECTORS_DATA = [
     payback:"18-24 شهر", margin:"15-25%", competition:"عالية جداً",
     audience:"شباب 18-35، طلاب جامعات، عمال شركات، عائلات في عطلات نهاية الأسبوع",
     top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"],
-    success_tips:[
-      "موقع استراتيجي قرب الجامعات أو المكاتب أو الأحياء السكنية الحديثة",
-      "تميّز في القهوة - استورد حبوب مختصة وقدّم تجربة فريدة",
-      "تصميم داخلي جذاب للسوشيال ميديا وتجربة تصوير ممتازة",
-      "خدمة توصيل سريعة عبر التطبيقات (هنقرستيشن، جاهز، توصيل)",
-      "برامج ولاء وعروض ذكية للزبائن المنتظمين",
-      "تركيز على جودة الباريستا وتدريبه باستمرار"
-    ],
-    failure_reasons:[
-      "إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية",
-      "موقع ضعيف أو في حي ميت بدون حركة كافية",
-      "ضعف التمييز - كل المقاهي صارت متشابهة",
-      "تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء",
-      "عدم الاستمرارية في الجودة بسبب دوران الباريستا"
-    ],
+    success_tips:["موقع استراتيجي قرب الجامعات أو المكاتب أو الأحياء السكنية الحديثة","تميّز في القهوة - استورد حبوب مختصة وقدّم تجربة فريدة","تصميم داخلي جذاب للسوشيال ميديا وتجربة تصوير ممتازة","خدمة توصيل سريعة عبر التطبيقات (هنقرستيشن، جاهز، توصيل)","برامج ولاء وعروض ذكية للزبائن المنتظمين","تركيز على جودة الباريستا وتدريبه باستمرار"],
+    failure_reasons:["إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية","موقع ضعيف أو في حي ميت بدون حركة كافية","ضعف التمييز - كل المقاهي صارت متشابهة","تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء","عدم الاستمرارية في الجودة بسبب دوران الباريستا"],
     competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد","حلواني"],
     sub_ideas:["كوفي متخصص في القهوة الكورية","عربة قهوة متنقلة","كوفي بطابع تراثي سعودي"],
     last_updated:"يناير 2026"
@@ -458,21 +435,8 @@ const SECTORS_DATA = [
     payback:"24-36 شهر", margin:"10-18%", competition:"عالية",
     audience:"عائلات، عمال، موظفون، شباب في الخروجات الأسبوعية",
     top_cities:["الرياض","جدة","الدمام","الخبر","مكة المكرمة"],
-    success_tips:[
-      "تخصص واضح - مطعم لمأكولات محددة أفضل من قائمة طويلة",
-      "اتساق في الجودة - الزبون يجي عشان طعم معين",
-      "خدمة توصيل قوية عبر كل المنصات",
-      "تسعير منافس وعروض موسمية",
-      "موقع في مجمعات تجارية أو شوارع رئيسية مزدحمة",
-      "نظافة المطبخ والخدمة - أهم من أي شي ثاني"
-    ],
-    failure_reasons:[
-      "قائمة طعام كبيرة جداً تسبب هدر في المواد",
-      "ضعف الإدارة المالية والمخزون",
-      "منافسة شرسة من السلاسل الكبيرة (البيك، كودو، هرفي)",
-      "موسمية صعبة في رمضان والإجازات",
-      "صعوبة إيجاد طباخين ماهرين والاحتفاظ بهم"
-    ],
+    success_tips:["تخصص واضح - مطعم لمأكولات محددة أفضل من قائمة طويلة","اتساق في الجودة - الزبون يجي عشان طعم معين","خدمة توصيل قوية عبر كل المنصات","تسعير منافس وعروض موسمية","موقع في مجمعات تجارية أو شوارع رئيسية مزدحمة","نظافة المطبخ والخدمة - أهم من أي شي ثاني"],
+    failure_reasons:["قائمة طعام كبيرة جداً تسبب هدر في المواد","ضعف الإدارة المالية والمخزون","منافسة شرسة من السلاسل الكبيرة (البيك، كودو، هرفي)","موسمية صعبة في رمضان والإجازات","صعوبة إيجاد طباخين ماهرين والاحتفاظ بهم"],
     competitors:["البيك","كودو","هرفي","ماكدونالدز","ماجستيك","الطازج","البرج"],
     sub_ideas:["مطعم متخصص في الكبسة","مطعم آسيوي شعبي","فطور صباحي راقي"],
     last_updated:"يناير 2026"
@@ -483,21 +447,8 @@ const SECTORS_DATA = [
     payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
     audience:"نساء، عائلات، مناسبات (أعراس، تخرج، مواليد)، مكاتب",
     top_cities:["الرياض","جدة","الدمام","القصيم","المدينة المنورة"],
-    success_tips:[
-      "تصوير احترافي للمنتجات للسوشيال ميديا",
-      "تغليف فاخر يصلح للهدايا والمناسبات",
-      "توصيل سريع مع المحافظة على جودة المنتج",
-      "تخصص في نوع معين (كنافة، بقلاوة، كيكات مناسبات، إلخ)",
-      "ابتكار طعمات جديدة باستمرار",
-      "حسابات قوية في إنستقرام وتيك توك"
-    ],
-    failure_reasons:[
-      "تقليد المنافسين بدل الابتكار",
-      "ضعف التغليف يضر التجربة",
-      "عدم اتساق الجودة بين الوجبات",
-      "تسعير غير صحيح",
-      "إهمال الموسمية (رمضان، أعياد، فصل الشتاء)"
-    ],
+    success_tips:["تصوير احترافي للمنتجات للسوشيال ميديا","تغليف فاخر يصلح للهدايا والمناسبات","توصيل سريع مع المحافظة على جودة المنتج","تخصص في نوع معين (كنافة، بقلاوة، كيكات مناسبات، إلخ)","ابتكار طعمات جديدة باستمرار","حسابات قوية في إنستقرام وتيك توك"],
+    failure_reasons:["تقليد المنافسين بدل الابتكار","ضعف التغليف يضر التجربة","عدم اتساق الجودة بين الوجبات","تسعير غير صحيح","إهمال الموسمية (رمضان، أعياد، فصل الشتاء)"],
     competitors:["صابا","عبدالصمد القرشي","ميلانو","لافيت","الإمبراطور","تشيز كيك فاكتوري"],
     sub_ideas:["حلويات صحية بدون سكر","تخصص في الكنافة الفاخرة","كيكات تخرج وأعراس"],
     last_updated:"يناير 2026"
@@ -508,21 +459,8 @@ const SECTORS_DATA = [
     payback:"15-24 شهر", margin:"20-30%", competition:"عالية",
     audience:"شباب، طلاب، عمال، موظفون في استراحة الغداء",
     top_cities:["الرياض","جدة","الدمام","تبوك","الخبر"],
-    success_tips:[
-      "سرعة التحضير - أقل من 5 دقائق",
-      "تسعير منافس - أقل من السلاسل العالمية",
-      "موقع قريب من الجامعات أو المناطق الصناعية",
-      "توصيل عبر كل تطبيقات التوصيل بفعالية",
-      "بساطة القائمة - تركيز على 3-5 منتجات أساسية",
-      "نظافة عالية ومستمرة"
-    ],
-    failure_reasons:[
-      "منافسة شرسة من السلاسل العالمية",
-      "ضعف الجودة في المواد الخام",
-      "ارتفاع تكاليف اللحوم والدجاج",
-      "صعوبة المحافظة على نفس الجودة في الذروة",
-      "اعتماد كامل على التوصيل بدون حضور قوي في المحل"
-    ],
+    success_tips:["سرعة التحضير - أقل من 5 دقائق","تسعير منافس - أقل من السلاسل العالمية","موقع قريب من الجامعات أو المناطق الصناعية","توصيل عبر كل تطبيقات التوصيل بفعالية","بساطة القائمة - تركيز على 3-5 منتجات أساسية","نظافة عالية ومستمرة"],
+    failure_reasons:["منافسة شرسة من السلاسل العالمية","ضعف الجودة في المواد الخام","ارتفاع تكاليف اللحوم والدجاج","صعوبة المحافظة على نفس الجودة في الذروة","اعتماد كامل على التوصيل بدون حضور قوي في المحل"],
     competitors:["ماكدونالدز","برجر كنق","KFC","البيك","شوكسي","صب واي"],
     sub_ideas:["برجر سعودي بنكهات محلية","شاورما مختصة فاخرة","ساندوتشات صحية"],
     last_updated:"يناير 2026"
@@ -533,21 +471,8 @@ const SECTORS_DATA = [
     payback:"24-36 شهر", margin:"15-30%", competition:"عالية جداً",
     audience:"عام - حسب نوع البضاعة (أطفال، نساء، رجال، عائلات)",
     top_cities:["الرياض","جدة","الدمام","مكة المكرمة","الخبر"],
-    success_tips:[
-      "تخصص واضح - متجر بدل سوبر ماركت عام",
-      "موقع في مجمع تجاري أو شارع تجاري مزدحم",
-      "إدارة مخزون ذكية - تجنب البضاعة الراكدة",
-      "حضور أونلاين قوي (متجر إلكتروني + سوشيال)",
-      "خدمة عملاء مميزة وسياسة استرجاع واضحة",
-      "عروض موسمية ومناسبات"
-    ],
-    failure_reasons:[
-      "منافسة قوية من التجارة الإلكترونية (نون، أمازون)",
-      "بضاعة راكدة تأكل رأس المال",
-      "موقع ضعيف بدون حركة",
-      "تسعير مرتفع مقارنة بالسلاسل الكبيرة",
-      "إهمال التسويق الرقمي"
-    ],
+    success_tips:["تخصص واضح - متجر بدل سوبر ماركت عام","موقع في مجمع تجاري أو شارع تجاري مزدحم","إدارة مخزون ذكية - تجنب البضاعة الراكدة","حضور أونلاين قوي (متجر إلكتروني + سوشيال)","خدمة عملاء مميزة وسياسة استرجاع واضحة","عروض موسمية ومناسبات"],
+    failure_reasons:["منافسة قوية من التجارة الإلكترونية (نون، أمازون)","بضاعة راكدة تأكل رأس المال","موقع ضعيف بدون حركة","تسعير مرتفع مقارنة بالسلاسل الكبيرة","إهمال التسويق الرقمي"],
     competitors:["نون","أمازون","إكسترا","ساكو","جرير","سنتربوينت","المنيع"],
     sub_ideas:["متجر منتجات أطفال متخصص","متجر مستلزمات حيوانات","متجر هدايا فاخرة"],
     last_updated:"يناير 2026"
@@ -558,21 +483,8 @@ const SECTORS_DATA = [
     payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
     audience:"نساء 20-60 سنة، مناسبات (أعراس، تخرج، عيد، رمضان)",
     top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"],
-    success_tips:[
-      "تصاميم حصرية وفريدة - لا تقلد",
-      "خياطة عالية الجودة بأقمشة فاخرة",
-      "إنستقرام احترافي مع مودلز وتصوير ممتاز",
-      "خدمة VIP لكبار العملاء",
-      "موقع راقي في حي راقي أو مول",
-      "تنوع المقاسات والألوان"
-    ],
-    failure_reasons:[
-      "تشابه التصاميم مع المنافسين",
-      "تسعير ضعيف لا يغطي التكاليف",
-      "موقع غير ملائم للجمهور المستهدف",
-      "ضعف التسويق الرقمي",
-      "عدم متابعة الموضة الحالية"
-    ],
+    success_tips:["تصاميم حصرية وفريدة - لا تقلد","خياطة عالية الجودة بأقمشة فاخرة","إنستقرام احترافي مع مودلز وتصوير ممتاز","خدمة VIP لكبار العملاء","موقع راقي في حي راقي أو مول","تنوع المقاسات والألوان"],
+    failure_reasons:["تشابه التصاميم مع المنافسين","تسعير ضعيف لا يغطي التكاليف","موقع غير ملائم للجمهور المستهدف","ضعف التسويق الرقمي","عدم متابعة الموضة الحالية"],
     competitors:["مزون","نهى","أنوار","حلا الترك","نسك","عبايات الرياض"],
     sub_ideas:["عبايات شبابية عصرية","فساتين سهرة مستوردة","عبايات صلاة فاخرة"],
     last_updated:"يناير 2026"
@@ -583,21 +495,8 @@ const SECTORS_DATA = [
     payback:"30-48 شهر", margin:"8-18%", competition:"عالية جداً",
     audience:"شباب، موظفون، طلاب، عائلات",
     top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
-    success_tips:[
-      "أسعار منافسة (الهامش قليل، الكمية تفرق)",
-      "ضمان موثوق وخدمة ما بعد البيع",
-      "تشكيلة متنوعة من الماركات",
-      "صيانة في المحل لتمييز عن المنافسين",
-      "حسابات سوشيال قوية مع مراجعات للمنتجات",
-      "تعاون مع شركات الأقساط (تابي، تمارا، تسهيل)"
-    ],
-    failure_reasons:[
-      "هامش ربح ضعيف يصعب الاستمرار",
-      "منافسة قاتلة من المتاجر الإلكترونية",
-      "تزييف المنتجات وفقدان الثقة",
-      "تخزين بضاعة قديمة تنخفض قيمتها",
-      "صعوبة الحصول على وكالات حصرية"
-    ],
+    success_tips:["أسعار منافسة (الهامش قليل، الكمية تفرق)","ضمان موثوق وخدمة ما بعد البيع","تشكيلة متنوعة من الماركات","صيانة في المحل لتمييز عن المنافسين","حسابات سوشيال قوية مع مراجعات للمنتجات","تعاون مع شركات الأقساط (تابي، تمارا، تسهيل)"],
+    failure_reasons:["هامش ربح ضعيف يصعب الاستمرار","منافسة قاتلة من المتاجر الإلكترونية","تزييف المنتجات وفقدان الثقة","تخزين بضاعة قديمة تنخفض قيمتها","صعوبة الحصول على وكالات حصرية"],
     competitors:["إكسترا","جرير","نون","أمازون","السيف غاليري","لولو هايبر","ماكس"],
     sub_ideas:["إكسسوارات الجوالات","صيانة وإصلاح متخصصة","قطع غيار كمبيوترات"],
     last_updated:"يناير 2026"
@@ -608,21 +507,8 @@ const SECTORS_DATA = [
     payback:"18-24 شهر", margin:"25-40%", competition:"متوسطة",
     audience:"نساء 18-55 سنة، رجال 18-50 (للحلاقة)، مناسبات",
     top_cities:["الرياض","جدة","الخبر","الدمام","أبها"],
-    success_tips:[
-      "مصففين موهوبين من بلاد متخصصة (لبنان، تركيا، البرازيل)",
-      "تجربة فاخرة - استقبال، تشكيلة قهوة، خصوصية",
-      "نظام حجز إلكتروني (واتساب، تطبيق)",
-      "تخصص في خدمات معينة (أعراس، علاج بشرة، شعر)",
-      "نظافة وتعقيم على أعلى مستوى",
-      "تنظيم الوقت - عدم تأخير الزبائن"
-    ],
-    failure_reasons:[
-      "دوران الموظفين السريع",
-      "عدم النظافة والتعقيم الكافي",
-      "تسعير غير واضح يفاجئ الزبون",
-      "ضعف التسويق الرقمي",
-      "إهمال خدمة الزبون والمتابعة"
-    ],
+    success_tips:["مصففين موهوبين من بلاد متخصصة (لبنان، تركيا، البرازيل)","تجربة فاخرة - استقبال، تشكيلة قهوة، خصوصية","نظام حجز إلكتروني (واتساب، تطبيق)","تخصص في خدمات معينة (أعراس، علاج بشرة، شعر)","نظافة وتعقيم على أعلى مستوى","تنظيم الوقت - عدم تأخير الزبائن"],
+    failure_reasons:["دوران الموظفين السريع","عدم النظافة والتعقيم الكافي","تسعير غير واضح يفاجئ الزبون","ضعف التسويق الرقمي","إهمال خدمة الزبون والمتابعة"],
     competitors:["روزا","إكسير","توني آند جاي","رويال","حلا للتجميل","ميرنا"],
     sub_ideas:["صالون رجالي راقي","صالون متخصص في الأعراس","عيادة جلدية تجميلية"],
     last_updated:"يناير 2026"
@@ -633,21 +519,8 @@ const SECTORS_DATA = [
     payback:"12-18 شهر", margin:"30-50%", competition:"متوسطة",
     audience:"رجال (ثياب، بشوت)، نساء (فساتين، عبايات)، مناسبات",
     top_cities:["الرياض","القصيم","المدينة المنورة","جدة","الدمام"],
-    success_tips:[
-      "خياطين ماهرين بخبرة طويلة",
-      "الالتزام بالمواعيد - السمعة كل شي",
-      "تخصص في نوع معين (رجالي، نسائي، عبايات)",
-      "أقمشة فاخرة ومستوردة",
-      "موقع قريب من الأحياء التي تخدمها",
-      "خدمة قياس بالمنزل للعملاء الكبار"
-    ],
-    failure_reasons:[
-      "تأخر التسليم وفقدان ثقة الزبائن",
-      "ضعف جودة الخياطة",
-      "نقص في الخياطين المهرة",
-      "تسعير غير منافس",
-      "عدم مواكبة موضة الموسم"
-    ],
+    success_tips:["خياطين ماهرين بخبرة طويلة","الالتزام بالمواعيد - السمعة كل شي","تخصص في نوع معين (رجالي، نسائي، عبايات)","أقمشة فاخرة ومستوردة","موقع قريب من الأحياء التي تخدمها","خدمة قياس بالمنزل للعملاء الكبار"],
+    failure_reasons:["تأخر التسليم وفقدان ثقة الزبائن","ضعف جودة الخياطة","نقص في الخياطين المهرة","تسعير غير منافس","عدم مواكبة موضة الموسم"],
     competitors:["محلات خياطة محلية في كل حي","الطلال","الفيصلية","عابد"],
     sub_ideas:["خياطة فساتين سهرة","خياطة بشوت ملوكية","تفصيل عبايات تصاميم خاصة"],
     last_updated:"يناير 2026"
@@ -658,21 +531,8 @@ const SECTORS_DATA = [
     payback:"12-20 شهر", margin:"35-55%", competition:"متوسطة",
     audience:"طلاب مدارس، طلاب جامعات، موظفون يبغون تطوير ذواتهم",
     top_cities:["الرياض","جدة","الدمام","الخبر","المدينة المنورة"],
-    success_tips:[
-      "مدرّبين ذوي خبرة وشهادات",
-      "محتوى مميز وأسلوب تقديم جذاب",
-      "شهادات معتمدة من جهات معروفة",
-      "تسويق رقمي قوي عبر السوشيال",
-      "دورات مكثفة وقصيرة الأمد",
-      "أسعار تنافسية مع برامج أقساط"
-    ],
-    failure_reasons:[
-      "ضعف جودة المدربين والمحتوى",
-      "تسعير مرتفع جداً",
-      "موقع غير ملائم أو وصول صعب",
-      "عدم وجود تخصص واضح",
-      "إهمال متابعة الطلاب بعد الدورة"
-    ],
+    success_tips:["مدرّبين ذوي خبرة وشهادات","محتوى مميز وأسلوب تقديم جذاب","شهادات معتمدة من جهات معروفة","تسويق رقمي قوي عبر السوشيال","دورات مكثفة وقصيرة الأمد","أسعار تنافسية مع برامج أقساط"],
+    failure_reasons:["ضعف جودة المدربين والمحتوى","تسعير مرتفع جداً","موقع غير ملائم أو وصول صعب","عدم وجود تخصص واضح","إهمال متابعة الطلاب بعد الدورة"],
     competitors:["دروب","رواق","عبر مدرسة","تمكين","مهارة"],
     sub_ideas:["تعليم البرمجة للأطفال","تطوير الذات والقيادة","دورات لغات متخصصة"],
     last_updated:"يناير 2026"
@@ -683,21 +543,8 @@ const SECTORS_DATA = [
     payback:"18-30 شهر", margin:"30-45%", competition:"متوسطة",
     audience:"شباب وشابات 18-45، موظفون، رياضيون، مهتمون بالصحة",
     top_cities:["الرياض","جدة","الخبر","الدمام","تبوك"],
-    success_tips:[
-      "أجهزة حديثة وعالية الجودة",
-      "مدربين معتمدين دولياً",
-      "تنوع البرامج (يوغا، كروسفت، حديد، كارديو)",
-      "نظافة وتعقيم مستمر",
-      "اشتراكات مرنة وعروض موسمية",
-      "تطبيق لحجز الجلسات والمتابعة"
-    ],
-    failure_reasons:[
-      "أجهزة قديمة أو معطلة",
-      "اشتراكات مرتفعة جداً",
-      "صعوبة الاحتفاظ بالعملاء بعد أول شهر",
-      "موقع غير ملائم بدون مواقف",
-      "ضعف خدمة العملاء"
-    ],
+    success_tips:["أجهزة حديثة وعالية الجودة","مدربين معتمدين دولياً","تنوع البرامج (يوغا، كروسفت، حديد، كارديو)","نظافة وتعقيم مستمر","اشتراكات مرنة وعروض موسمية","تطبيق لحجز الجلسات والمتابعة"],
+    failure_reasons:["أجهزة قديمة أو معطلة","اشتراكات مرتفعة جداً","صعوبة الاحتفاظ بالعملاء بعد أول شهر","موقع غير ملائم بدون مواقف","ضعف خدمة العملاء"],
     competitors:["فتنس تايم","بادي ماستر","بود فيتنس","نقاء","فيتنس فيرست"],
     sub_ideas:["نادي نسائي متخصص","مركز كروسفت متخصص","ستوديو يوغا وبيلاتس"],
     last_updated:"يناير 2026"
@@ -708,21 +555,8 @@ const SECTORS_DATA = [
     payback:"12-18 شهر", margin:"40-60%", competition:"منخفضة",
     audience:"شركات، رواد أعمال، متاجر، أفراد",
     top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
-    success_tips:[
-      "تخصص في خدمة محددة (تطبيقات، مواقع، تسويق رقمي)",
-      "محفظة أعمال قوية وشهادات عملاء",
-      "أسعار باقات واضحة ومحددة",
-      "دعم فني سريع ومستمر",
-      "حضور قوي على لينكدإن وموقع احترافي",
-      "شراكات مع شركات كبرى"
-    ],
-    failure_reasons:[
-      "عدم وجود تخصص واضح",
-      "ضعف التسعير وعدم تقدير الجهد",
-      "صعوبة إيجاد عملاء مستمرين",
-      "ضعف خدمة الدعم بعد التسليم",
-      "تقادم التقنيات بسرعة"
-    ],
+    success_tips:["تخصص في خدمة محددة (تطبيقات، مواقع، تسويق رقمي)","محفظة أعمال قوية وشهادات عملاء","أسعار باقات واضحة ومحددة","دعم فني سريع ومستمر","حضور قوي على لينكدإن وموقع احترافي","شراكات مع شركات كبرى"],
+    failure_reasons:["عدم وجود تخصص واضح","ضعف التسعير وعدم تقدير الجهد","صعوبة إيجاد عملاء مستمرين","ضعف خدمة الدعم بعد التسليم","تقادم التقنيات بسرعة"],
     competitors:["شركات تقنية محلية متنوعة","stc Pay","موضوع","حسوب"],
     sub_ideas:["تسويق رقمي للمحلات","تصميم تطبيقات للشركات","إدارة سوشيال ميديا"],
     last_updated:"يناير 2026"
@@ -803,7 +637,7 @@ function SectorsScreen() {
               </Card>
               <Card style={{padding:sp[4]}}>
                 <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><DollarSign size={14} color={$.purple}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>متوسط الاستثمار</span></div>
-                <div style={{fontSize:13,fontWeight:700,color:$.L1,display:"inline-flex",alignItems:"center",gap:4}}><span>{active.investment}</span></div>
+                <div style={{fontSize:13,fontWeight:700,color:$.L1}}>{active.investment}</div>
                 <div style={{fontSize:9,color:$.L4,marginTop:2,display:"inline-flex",alignItems:"center",gap:3}}><RiyalIcon size={10} color={$.L4}/><span>ريال</span></div>
               </Card>
               <Card style={{padding:sp[4]}}>
@@ -871,67 +705,180 @@ function SectorsScreen() {
   );
 }
 
-const ARTICLES=[
-  {id:1,title:"كيف تفتح كوفي ناجح في السعودية",time:8,cat:"مقاهي",grad:"linear-gradient(145deg,#FF9500,#E07800)"},
-  {id:2,title:"أهم 5 أخطاء يقع فيها رواد الأعمال",time:5,cat:"عام",grad:"linear-gradient(145deg,#FF3B30,#C01E16)"},
-  {id:3,title:"دراسة جدوى مطعم بميزانية 200 ألف ريال",time:12,cat:"مطاعم",grad:"linear-gradient(145deg,#34C759,#1C8C36)"},
-  {id:4,title:"كيف تختار الموقع الصح لمشروعك",time:6,cat:"تسويق",grad:"linear-gradient(145deg,#007AFF,#0050C0)"},
-  {id:5,title:"الفرق بين الفرنشايز والمشروع المستقل",time:9,cat:"عام",grad:"linear-gradient(145deg,#AF52DE,#7830B0)"},
-  {id:6,title:"أبرز قطاعات الاستثمار في رؤية 2030",time:7,cat:"اقتصاد",grad:"linear-gradient(145deg,#32ADE6,#1880B8)"},
-];
-
 function LearningScreen() {
-  const feat=ARTICLES[3];
-  const rest=ARTICLES.filter(a=>a.id!==feat.id);
-  const [active,setActive]=useState(null);
-  const [content,setContent]=useState(null);
-  const [busy,setBusy]=useState(false);
-  const [err,setErr]=useState(null);
+  const [q,setQ]=useState("");
+  const [activeCat,setActiveCat]=useState("all");
+  const [activeArticle,setActiveArticle]=useState(null);
 
-  async function open(a) {
-    setActive(a); setContent(null); setErr(null); setBusy(true);
-    try { const r = await apiCall("article",{title:a.title}); setContent(r.content); }
-    catch(e) { setErr(e.message); }
-    finally { setBusy(false); }
+  const allCategories = [{id:"all", name:"الكل", icon:"📚", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)"}, ...ARTICLE_CATEGORIES];
+  
+  const filteredArticles = ARTICLES.filter(a => {
+    if (activeCat !== "all" && a.category !== activeCat) return false;
+    if (q && !a.title.includes(q) && !a.excerpt.includes(q)) return false;
+    return true;
+  });
+
+  const featuredArticle = ARTICLES[0];
+  const categoryStats = ARTICLE_CATEGORIES.map(c => ({
+    ...c,
+    count: ARTICLES.filter(a => a.category === c.id).length
+  }));
+
+  function getLevelColor(level) {
+    if (level === "مبتدئ") return $.green;
+    if (level === "متوسط") return $.orange;
+    return $.red;
+  }
+
+  function getCategoryInfo(catId) {
+    return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)"};
   }
 
   return (
     <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
-      <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>التعلم</h1>
-      <p style={{fontSize:15,color:$.L3,marginBottom:sp[6]}}>اضغط على مقالة لقراءتها</p>
+      <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>مكتبة التعلم</h1>
+      <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{ARTICLES.length} مقالة احترافية · محدّثة يناير 2026</p>
 
-           <div onClick={()=>open(feat)} style={{background:feat.grad,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],cursor:"pointer"}}>
-        <Chip text="مقالة مميزة" color="rgba(255,255,255,0.92)" bg="rgba(255,255,255,0.22)"/>
-        <div style={{fontSize:20,fontWeight:800,color:"#fff",lineHeight:1.3,margin:`${sp[3]}px 0 ${sp[4]}px`}}>{feat.title}</div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",alignItems:"center",gap:sp[1],color:"rgba(255,255,255,0.72)"}}><Clock size={13}/><span style={{fontSize:13}}>{feat.time} دقائق</span></div>
-          <div style={{background:"rgba(255,255,255,0.22)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:600,color:"#fff"}}>اقرأ الآن</div>
-        </div>
+      <div style={{position:"relative",marginBottom:sp[5]}}>
+        <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في المقالات…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
       </div>
 
-      <SectionLabel>جميع المقالات</SectionLabel>
-      <Card>
-        {rest.map((a,i)=>(
-          <div key={a.id} onClick={()=>open(a)} style={{display:"flex",alignItems:"center",gap:sp[4],padding:`${sp[4]}px ${sp[5]}px`,borderBottom:i<rest.length-1?`0.5px solid ${$.sepL}`:"none",cursor:"pointer"}}>
-            <div style={{width:52,height:52,borderRadius:14,background:a.grad,flexShrink:0}}/>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:14,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:6}}>{a.title}</div>
-              <div style={{display:"flex",alignItems:"center",gap:sp[2]}}><Chip text={a.cat}/><div style={{display:"flex",alignItems:"center",gap:4,color:$.L4}}><Clock size={11}/><span style={{fontSize:11}}>{a.time} دقائق</span></div></div>
+      {activeCat === "all" && !q && (
+        <div onClick={()=>setActiveArticle(featuredArticle)} style={{background:getCategoryInfo(featuredArticle.category).gradient,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[6],cursor:"pointer",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:-60,left:-60,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
+          <div style={{position:"relative"}}>
+            <Chip text="⭐ مقالة مميزة" color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.25)"/>
+            <div style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,margin:`${sp[3]}px 0 ${sp[3]}px`,letterSpacing:"-0.4px"}}>{featuredArticle.title}</div>
+            <p style={{fontSize:13,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:sp[4]}}>{featuredArticle.excerpt}</p>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
+                <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.readTime} دقائق</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Activity size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.level}</span></div>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.25)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",gap:4}}>اقرأ <ChevronRight size={14}/></div>
             </div>
           </div>
-        ))}
-      </Card>
+        </div>
+      )}
 
-      <Sheet open={!!active} onClose={()=>{setActive(null);setContent(null);}}>
-        {active && (
+      {activeCat === "all" && !q && (
+        <>
+          <SectionLabel>تصفّح حسب الفئة</SectionLabel>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[6]}}>
+            {categoryStats.map(c => (
+              <Card key={c.id} onClick={()=>setActiveCat(c.id)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                <div style={{fontSize:28,marginBottom:sp[2]}}>{c.icon}</div>
+                <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:4,lineHeight:1.3}}>{c.name}</div>
+                <div style={{fontSize:11,color:$.L3}}>{c.count} مقالات</div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div style={{display:"flex",gap:sp[2],marginBottom:sp[4],overflowX:"auto",paddingBottom:4}}>
+        {allCategories.map(c => (
+          <button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:activeCat===c.id?c.color:$.F4,color:activeCat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+            {c.icon && <span>{c.icon}</span>}
+            <span>{c.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <SectionLabel>{activeCat === "all" ? `جميع المقالات (${filteredArticles.length})` : `${getCategoryInfo(activeCat).name} (${filteredArticles.length})`}</SectionLabel>
+      
+      {filteredArticles.length === 0 ? (
+        <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد مقالات مطابقة</div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
+          {filteredArticles.map(article => {
+            const catInfo = getCategoryInfo(article.category);
+            return (
+              <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
+                  <div style={{width:56,height:56,borderRadius:14,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>
+                    {catInfo.icon}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4}}>{article.title}</div>
+                    <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginBottom:sp[2],overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{article.excerpt}</p>
+                    <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                      <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={11}/>
+                      <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4}}><Clock size={11}/><span style={{fontSize:11,fontWeight:600}}>{article.readTime} د</span></div>
+                      <Chip text={article.level} color={getLevelColor(article.level)} bg={`${getLevelColor(article.level)}15`} size={11}/>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Sheet open={!!activeArticle} onClose={()=>setActiveArticle(null)}>
+        {activeArticle && (
           <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-            <div style={{height:140,background:active.grad,borderRadius:16,marginBottom:sp[5],display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:`${sp[4]}px ${sp[5]}px`}}>
-              <Chip text={active.cat} color="rgba(255,255,255,0.9)" bg="rgba(255,255,255,0.2)"/>
-              <div style={{fontSize:17,fontWeight:800,color:"#fff",lineHeight:1.3,marginTop:sp[2]}}>{active.title}</div>
-            </div>
-            {busy && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[3],padding:`${sp[8]}px 0`}}><Spinner sz={28} clr={$.blue}/><p style={{fontSize:14,color:$.L3}}>يكتب المقالة…</p></div>}
-            {err && <div style={{background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:sp[4],fontSize:13,color:$.red}}>{err}</div>}
-            {content && !busy && content.split("\n\n").filter(p=>p.trim()).map((p,i)=>(<p key={i} style={{fontSize:15,color:$.L2,lineHeight:1.85,marginBottom:sp[4]}}>{p.trim()}</p>))}
+            {(() => {
+              const catInfo = getCategoryInfo(activeArticle.category);
+              return (
+                <>
+                  <div style={{background:catInfo.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:-40,left:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
+                    <div style={{position:"relative"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+                        <Chip text={catInfo.icon+" "+catInfo.name} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
+                        <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
+                      </div>
+                      <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{activeArticle.title}</h2>
+                      <div style={{display:"flex",alignItems:"center",gap:sp[4],color:"rgba(255,255,255,0.85)"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.readTime} دقائق</span></div>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}><Calendar size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.date}</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{fontSize:15,color:$.L2,lineHeight:1.9,fontWeight:400}}>
+                    {activeArticle.content.split("\n\n").filter(p=>p.trim()).map((paragraph,i) => {
+                      const trimmed = paragraph.trim();
+                      if (trimmed.startsWith("═══")) {
+                        const headerText = trimmed.replace(/═/g,"").trim();
+                        return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3],paddingBottom:sp[2],borderBottom:`2px solid ${catInfo.color}30`,letterSpacing:"-0.3px"}}>{headerText}</h3>;
+                      }
+                      if (trimmed.includes("•") || trimmed.match(/^[-*]/m)) {
+                        return <div key={i} style={{marginBottom:sp[4]}}>
+                          {trimmed.split("\n").map((line,j) => {
+                            const l = line.trim();
+                            if (!l) return null;
+                            if (l.startsWith("•") || l.startsWith("-")) {
+                              return <div key={j} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2]}}>
+                                <div style={{marginTop:8,width:5,height:5,borderRadius:"50%",background:catInfo.color,flexShrink:0}}/>
+                                <span style={{flex:1}}>{l.replace(/^[•-]\s*/,"")}</span>
+                              </div>;
+                            }
+                            return <p key={j} style={{marginBottom:sp[2]}}>{l}</p>;
+                          })}
+                        </div>;
+                      }
+                      if (trimmed.match(/^(💡|✅|⚠️|❌|🎯|📊|💰|📱|🔧|👥|📈|🏪|🎨|📝|⚖️|⏰|🚀|📌|📑|🛠|💵|💼|👨‍🏫|👩‍🏫|🏛|🏢|🤝|💎|🌍|📦|🎬|📸|🍴|🚚|💄|🧘|🏗|🏠|🏦|🧪|🤖|💌|📆|📅|🍔|🧵|⚙️|🎓|🏋️|💪|🧐|🍰|🎂|☕|🏪|🎁|🎯|👨‍👩‍👧|🏟|⭐|🔥|🎉|💬|📞|📋|📐|🍵|🛒|🌐)/)) {
+                        return <p key={i} style={{marginBottom:sp[3],fontSize:14,padding:`${sp[2]}px ${sp[3]}px`,background:$.F5,borderRadius:10}}>{trimmed}</p>;
+                      }
+                      return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
+                    })}
+                  </div>
+
+                  <div style={{marginTop:sp[6],paddingTop:sp[5],borderTop:`1px solid ${$.sepL}`,textAlign:"center"}}>
+                    <p style={{fontSize:12,color:$.L4,marginBottom:sp[3]}}>هل أعجبتك المقالة؟</p>
+                    <div style={{display:"flex",justifyContent:"center",gap:sp[3]}}>
+                      <button style={{background:`${catInfo.color}15`,color:catInfo.color,border:"none",borderRadius:12,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:"inherit"}}>
+                        <Share2 size={14}/>
+                        <span>مشاركة</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </Sheet>
