@@ -32,7 +32,29 @@ const SH = {
 const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 
 // ═══════════════════════════════════════
-// 💾 نظام حفظ التحليلات (localStorage)
+// 📱 Hook للكشف عن حجم الشاشة
+// ═══════════════════════════════════════
+function useScreenSize() {
+  const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
+  useEffect(() => {
+    function handleResize() {
+      const w = window.innerWidth;
+      setSize({
+        width: w,
+        isMobile: w < 768,
+        isTablet: w >= 768 && w < 1280,
+        isDesktop: w >= 1280
+      });
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return size;
+}
+
+// ═══════════════════════════════════════
+// 💾 نظام حفظ التحليلات
 // ═══════════════════════════════════════
 const STORAGE_KEY = "hamour_analyses";
 
@@ -40,16 +62,12 @@ function saveAnalysis(analysis) {
   if (typeof window === "undefined") return;
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const newAnalysis = {
-      ...analysis,
-      id: Date.now().toString(),
-      savedAt: new Date().toISOString(),
-    };
+    const newAnalysis = { ...analysis, id: Date.now().toString(), savedAt: new Date().toISOString() };
     saved.unshift(newAnalysis);
     if (saved.length > 50) saved.splice(50);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     return newAnalysis;
-  } catch(e) { console.error("Error saving:", e); return null; }
+  } catch(e) { return null; }
 }
 
 function getSavedAnalyses() {
@@ -64,15 +82,14 @@ function deleteAnalysis(id) {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     const filtered = saved.filter(a => a.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch(e) { console.error("Error deleting:", e); }
+  } catch(e) {}
 }
 
 function formatDate(isoString) {
   if (!isoString) return "";
   try {
     const d = new Date(isoString);
-    const now = new Date();
-    const diff = (now - d) / (1000 * 60);
+    const diff = (new Date() - d) / (1000 * 60);
     if (diff < 1) return "الآن";
     if (diff < 60) return `قبل ${Math.floor(diff)} دقيقة`;
     if (diff < 1440) return `قبل ${Math.floor(diff/60)} ساعة`;
@@ -199,7 +216,7 @@ function Sheet({open, onClose, children}) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.40)",backdropFilter:"blur(4px)"}}/>
-      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.18)"}}>
+      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"92vh",maxWidth:720,margin:"0 auto",width:"100%",overflowY:"auto",boxShadow:"0 -4px 40px rgba(0,0,0,0.18)"}}>
         <div style={{display:"flex",justifyContent:"center",padding:`${sp[3]}px 0 ${sp[2]}px`,position:"sticky",top:0,background:$.surface,zIndex:10}}><div style={{width:36,height:4,borderRadius:99,background:$.F3}}/></div>
         <button onClick={onClose} style={{position:"sticky",top:sp[3],left:sp[4],background:$.F3,border:"none",borderRadius:99,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",marginLeft:sp[4],marginRight:"auto",zIndex:11}}><X size={16} color={$.L3}/></button>
         {children}
@@ -211,6 +228,7 @@ function Sheet({open, onClose, children}) {
 const CITIES=["الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","تبوك","أبها","القصيم","الخبر","نجران"];
 
 function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
+  const screen = useScreenSize();
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
   const [city,setCity]=useState("الرياض");
@@ -221,9 +239,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
   const [savedCount,setSavedCount]=useState(0);
   const canGo = idea.trim()&&budget.trim()&&!busy;
 
-  useEffect(() => {
-    setSavedCount(getSavedAnalyses().length);
-  }, [lastResult]);
+  useEffect(() => { setSavedCount(getSavedAnalyses().length); }, [lastResult]);
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -246,94 +262,110 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
     finally { setBusy(false); }
   }
 
+  const containerStyle = screen.isDesktop 
+    ? {maxWidth:1100, margin:"0 auto"}
+    : screen.isTablet 
+    ? {maxWidth:720, margin:"0 auto"}
+    : {};
+
   return (
     <div>
-      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
-        <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
-        <div style={{position:"relative"}}>
-          <p style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.65)",marginBottom:sp[1]}}>تحليل احترافي بمستوى استشاري</p>
-          <h1 style={{fontSize:38,fontWeight:800,color:"#fff",letterSpacing:"-1.2px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
-          <p style={{fontSize:15,color:"rgba(255,255,255,0.70)",lineHeight:1.6,maxWidth:280}}>دراسة جدوى ذكية للسوق السعودي مدعومة ببيانات حقيقية وتحليل AI</p>
+      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:screen.isDesktop?`${sp[16]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <div style={{...containerStyle, position:"relative"}}>
+          <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
+          <div style={{position:"relative"}}>
+            <p style={{fontSize:screen.isDesktop?15:13,fontWeight:500,color:"rgba(255,255,255,0.65)",marginBottom:sp[1]}}>تحليل احترافي بمستوى استشاري</p>
+            <h1 style={{fontSize:screen.isDesktop?56:screen.isTablet?46:38,fontWeight:800,color:"#fff",letterSpacing:"-1.5px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
+            <p style={{fontSize:screen.isDesktop?18:15,color:"rgba(255,255,255,0.70)",lineHeight:1.6,maxWidth:screen.isDesktop?480:280}}>دراسة جدوى ذكية للسوق السعودي مدعومة ببيانات حقيقية وتحليل AI</p>
+          </div>
         </div>
       </div>
 
-      <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
-        <Card style={{boxShadow:SH.lift,marginBottom:sp[4],marginTop:sp[5]}}>
-          <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[4]}px`,borderBottom:`0.5px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:sp[3]}}>
-            <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(145deg,#007AFF,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={17} color="#fff" strokeWidth={2}/></div>
-            <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل مشروعك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل عميق على 4 أبعاد</div></div>
-          </div>
-          <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
-            <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
-              <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
-            </FormField>
-            <div style={{marginBottom:sp[4]}}>
-              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
-                <Sparkles size={14} color={$.L4}/>
-                <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>تفاصيل المشروع</label>
-                <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+      <div style={{padding:screen.isDesktop?`${sp[8]}px ${sp[10]}px ${sp[16]}px`:`${sp[5]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
+        <div style={containerStyle}>
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1.2fr 1fr":"1fr",gap:sp[5]}}>
+            <Card style={{boxShadow:SH.lift,marginTop:sp[5]}}>
+              <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[4]}px`,borderBottom:`0.5px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:sp[3]}}>
+                <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(145deg,#007AFF,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}><Sparkles size={17} color="#fff" strokeWidth={2}/></div>
+                <div><div style={{fontSize:16,fontWeight:700,color:$.L1}}>حلّل مشروعك</div><div style={{fontSize:12,color:$.L3,marginTop:1}}>تحليل عميق على 4 أبعاد</div></div>
               </div>
-              <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية، يستهدف الشباب" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
-              <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:4}}><Lightbulb size={11} color={$.L4}/><span>كل ما زادت التفاصيل، زادت دقة التحليل</span></div>
-            </div>
-            <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
-              <div style={{position:"relative"}}>
-                <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
-                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-              </div>
-            </FormField>
-            <div style={{marginBottom:sp[4]}}>
-              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
-                <MapPin size={14} color={$.L4}/>
-                <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الحي</label>
-                <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
-              </div>
-              <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا، الملقا، النخيل" style={iStyle}/>
-            </div>
-            <div style={{marginBottom:sp[4]}}>
-              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
-                <DollarSign size={14} color={$.L4}/>
-                <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الميزانية</label>
-              </div>
-              <div style={{position:"relative"}}>
-                <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
-                <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><RiyalIcon size={20} color={$.L3}/></div>
-              </div>
-              {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}><DollarSign size={11} color={$.L3}/><span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span><RiyalIcon size={11} color={$.L2}/><span>سعودي</span></div>}
-            </div>
-            {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-            <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-              {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
-            </button>
-          </div>
-        </Card>
-
-        {savedCount > 0 && (
-          <Card onClick={onViewSaved} style={{cursor:"pointer",marginBottom:sp[4],padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3]}}>
-            <IconBadge Icon={Archive} color={$.purple} size={38}/>
-            <div style={{flex:1}}>
-              <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:2}}>تحليلاتي المحفوظة</div>
-              <div style={{fontSize:12,color:$.L3}}>{savedCount} {savedCount === 1 ? "تحليل" : "تحليلات"} محفوظة</div>
-            </div>
-            <ChevronRight size={18} color={$.L4}/>
-          </Card>
-        )}
-
-        {lastResult && (
-          <div style={{marginBottom:sp[5]}}>
-            <SectionLabel>آخر تحليل</SectionLabel>
-            <Card onClick={onViewLast} style={{cursor:"pointer"}}>
-              <div style={{padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
-                <ScoreRing value={lastResult.score} size={64} track={6} color={lastResult.decision_type==="positive"?$.green:$.red} noAnim/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:11,color:$.L3,marginBottom:3}}>{lastResult.idea} · {lastResult.city}</div>
-                  <div style={{fontSize:17,fontWeight:700,marginBottom:4,color:lastResult.decision_type==="positive"?$.green:$.red}}>{lastResult.decision}</div>
-                  <div style={{fontSize:13,color:$.L3,lineHeight:1.45,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{lastResult.summary}</div>
+              <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`}}>
+                <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
+                  <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
+                </FormField>
+                <div style={{marginBottom:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+                    <Sparkles size={14} color={$.L4}/>
+                    <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>تفاصيل المشروع</label>
+                    <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+                  </div>
+                  <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية، يستهدف الشباب" rows={3} style={{...iStyle, resize:"none", fontFamily:"inherit", lineHeight:1.5}}/>
+                  <div style={{fontSize:10,color:$.L4,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:4}}><Lightbulb size={11} color={$.L4}/><span>كل ما زادت التفاصيل، زادت دقة التحليل</span></div>
                 </div>
+                <div style={{display:"grid",gridTemplateColumns:screen.isMobile?"1fr":"1fr 1fr",gap:sp[3]}}>
+                  <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
+                    <div style={{position:"relative"}}>
+                      <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+                      <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+                    </div>
+                  </FormField>
+                  <div style={{marginBottom:sp[4]}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+                      <MapPin size={14} color={$.L4}/>
+                      <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الحي</label>
+                      <span style={{fontSize:10,color:$.L4,marginRight:"auto",background:$.F4,padding:"2px 8px",borderRadius:99}}>اختياري</span>
+                    </div>
+                    <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا" style={iStyle}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>
+                    <DollarSign size={14} color={$.L4}/>
+                    <label style={{fontSize:12,fontWeight:600,color:$.L3,letterSpacing:.4}}>الميزانية</label>
+                  </div>
+                  <div style={{position:"relative"}}>
+                    <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle, paddingLeft:sp[10], fontSize:17, fontWeight:600, letterSpacing:0.5}}/>
+                    <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><RiyalIcon size={20} color={$.L3}/></div>
+                  </div>
+                  {budget && <div style={{fontSize:11,color:$.L3,marginTop:6,paddingRight:4,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}><DollarSign size={11} color={$.L3}/><span style={{fontWeight:600,color:$.L2}}>{parseInt(budget.replace(/,/g,"")).toLocaleString("en-US")}</span><RiyalIcon size={11} color={$.L2}/><span>سعودي</span></div>}
+                </div>
+                {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+                <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px ${sp[5]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+                  {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
+                </button>
               </div>
             </Card>
+
+            <div style={{display:"flex",flexDirection:"column",gap:sp[4],marginTop:screen.isDesktop?sp[5]:0}}>
+              {savedCount > 0 && (
+                <Card onClick={onViewSaved} style={{cursor:"pointer",padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3]}}>
+                  <IconBadge Icon={Archive} color={$.purple} size={42}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:2}}>تحليلاتي المحفوظة</div>
+                    <div style={{fontSize:12,color:$.L3}}>{savedCount} {savedCount === 1 ? "تحليل" : "تحليلات"} محفوظة</div>
+                  </div>
+                  <ChevronRight size={18} color={$.L4}/>
+                </Card>
+              )}
+
+              {lastResult && (
+                <div>
+                  <SectionLabel>آخر تحليل</SectionLabel>
+                  <Card onClick={onViewLast} style={{cursor:"pointer"}}>
+                    <div style={{padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
+                      <ScoreRing value={lastResult.score} size={64} track={6} color={lastResult.decision_type==="positive"?$.green:$.red} noAnim/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:11,color:$.L3,marginBottom:3}}>{lastResult.idea} · {lastResult.city}</div>
+                        <div style={{fontSize:17,fontWeight:700,marginBottom:4,color:lastResult.decision_type==="positive"?$.green:$.red}}>{lastResult.decision}</div>
+                        <div style={{fontSize:13,color:$.L3,lineHeight:1.45,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{lastResult.summary}</div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -342,9 +374,10 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved}) {
 const TABS=["نظرة","السوق","المالي","المخاطر"];
 
 function AnalysisScreen({result}) {
+  const screen = useScreenSize();
   const [tab,setTab]=useState(0);
   if (!result) return (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[16]}px ${sp[5]}px`,gap:sp[3],color:$.L3}}>
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[16]}px ${sp[5]}px`,gap:sp[3],color:$.L3,minHeight:"60vh"}}>
       <BarChart2 size={48} strokeWidth={1.3}/>
       <p style={{fontSize:17,fontWeight:600,color:$.L2}}>لا يوجد تحليل بعد</p>
       <p style={{fontSize:14,textAlign:"center"}}>ادخل للرئيسية وحلّل فكرتك أولاً</p>
@@ -359,141 +392,154 @@ function AnalysisScreen({result}) {
   const rp = f.revenue_projection || {};
   const sw = result.swot || {};
   const loc = result.locations || {};
+  const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : screen.isTablet ? {maxWidth:720, margin:"0 auto"} : {};
 
   return (
     <div>
-      <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
-        <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
+      <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:screen.isDesktop?`${sp[16]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <div style={{...containerStyle,position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
           <div style={{flex:1}}>
             <Chip text="نتيجة التحليل" color="rgba(255,255,255,0.88)" bg="rgba(255,255,255,0.20)"/>
-            <div style={{fontSize:26,fontWeight:800,color:"#fff",letterSpacing:"-0.6px",margin:`${sp[3]}px 0 ${sp[2]}px`}}>{result.decision}</div>
-            <p style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.6,maxWidth:220}}>{result.summary}</p>
+            <div style={{fontSize:screen.isDesktop?34:26,fontWeight:800,color:"#fff",letterSpacing:"-0.6px",margin:`${sp[3]}px 0 ${sp[2]}px`}}>{result.decision}</div>
+            <p style={{fontSize:screen.isDesktop?15:13,color:"rgba(255,255,255,0.78)",lineHeight:1.6,maxWidth:screen.isDesktop?500:220}}>{result.summary}</p>
           </div>
-          <ScoreRing value={result.score} size={104} track={9} color="rgba(255,255,255,0.95)"/>
+          <ScoreRing value={result.score} size={screen.isDesktop?140:104} track={screen.isDesktop?11:9} color="rgba(255,255,255,0.95)"/>
         </div>
       </div>
 
-      <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
-          {[{Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue},{Icon:Users,label:"المنافسة",val:result.competition,color:$.orange},{Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple},{Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red}].map(({Icon,label,val,color})=>(
-            <Card key={label} style={{padding:`${sp[4]}px ${sp[4]}px ${sp[3]}px`}}>
-              <IconBadge Icon={Icon} color={color} size={34}/>
-              <div style={{fontSize:11,color:$.L3,marginTop:sp[2],marginBottom:3}}>{label}</div>
-              <div style={{fontSize:16,fontWeight:700,color:$.L1}}>{val}</div>
-            </Card>
-          ))}
-        </div>
-
-        <div style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4]}}>
-          {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:1,padding:`${sp[2]}px ${sp[1]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none"}}>{t}</button>))}
-        </div>
-
-        {tab===0 && (<>
-          {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>{sw.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
-          {sw.weaknesses?.length>0 && <Section title="نقاط الضعف" Icon={TrendingDown} color={$.orange}>{sw.weaknesses.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.orange,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
-          {sw.opportunities?.length>0 && <Section title="الفرص" Icon={Target} color={$.blue}>{sw.opportunities.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.blue,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
-          {sw.threats?.length>0 && <Section title="التهديدات" Icon={AlertTriangle} color={$.red}>{sw.threats.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.red,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
-          {result.recommendations?.length>0 && <Section title="التوصيات الاستراتيجية" Icon={Lightbulb} color={$.purple}>{result.recommendations.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10}}><div style={{width:22,height:22,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
-          {result.kpis?.length>0 && <Section title="مؤشرات الأداء" Icon={Activity} color={$.teal}>{result.kpis.map((k,i)=><Row key={i} label={k.name} value={k.target} valueColor={$.teal}/>)}</Section>}
-        </>)}
-
-        {tab===1 && (<>
-          <Section title="حجم السوق والجمهور" Icon={Users} color={$.blue}>
-            <Row label="حجم السوق" value={m.market_size||"-"}/>
-            <Row label="الفئة المستهدفة" value={m.target_audience||"-"}/>
-            <Row label="أنماط الشراء" value={m.buying_patterns||"-"}/>
-            <Row label="الموسمية" value={m.seasonality||"-"}/>
-            <Row label="الحصة المتوقعة" value={m.expected_market_share||"-"} valueColor={$.blue} bold/>
-            <Row label="إمكانيات النمو" value={m.growth_potential||"-"}/>
-          </Section>
-          {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange}>{m.competitors.map((c,i)=><div key={i} style={{padding:`${sp[3]}px 0`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none"}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:4}}><Star size={14} color={$.orange}/><span style={{fontSize:14,fontWeight:700,color:$.L1}}>{c.name}</span></div><p style={{fontSize:13,color:$.L3,lineHeight:1.5,paddingRight:sp[5]}}>{c.strength}</p></div>)}</Section>}
-          <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
-            {[{type:"الموقع الأفضل",color:$.green,d:loc.best},{type:"الموقع الأسوأ",color:$.red,d:loc.worst}].map(({type,color,d})=>d && (
-              <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}><div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{d.name}</div></div><div style={{fontSize:26,fontWeight:800,color}}>{d.score}%</div></div>
-                <Bar pct={d.score||0} color={color}/>
-                {d.reason && <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginTop:sp[3]}}>{d.reason}</p>}
-              </div>
+      <div style={{padding:screen.isDesktop?`${sp[5]}px ${sp[10]}px ${sp[16]}px`:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[3]}}>
+        <div style={containerStyle}>
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr 1fr":screen.isTablet?"1fr 1fr 1fr 1fr":"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
+            {[{Icon:TrendingUp,label:"طلب السوق",val:result.market_demand,color:$.blue},{Icon:Users,label:"المنافسة",val:result.competition,color:$.orange},{Icon:DollarSign,label:"التكلفة",val:result.cost_level,color:$.purple},{Icon:Shield,label:"المخاطر",val:result.risk_level,color:$.red}].map(({Icon,label,val,color})=>(
+              <Card key={label} style={{padding:`${sp[4]}px ${sp[4]}px ${sp[3]}px`}}>
+                <IconBadge Icon={Icon} color={color} size={34}/>
+                <div style={{fontSize:11,color:$.L3,marginTop:sp[2],marginBottom:3}}>{label}</div>
+                <div style={{fontSize:16,fontWeight:700,color:$.L1}}>{val}</div>
+              </Card>
             ))}
-          </Section>
-        </>)}
+          </div>
 
-        {tab===2 && (<>
-          <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="تكاليف لمرة واحدة">
-            <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit}/>
-            <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
-            <MoneyRow label="المعدات" value={sc.equipment}/>
-            <MoneyRow label="التراخيص" value={sc.licenses}/>
-            <MoneyRow label="المخزون الأولي" value={sc.initial_inventory}/>
-            <MoneyRow label="تسويق الإطلاق" value={sc.marketing_launch}/>
-            <MoneyRow label="رأس مال تشغيلي" value={sc.working_capital}/>
-            <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي</span><span style={{fontSize:20,fontWeight:800,color:$.purple,display:"inline-flex",alignItems:"center",gap:6}}><span>{fmt(sc.total)}</span><RiyalIcon size={18} color={$.purple}/></span></div>
-          </Section>
-          <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange}>
-            <MoneyRow label="الإيجار" value={mc.rent}/>
-            <MoneyRow label="الرواتب" value={mc.salaries}/>
-            <MoneyRow label="فواتير الخدمات" value={mc.utilities}/>
-            <MoneyRow label="المواد الخام" value={mc.materials}/>
-            <MoneyRow label="التسويق" value={mc.marketing}/>
-            <MoneyRow label="الصيانة" value={mc.maintenance}/>
-            <MoneyRow label="مصاريف أخرى" value={mc.other}/>
-            <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span><span style={{fontSize:20,fontWeight:800,color:$.orange,display:"inline-flex",alignItems:"center",gap:6}}><span>{fmt(mc.total)}</span><RiyalIcon size={18} color={$.orange}/></span></div>
-          </Section>
-          <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
-            <MoneyRow label="الشهر الأول" value={rp.month_1}/>
-            <MoneyRow label="الشهر الثالث" value={rp.month_3}/>
-            <MoneyRow label="الشهر السادس" value={rp.month_6}/>
-            <MoneyRow label="الشهر الـ12" value={rp.month_12} valueColor={$.green} bold/>
-            <MoneyRow label="السنة الثانية (شهرياً)" value={rp.year_2_monthly}/>
-            <MoneyRow label="السنة الثالثة (شهرياً)" value={rp.year_3_monthly} valueColor={$.green} bold/>
-          </Section>
-          <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue}>
-            <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold/>
-            <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold/>
-            <MoneyRow label="الربح السنوي - السنة 1" value={f.annual_profit_year1}/>
-            <MoneyRow label="الربح السنوي - السنة 3" value={f.annual_profit_year3} valueColor={$.green} bold/>
-          </Section>
-        </>)}
+          <div style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],maxWidth:screen.isDesktop?500:"100%",margin:`0 auto ${sp[4]}px`}}>
+            {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:1,padding:`${sp[2]}px ${sp[1]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none"}}>{t}</button>))}
+          </div>
 
-        {tab===3 && (<>
-          <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle="5 مخاطر مصنّفة مع خطط التخفيف">
-            {(result.risk_analysis||[]).map((r,i)=>{
-              const probColor = r.probability==="عالي"?$.red:r.probability==="متوسط"?$.orange:$.green;
-              const impColor = r.impact==="شديد"?$.red:r.impact==="متوسط"?$.orange:$.green;
-              return (
-                <div key={i} style={{background:$.F5,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[3]}}>
-                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}><div style={{width:26,height:26,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,fontWeight:700,color:$.L1,flex:1}}>{r.risk}</span></div>
-                  <div style={{display:"flex",gap:sp[2],marginBottom:sp[3],flexWrap:"wrap"}}><Chip text={"احتمالية: "+r.probability} color={probColor} bg={`${probColor}15`}/><Chip text={"التأثير: "+r.impact} color={impColor} bg={`${impColor}15`}/></div>
-                  <div style={{background:`${$.green}07`,borderRight:`3px solid ${$.green}`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:8}}><div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:4}}>خطة التخفيف</div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{r.mitigation}</p></div>
-                </div>
-              );
-            })}
-          </Section>
-        </>)}
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[4]}}>
+            {tab===0 && (<>
+              {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green}>{sw.strengths.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.green,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+              {sw.weaknesses?.length>0 && <Section title="نقاط الضعف" Icon={TrendingDown} color={$.orange}>{sw.weaknesses.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.orange,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+              {sw.opportunities?.length>0 && <Section title="الفرص" Icon={Target} color={$.blue}>{sw.opportunities.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.blue,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+              {sw.threats?.length>0 && <Section title="التهديدات" Icon={AlertTriangle} color={$.red}>{sw.threats.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}><div style={{marginTop:5,width:6,height:6,borderRadius:"50%",background:$.red,flexShrink:0}}/><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+              <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+                {result.recommendations?.length>0 && <Section title="التوصيات الاستراتيجية" Icon={Lightbulb} color={$.purple}>{result.recommendations.map((s,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10}}><div style={{width:22,height:22,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{s}</span></div>)}</Section>}
+                {result.kpis?.length>0 && <Section title="مؤشرات الأداء" Icon={Activity} color={$.teal}>{result.kpis.map((k,i)=><Row key={i} label={k.name} value={k.target} valueColor={$.teal}/>)}</Section>}
+              </div>
+            </>)}
 
-        <div style={{marginTop:sp[5]}}>
-          <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple}>
-            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[2]}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div></div>
-            <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div></div>
-          </Section>
+            {tab===1 && (<>
+              <Section title="حجم السوق والجمهور" Icon={Users} color={$.blue}>
+                <Row label="حجم السوق" value={m.market_size||"-"}/>
+                <Row label="الفئة المستهدفة" value={m.target_audience||"-"}/>
+                <Row label="أنماط الشراء" value={m.buying_patterns||"-"}/>
+                <Row label="الموسمية" value={m.seasonality||"-"}/>
+                <Row label="الحصة المتوقعة" value={m.expected_market_share||"-"} valueColor={$.blue} bold/>
+                <Row label="إمكانيات النمو" value={m.growth_potential||"-"}/>
+              </Section>
+              {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange}>{m.competitors.map((c,i)=><div key={i} style={{padding:`${sp[3]}px 0`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none"}}><div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:4}}><Star size={14} color={$.orange}/><span style={{fontSize:14,fontWeight:700,color:$.L1}}>{c.name}</span></div><p style={{fontSize:13,color:$.L3,lineHeight:1.5,paddingRight:sp[5]}}>{c.strength}</p></div>)}</Section>}
+              <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+                <Section title="أفضل وأسوأ موقع" Icon={MapPin} color={$.green}>
+                  <div style={{display:"grid",gridTemplateColumns:screen.isDesktop||screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+                    {[{type:"الموقع الأفضل",color:$.green,d:loc.best},{type:"الموقع الأسوأ",color:$.red,d:loc.worst}].map(({type,color,d})=>d && (
+                      <div key={type} style={{background:`${color}07`,border:`1px solid ${color}20`,borderRadius:14,padding:`${sp[4]}px`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:sp[3]}}><div><Chip text={type} color={color} bg={`${color}16`}/><div style={{fontSize:15,fontWeight:700,color:$.L1,marginTop:sp[2]}}>{d.name}</div></div><div style={{fontSize:26,fontWeight:800,color}}>{d.score}%</div></div>
+                        <Bar pct={d.score||0} color={color}/>
+                        {d.reason && <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginTop:sp[3]}}>{d.reason}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              </div>
+            </>)}
+
+            {tab===2 && (<>
+              <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="تكاليف لمرة واحدة">
+                <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit}/>
+                <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
+                <MoneyRow label="المعدات" value={sc.equipment}/>
+                <MoneyRow label="التراخيص" value={sc.licenses}/>
+                <MoneyRow label="المخزون الأولي" value={sc.initial_inventory}/>
+                <MoneyRow label="تسويق الإطلاق" value={sc.marketing_launch}/>
+                <MoneyRow label="رأس مال تشغيلي" value={sc.working_capital}/>
+                <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.purple}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي</span><span style={{fontSize:20,fontWeight:800,color:$.purple,display:"inline-flex",alignItems:"center",gap:6}}><span>{fmt(sc.total)}</span><RiyalIcon size={18} color={$.purple}/></span></div>
+              </Section>
+              <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange}>
+                <MoneyRow label="الإيجار" value={mc.rent}/>
+                <MoneyRow label="الرواتب" value={mc.salaries}/>
+                <MoneyRow label="فواتير الخدمات" value={mc.utilities}/>
+                <MoneyRow label="المواد الخام" value={mc.materials}/>
+                <MoneyRow label="التسويق" value={mc.marketing}/>
+                <MoneyRow label="الصيانة" value={mc.maintenance}/>
+                <MoneyRow label="مصاريف أخرى" value={mc.other}/>
+                <div style={{marginTop:sp[3],paddingTop:sp[3],borderTop:`2px solid ${$.orange}30`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:700,color:$.L1}}>الإجمالي الشهري</span><span style={{fontSize:20,fontWeight:800,color:$.orange,display:"inline-flex",alignItems:"center",gap:6}}><span>{fmt(mc.total)}</span><RiyalIcon size={18} color={$.orange}/></span></div>
+              </Section>
+              <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
+                <MoneyRow label="الشهر الأول" value={rp.month_1}/>
+                <MoneyRow label="الشهر الثالث" value={rp.month_3}/>
+                <MoneyRow label="الشهر السادس" value={rp.month_6}/>
+                <MoneyRow label="الشهر الـ12" value={rp.month_12} valueColor={$.green} bold/>
+                <MoneyRow label="السنة الثانية (شهرياً)" value={rp.year_2_monthly}/>
+                <MoneyRow label="السنة الثالثة (شهرياً)" value={rp.year_3_monthly} valueColor={$.green} bold/>
+              </Section>
+              <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue}>
+                <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold/>
+                <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold/>
+                <MoneyRow label="الربح السنوي - السنة 1" value={f.annual_profit_year1}/>
+                <MoneyRow label="الربح السنوي - السنة 3" value={f.annual_profit_year3} valueColor={$.green} bold/>
+              </Section>
+            </>)}
+
+            {tab===3 && (
+              <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+                <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle="5 مخاطر مصنّفة مع خطط التخفيف">
+                  <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
+                    {(result.risk_analysis||[]).map((r,i)=>{
+                      const probColor = r.probability==="عالي"?$.red:r.probability==="متوسط"?$.orange:$.green;
+                      const impColor = r.impact==="شديد"?$.red:r.impact==="متوسط"?$.orange:$.green;
+                      return (
+                        <div key={i} style={{background:$.F5,borderRadius:14,padding:`${sp[4]}px`}}>
+                          <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}><div style={{width:26,height:26,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div><span style={{fontSize:14,fontWeight:700,color:$.L1,flex:1}}>{r.risk}</span></div>
+                          <div style={{display:"flex",gap:sp[2],marginBottom:sp[3],flexWrap:"wrap"}}><Chip text={"احتمالية: "+r.probability} color={probColor} bg={`${probColor}15`}/><Chip text={"التأثير: "+r.impact} color={impColor} bg={`${impColor}15`}/></div>
+                          <div style={{background:`${$.green}07`,borderRight:`3px solid ${$.green}`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:8}}><div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:4}}>خطة التخفيف</div><p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{r.mitigation}</p></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Section>
+              </div>
+            )}
+          </div>
+
+          <div style={{marginTop:sp[5]}}>
+            <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple}>
+              <div style={{display:"grid",gridTemplateColumns:screen.isDesktop||screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+                <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>فكرة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_idea}</div></div>
+                <div style={{background:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`}}><div style={{fontSize:11,color:$.L3,marginBottom:2}}>مدينة بديلة</div><div style={{fontSize:14,fontWeight:600,color:$.L1}}>{result.alternative_city}</div></div>
+              </div>
+            </Section>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════
-// 💾 شاشة "تحليلاتي" الجديدة
-// ═══════════════════════════════════════
 function SavedAnalysesScreen({onViewAnalysis}) {
+  const screen = useScreenSize();
   const [analyses, setAnalyses] = useState([]);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  useEffect(() => {
-    setAnalyses(getSavedAnalyses());
-  }, []);
+  useEffect(() => { setAnalyses(getSavedAnalyses()); }, []);
 
   function handleDelete(id) {
     deleteAnalysis(id);
@@ -517,130 +563,126 @@ function SavedAnalysesScreen({onViewAnalysis}) {
 
   const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
   const negativeCount = analyses.filter(a => a.decision_type === "negative").length;
+  const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : screen.isTablet ? {maxWidth:720, margin:"0 auto"} : {};
 
   if (analyses.length === 0) {
     return (
-      <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
-        <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>تحليلاتي</h1>
-        <p style={{fontSize:14,color:$.L3,marginBottom:sp[8]}}>جميع تحليلاتك في مكان واحد</p>
-        
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[12]}px ${sp[5]}px`,textAlign:"center"}}>
-          <div style={{width:80,height:80,borderRadius:24,background:`${$.purple}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:sp[5]}}>
-            <Archive size={36} color={$.purple} strokeWidth={1.5}/>
+      <div style={{padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+        <div style={containerStyle}>
+          <h1 style={{fontSize:screen.isDesktop?42:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>تحليلاتي</h1>
+          <p style={{fontSize:14,color:$.L3,marginBottom:sp[8]}}>جميع تحليلاتك في مكان واحد</p>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[12]}px ${sp[5]}px`,textAlign:"center"}}>
+            <div style={{width:80,height:80,borderRadius:24,background:`${$.purple}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:sp[5]}}>
+              <Archive size={36} color={$.purple} strokeWidth={1.5}/>
+            </div>
+            <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>لا توجد تحليلات بعد</h3>
+            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320}}>عند تحليل أي مشروع، سيتم حفظه تلقائياً هنا للرجوع إليه لاحقاً</p>
           </div>
-          <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>لا توجد تحليلات بعد</h3>
-          <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:280}}>عند تحليل أي مشروع، سيتم حفظه تلقائياً هنا للرجوع إليه لاحقاً</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[5]}}>
-        <div>
-          <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>تحليلاتي</h1>
+    <div style={{padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={containerStyle}>
+        <div style={{marginBottom:sp[5]}}>
+          <h1 style={{fontSize:screen.isDesktop?42:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>تحليلاتي</h1>
           <p style={{fontSize:14,color:$.L3}}>{analyses.length} {analyses.length === 1 ? "تحليل محفوظ" : "تحليلات محفوظة"}</p>
         </div>
-      </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[3],marginBottom:sp[5]}}>
-        <Card style={{padding:sp[4]}}>
-          <IconBadge Icon={Archive} color={$.blue} size={32}/>
-          <div style={{fontSize:24,fontWeight:800,color:$.L1,marginTop:sp[2]}}>{analyses.length}</div>
-          <div style={{fontSize:11,color:$.L3,marginTop:2}}>المجموع</div>
-        </Card>
-        <Card style={{padding:sp[4]}}>
-          <IconBadge Icon={CheckCircle} color={$.green} size={32}/>
-          <div style={{fontSize:24,fontWeight:800,color:$.green,marginTop:sp[2]}}>{positiveCount}</div>
-          <div style={{fontSize:11,color:$.L3,marginTop:2}}>إيجابي</div>
-        </Card>
-        <Card style={{padding:sp[4]}}>
-          <IconBadge Icon={XCircle} color={$.red} size={32}/>
-          <div style={{fontSize:24,fontWeight:800,color:$.red,marginTop:sp[2]}}>{negativeCount}</div>
-          <div style={{fontSize:11,color:$.L3,marginTop:2}}>سلبي</div>
-        </Card>
-      </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[3],marginBottom:sp[5]}}>
+          <Card style={{padding:sp[4]}}>
+            <IconBadge Icon={Archive} color={$.blue} size={32}/>
+            <div style={{fontSize:24,fontWeight:800,color:$.L1,marginTop:sp[2]}}>{analyses.length}</div>
+            <div style={{fontSize:11,color:$.L3,marginTop:2}}>المجموع</div>
+          </Card>
+          <Card style={{padding:sp[4]}}>
+            <IconBadge Icon={CheckCircle} color={$.green} size={32}/>
+            <div style={{fontSize:24,fontWeight:800,color:$.green,marginTop:sp[2]}}>{positiveCount}</div>
+            <div style={{fontSize:11,color:$.L3,marginTop:2}}>إيجابي</div>
+          </Card>
+          <Card style={{padding:sp[4]}}>
+            <IconBadge Icon={XCircle} color={$.red} size={32}/>
+            <div style={{fontSize:24,fontWeight:800,color:$.red,marginTop:sp[2]}}>{negativeCount}</div>
+            <div style={{fontSize:11,color:$.L3,marginTop:2}}>سلبي</div>
+          </Card>
+        </div>
 
-      <div style={{position:"relative",marginBottom:sp[4]}}>
-        <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في تحليلاتك…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
-      </div>
+        <div style={{position:"relative",marginBottom:sp[4]}}>
+          <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في تحليلاتك…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+        </div>
 
-      <div style={{display:"flex",gap:sp[2],marginBottom:sp[5],overflowX:"auto",paddingBottom:4}}>
-        {[
-          {id:"all", name:"الكل", color:$.blue},
-          {id:"positive", name:"إيجابي", color:$.green},
-          {id:"negative", name:"سلبي", color:$.red}
-        ].map(f => (
-          <button key={f.id} onClick={()=>setFilter(f.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:filter===f.id?f.color:$.F4,color:filter===f.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{f.name}</button>
-        ))}
-      </div>
+        <div style={{display:"flex",gap:sp[2],marginBottom:sp[5],overflowX:"auto",paddingBottom:4}}>
+          {[{id:"all", name:"الكل", color:$.blue},{id:"positive", name:"إيجابي", color:$.green},{id:"negative", name:"سلبي", color:$.red}].map(f => (
+            <button key={f.id} onClick={()=>setFilter(f.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:filter===f.id?f.color:$.F4,color:filter===f.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{f.name}</button>
+          ))}
+        </div>
 
-      {filtered.length === 0 ? (
-        <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد نتائج مطابقة</div>
-      ) : (
-        <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
-          {filtered.map(a => {
-            const pos = a.decision_type === "positive";
-            const color = pos ? $.green : $.red;
-            return (
-              <Card key={a.id} style={{padding:0,overflow:"hidden"}}>
-                <div onClick={()=>onViewAnalysis(a)} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
-                    <ScoreRing value={a.score} size={56} track={5} color={color} noAnim/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
-                      <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{a.city}</span></div>
-                        <span>·</span>
-                        <div style={{display:"flex",alignItems:"center",gap:3}}><RiyalIcon size={10}/><span>{fmt(parseInt(a.budget))}</span></div>
+        {filtered.length === 0 ? (
+          <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد نتائج مطابقة</div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+            {filtered.map(a => {
+              const pos = a.decision_type === "positive";
+              const color = pos ? $.green : $.red;
+              return (
+                <Card key={a.id} style={{padding:0,overflow:"hidden"}}>
+                  <div onClick={()=>onViewAnalysis(a)} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
+                      <ScoreRing value={a.score} size={56} track={5} color={color} noAnim/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
+                        <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{a.city}</span></div>
+                          <span>·</span>
+                          <div style={{display:"flex",alignItems:"center",gap:3}}><RiyalIcon size={10}/><span>{fmt(parseInt(a.budget))}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                      <Chip text={a.decision} color={color} bg={`${color}15`} size={11}/>
+                      <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4,fontSize:11}}>
+                        <Clock size={10}/>
+                        <span>{formatDate(a.savedAt)}</span>
                       </div>
                     </div>
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
-                    <Chip text={a.decision} color={color} bg={`${color}15`} size={11}/>
-                    <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4,fontSize:11}}>
-                      <Clock size={10}/>
-                      <span>{formatDate(a.savedAt)}</span>
-                    </div>
+                  <div style={{display:"flex",borderTop:`0.5px solid ${$.sepL}`}}>
+                    <button onClick={()=>onViewAnalysis(a)} style={{flex:1,padding:`${sp[3]}px`,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.blue,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                      <Eye size={14}/>
+                      <span>عرض التحليل</span>
+                    </button>
+                    <div style={{width:"0.5px",background:$.sepL}}/>
+                    <button onClick={()=>setConfirmDelete(a.id)} style={{flex:"none",padding:`${sp[3]}px ${sp[5]}px`,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.red,display:"flex",alignItems:"center",gap:5}}>
+                      <Trash2 size={14}/>
+                    </button>
                   </div>
-                </div>
-                <div style={{display:"flex",borderTop:`0.5px solid ${$.sepL}`}}>
-                  <button onClick={()=>onViewAnalysis(a)} style={{flex:1,padding:`${sp[3]}px`,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.blue,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
-                    <Eye size={14}/>
-                    <span>عرض التحليل</span>
-                  </button>
-                  <div style={{width:"0.5px",background:$.sepL}}/>
-                  <button onClick={()=>setConfirmDelete(a.id)} style={{flex:"none",padding:`${sp[3]}px ${sp[5]}px`,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.red,display:"flex",alignItems:"center",gap:5}}>
-                    <Trash2 size={14}/>
-                  </button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {analyses.length > 0 && (
-        <button onClick={handleClearAll} style={{marginTop:sp[6],width:"100%",background:"transparent",color:$.L4,border:`1.5px dashed ${$.L4}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-          حذف كل التحليلات
-        </button>
-      )}
-
-      <Sheet open={!!confirmDelete} onClose={()=>setConfirmDelete(null)}>
-        <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
-          <div style={{width:64,height:64,borderRadius:20,background:`${$.red}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
-            <AlertTriangle size={30} color={$.red} strokeWidth={1.8}/>
+                </Card>
+              );
+            })}
           </div>
-          <h3 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>حذف التحليل؟</h3>
-          <p style={{fontSize:14,color:$.L3,lineHeight:1.6,marginBottom:sp[6]}}>سيتم حذف هذا التحليل نهائياً ولا يمكن استرجاعه</p>
-          <div style={{display:"flex",gap:sp[3]}}>
-            <button onClick={()=>setConfirmDelete(null)} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
-            <button onClick={()=>handleDelete(confirmDelete)} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>حذف</button>
+        )}
+
+        {analyses.length > 0 && (
+          <button onClick={handleClearAll} style={{marginTop:sp[6],width:"100%",background:"transparent",color:$.L4,border:`1.5px dashed ${$.L4}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>حذف كل التحليلات</button>
+        )}
+
+        <Sheet open={!!confirmDelete} onClose={()=>setConfirmDelete(null)}>
+          <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
+            <div style={{width:64,height:64,borderRadius:20,background:`${$.red}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
+              <AlertTriangle size={30} color={$.red} strokeWidth={1.8}/>
+            </div>
+            <h3 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>حذف التحليل؟</h3>
+            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,marginBottom:sp[6]}}>سيتم حذف هذا التحليل نهائياً ولا يمكن استرجاعه</p>
+            <div style={{display:"flex",gap:sp[3]}}>
+              <button onClick={()=>setConfirmDelete(null)} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
+              <button onClick={()=>handleDelete(confirmDelete)} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>حذف</button>
+            </div>
           </div>
-        </div>
-      </Sheet>
+        </Sheet>
+      </div>
     </div>
   );
 }
@@ -801,6 +843,7 @@ const SECTORS_DATA = [
 ];
 
 function SectorsScreen() {
+  const screen = useScreenSize();
   const [q,setQ]=useState("");
   const [cat,setCat]=useState("all");
   const [active,setActive]=useState(null);
@@ -812,137 +855,134 @@ function SectorsScreen() {
   });
 
   const sc = s => s.score>=75?$.green : s.score>=60?$.orange : $.red;
+  const containerStyle = screen.isDesktop ? {maxWidth:1200, margin:"0 auto"} : screen.isTablet ? {maxWidth:900, margin:"0 auto"} : {};
 
   return (
-    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
-      <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>القطاعات</h1>
-      <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>تحليلات السوق السعودي · محدّثة يناير 2026</p>
+    <div style={{padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[10]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={containerStyle}>
+        <h1 style={{fontSize:screen.isDesktop?42:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>القطاعات</h1>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>تحليلات السوق السعودي · محدّثة يناير 2026</p>
 
-      <div style={{position:"relative",marginBottom:sp[4]}}>
-        <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن قطاع…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
-      </div>
+        <div style={{position:"relative",marginBottom:sp[4],maxWidth:screen.isDesktop?500:"100%"}}>
+          <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن قطاع…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+        </div>
 
-      <div style={{display:"flex",gap:sp[2],marginBottom:sp[5],overflowX:"auto",paddingBottom:4}}>
-        {CATEGORIES.map(c => (
-          <button key={c.id} onClick={()=>setCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:cat===c.id?c.color:$.F4,color:cat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{c.name}</button>
-        ))}
-      </div>
+        <div style={{display:"flex",gap:sp[2],marginBottom:sp[5],overflowX:"auto",paddingBottom:4}}>
+          {CATEGORIES.map(c => (
+            <button key={c.id} onClick={()=>setCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:cat===c.id?c.color:$.F4,color:cat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{c.name}</button>
+          ))}
+        </div>
 
-      <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
-        {list.length === 0 && <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14}}>لا توجد قطاعات مطابقة</div>}
-        {list.map(s=>(
-          <Card key={s.id} onClick={()=>setActive(s)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
-            <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
-              <IconBadge Icon={s.Icon} color={s.color} size={48}/>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
-                  <span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span>
-                  <span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}<span style={{fontSize:12,fontWeight:600,color:$.L4}}>/100</span></span>
-                </div>
-                <Bar pct={s.score} color={sc(s)}/>
-                <div style={{display:"flex",gap:sp[2],marginTop:sp[3],flexWrap:"wrap"}}>
-                  <Chip text={"نمو "+s.growth} color={$.green} bg={`${$.green}15`}/>
-                  <Chip text={"فشل "+s.failure_rate} color={$.red} bg={`${$.red}15`}/>
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Sheet open={!!active} onClose={()=>setActive(null)}>
-        {active && (
-          <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-            <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
-              <IconBadge Icon={active.Icon} color={active.color} size={52}/>
-              <div style={{flex:1}}>
-                <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
-                <div style={{fontSize:11,color:$.L4,marginTop:2}}>آخر تحديث: {active.last_updated}</div>
-              </div>
-              <div style={{fontSize:32,fontWeight:800,color:active.color}}>{active.score}</div>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
-              <Card style={{padding:sp[4]}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><TrendingUp size={14} color={$.green}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>النمو السنوي</span></div>
-                <div style={{fontSize:18,fontWeight:800,color:$.green}}>{active.growth}</div>
-              </Card>
-              <Card style={{padding:sp[4]}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><AlertTriangle size={14} color={$.red}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>معدل الفشل</span></div>
-                <div style={{fontSize:18,fontWeight:800,color:$.red}}>{active.failure_rate}</div>
-              </Card>
-              <Card style={{padding:sp[4]}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><DollarSign size={14} color={$.purple}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>متوسط الاستثمار</span></div>
-                <div style={{fontSize:13,fontWeight:700,color:$.L1}}>{active.investment}</div>
-                <div style={{fontSize:9,color:$.L4,marginTop:2,display:"inline-flex",alignItems:"center",gap:3}}><RiyalIcon size={10} color={$.L4}/><span>ريال</span></div>
-              </Card>
-              <Card style={{padding:sp[4]}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><Clock size={14} color={$.orange}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>فترة الاسترداد</span></div>
-                <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.payback}</div>
-              </Card>
-              <Card style={{padding:sp[4]}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><PieChart size={14} color={$.blue}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>هامش الربح</span></div>
-                <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.margin}</div>
-              </Card>
-              <Card style={{padding:sp[4]}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><Users size={14} color={$.teal}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>المنافسة</span></div>
-                <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.competition}</div>
-              </Card>
-            </div>
-
-            <Section title="الجمهور المستهدف" Icon={Users} color={$.blue}>
-              <p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{active.audience}</p>
-            </Section>
-
-            <Section title="أفضل المدن" Icon={MapPin} color={$.green}>
-              <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
-                {active.top_cities.map((c,i)=>(<Chip key={c} text={`${i+1}. ${c}`} color={$.green} bg={`${$.green}15`} size={13}/>))}
-              </div>
-            </Section>
-
-            <Section title="عوامل النجاح" Icon={CheckCircle} color={$.green} subtitle={`${active.success_tips.length} نصيحة عملية`}>
-              {active.success_tips.map((t,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
-                  <div style={{width:22,height:22,borderRadius:"50%",background:$.green,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
-                  <span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{t}</span>
-                </div>
-              ))}
-            </Section>
-
-            <Section title="أسباب الفشل الشائعة" Icon={XCircle} color={$.red} subtitle="تحذيرات مهمة قبل البدء">
-              {active.failure_reasons.map((t,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
-                  <div style={{width:22,height:22,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>×</div>
-                  <span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{t}</span>
-                </div>
-              ))}
-            </Section>
-
-            <Section title="المنافسون المعروفون" Icon={Briefcase} color={$.orange}>
-              <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
-                {active.competitors.map(c=>(<Chip key={c} text={c} color={$.orange} bg={`${$.orange}15`} size={12}/>))}
-              </div>
-            </Section>
-
-            <Section title="أفكار فرعية مقترحة" Icon={Lightbulb} color={$.purple} subtitle="فرص داخل القطاع">
-              {active.sub_ideas.map((idea,i)=>(
-                <div key={i} style={{background:`${$.purple}07`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10,marginBottom:sp[2]}}>
-                  <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
-                    <Sparkles size={14} color={$.purple}/>
-                    <span style={{fontSize:14,fontWeight:600,color:$.L1}}>{idea}</span>
+        <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+          {list.length === 0 && <div style={{gridColumn:"1/-1",padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14}}>لا توجد قطاعات مطابقة</div>}
+          {list.map(s=>(
+            <Card key={s.id} onClick={()=>setActive(s)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+              <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+                <IconBadge Icon={s.Icon} color={s.color} size={48}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
+                    <span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span>
+                    <span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}<span style={{fontSize:12,fontWeight:600,color:$.L4}}>/100</span></span>
+                  </div>
+                  <Bar pct={s.score} color={sc(s)}/>
+                  <div style={{display:"flex",gap:sp[2],marginTop:sp[3],flexWrap:"wrap"}}>
+                    <Chip text={"نمو "+s.growth} color={$.green} bg={`${$.green}15`}/>
+                    <Chip text={"فشل "+s.failure_rate} color={$.red} bg={`${$.red}15`}/>
                   </div>
                 </div>
-              ))}
-            </Section>
-          </div>
-        )}
-      </Sheet>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <Sheet open={!!active} onClose={()=>setActive(null)}>
+          {active && (
+            <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
+              <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
+                <IconBadge Icon={active.Icon} color={active.color} size={52}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
+                  <div style={{fontSize:11,color:$.L4,marginTop:2}}>آخر تحديث: {active.last_updated}</div>
+                </div>
+                <div style={{fontSize:32,fontWeight:800,color:active.color}}>{active.score}</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[4]}}>
+                <Card style={{padding:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><TrendingUp size={14} color={$.green}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>النمو السنوي</span></div>
+                  <div style={{fontSize:18,fontWeight:800,color:$.green}}>{active.growth}</div>
+                </Card>
+                <Card style={{padding:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><AlertTriangle size={14} color={$.red}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>معدل الفشل</span></div>
+                  <div style={{fontSize:18,fontWeight:800,color:$.red}}>{active.failure_rate}</div>
+                </Card>
+                <Card style={{padding:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><DollarSign size={14} color={$.purple}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>متوسط الاستثمار</span></div>
+                  <div style={{fontSize:13,fontWeight:700,color:$.L1}}>{active.investment}</div>
+                  <div style={{fontSize:9,color:$.L4,marginTop:2,display:"inline-flex",alignItems:"center",gap:3}}><RiyalIcon size={10} color={$.L4}/><span>ريال</span></div>
+                </Card>
+                <Card style={{padding:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><Clock size={14} color={$.orange}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>فترة الاسترداد</span></div>
+                  <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.payback}</div>
+                </Card>
+                <Card style={{padding:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><PieChart size={14} color={$.blue}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>هامش الربح</span></div>
+                  <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.margin}</div>
+                </Card>
+                <Card style={{padding:sp[4]}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:6}}><Users size={14} color={$.teal}/><span style={{fontSize:10,fontWeight:600,color:$.L3}}>المنافسة</span></div>
+                  <div style={{fontSize:14,fontWeight:700,color:$.L1}}>{active.competition}</div>
+                </Card>
+              </div>
+              <Section title="الجمهور المستهدف" Icon={Users} color={$.blue}>
+                <p style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{active.audience}</p>
+              </Section>
+              <Section title="أفضل المدن" Icon={MapPin} color={$.green}>
+                <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+                  {active.top_cities.map((c,i)=>(<Chip key={c} text={`${i+1}. ${c}`} color={$.green} bg={`${$.green}15`} size={13}/>))}
+                </div>
+              </Section>
+              <Section title="عوامل النجاح" Icon={CheckCircle} color={$.green} subtitle={`${active.success_tips.length} نصيحة عملية`}>
+                {active.success_tips.map((t,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",background:$.green,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                    <span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{t}</span>
+                  </div>
+                ))}
+              </Section>
+              <Section title="أسباب الفشل الشائعة" Icon={XCircle} color={$.red} subtitle="تحذيرات مهمة قبل البدء">
+                {active.failure_reasons.map((t,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",background:$.red,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>×</div>
+                    <span style={{fontSize:14,color:$.L2,lineHeight:1.6}}>{t}</span>
+                  </div>
+                ))}
+              </Section>
+              <Section title="المنافسون المعروفون" Icon={Briefcase} color={$.orange}>
+                <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+                  {active.competitors.map(c=>(<Chip key={c} text={c} color={$.orange} bg={`${$.orange}15`} size={12}/>))}
+                </div>
+              </Section>
+              <Section title="أفكار فرعية مقترحة" Icon={Lightbulb} color={$.purple} subtitle="فرص داخل القطاع">
+                {active.sub_ideas.map((idea,i)=>(
+                  <div key={i} style={{background:`${$.purple}07`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:10,marginBottom:sp[2]}}>
+                    <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                      <Sparkles size={14} color={$.purple}/>
+                      <span style={{fontSize:14,fontWeight:600,color:$.L1}}>{idea}</span>
+                    </div>
+                  </div>
+                ))}
+              </Section>
+            </div>
+          )}
+        </Sheet>
+      </div>
     </div>
   );
 }
 
 function LearningScreen() {
+  const screen = useScreenSize();
   const [q,setQ]=useState("");
   const [activeCat,setActiveCat]=useState("all");
   const [activeArticle,setActiveArticle]=useState(null);
@@ -956,10 +996,7 @@ function LearningScreen() {
   });
 
   const featuredArticle = ARTICLES[0];
-  const categoryStats = ARTICLE_CATEGORIES.map(c => ({
-    ...c,
-    count: ARTICLES.filter(a => a.category === c.id).length
-  }));
+  const categoryStats = ARTICLE_CATEGORIES.map(c => ({...c, count: ARTICLES.filter(a => a.category === c.id).length}));
 
   function getLevelColor(level) {
     if (level === "مبتدئ") return $.green;
@@ -971,169 +1008,161 @@ function LearningScreen() {
     return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
   }
 
+  const containerStyle = screen.isDesktop ? {maxWidth:1200, margin:"0 auto"} : screen.isTablet ? {maxWidth:900, margin:"0 auto"} : {};
+
   return (
-    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
-      <h1 style={{fontSize:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>مكتبة التعلم</h1>
-      <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{ARTICLES.length} مقالة احترافية · محدّثة يناير 2026</p>
+    <div style={{padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[10]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={containerStyle}>
+        <h1 style={{fontSize:screen.isDesktop?42:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>مكتبة التعلم</h1>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{ARTICLES.length} مقالة احترافية · محدّثة يناير 2026</p>
 
-      <div style={{position:"relative",marginBottom:sp[5]}}>
-        <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في المقالات…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
-      </div>
+        <div style={{position:"relative",marginBottom:sp[5],maxWidth:screen.isDesktop?500:"100%"}}>
+          <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في المقالات…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+        </div>
 
-      {activeCat === "all" && !q && (() => {
-        const FeatCatInfo = getCategoryInfo(featuredArticle.category);
-        const FeatIcon = CATEGORY_ICONS[FeatCatInfo.iconName] || BookOpen;
-        return (
-          <div onClick={()=>setActiveArticle(featuredArticle)} style={{background:FeatCatInfo.gradient,borderRadius:24,padding:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[6],cursor:"pointer",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",top:-60,left:-60,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
-            <div style={{position:"relative"}}>
-              <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.25)",borderRadius:99,padding:"6px 14px",marginBottom:sp[3]}}>
-                <Star size={13} color="#fff" strokeWidth={2.2}/>
-                <span style={{fontSize:12,fontWeight:700,color:"#fff"}}>مقالة مميزة</span>
-              </div>
-              <div style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{featuredArticle.title}</div>
-              <p style={{fontSize:13,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:sp[4]}}>{featuredArticle.excerpt}</p>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
-                  <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.readTime} دقائق</span></div>
-                  <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Activity size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.level}</span></div>
+        {activeCat === "all" && !q && (() => {
+          const FeatCatInfo = getCategoryInfo(featuredArticle.category);
+          return (
+            <div onClick={()=>setActiveArticle(featuredArticle)} style={{background:FeatCatInfo.gradient,borderRadius:24,padding:screen.isDesktop?`${sp[10]}px ${sp[8]}px`:`${sp[7]}px ${sp[6]}px ${sp[5]}px`,marginBottom:sp[6],cursor:"pointer",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:-60,left:-60,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
+              <div style={{position:"relative",maxWidth:screen.isDesktop?700:"100%"}}>
+                <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.25)",borderRadius:99,padding:"6px 14px",marginBottom:sp[3]}}>
+                  <Star size={13} color="#fff" strokeWidth={2.2}/>
+                  <span style={{fontSize:12,fontWeight:700,color:"#fff"}}>مقالة مميزة</span>
                 </div>
-                <div style={{background:"rgba(255,255,255,0.25)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",gap:4}}>اقرأ <ChevronRight size={14}/></div>
+                <div style={{fontSize:screen.isDesktop?28:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{featuredArticle.title}</div>
+                <p style={{fontSize:screen.isDesktop?15:13,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:sp[4]}}>{featuredArticle.excerpt}</p>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.readTime} دقائق</span></div>
+                    <div style={{display:"flex",alignItems:"center",gap:5,color:"rgba(255,255,255,0.85)"}}><Activity size={13}/><span style={{fontSize:13,fontWeight:600}}>{featuredArticle.level}</span></div>
+                  </div>
+                  <div style={{background:"rgba(255,255,255,0.25)",borderRadius:99,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",gap:4}}>اقرأ <ChevronRight size={14}/></div>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
-      {activeCat === "all" && !q && (
-        <>
-          <SectionLabel>تصفّح حسب الفئة</SectionLabel>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[6]}}>
-            {categoryStats.map(c => {
-              const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
+        {activeCat === "all" && !q && (
+          <>
+            <SectionLabel>تصفّح حسب الفئة</SectionLabel>
+            <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"repeat(4,1fr)":screen.isTablet?"repeat(3,1fr)":"1fr 1fr",gap:sp[3],marginBottom:sp[6]}}>
+              {categoryStats.map(c => {
+                const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
+                return (
+                  <Card key={c.id} onClick={()=>setActiveCat(c.id)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                    <IconBadge Icon={CatIcon} color={c.color} size={42}/>
+                    <div style={{fontSize:14,fontWeight:700,color:$.L1,marginTop:sp[3],marginBottom:4,lineHeight:1.3}}>{c.name}</div>
+                    <div style={{fontSize:11,color:$.L3}}>{c.count} مقالات</div>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div style={{display:"flex",gap:sp[2],marginBottom:sp[4],overflowX:"auto",paddingBottom:4}}>
+          {allCategories.map(c => {
+            const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
+            return (
+              <button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:activeCat===c.id?c.color:$.F4,color:activeCat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
+                <CatIcon size={14} strokeWidth={2.2}/>
+                <span>{c.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <SectionLabel>{activeCat === "all" ? `جميع المقالات (${filteredArticles.length})` : `${getCategoryInfo(activeCat).name} (${filteredArticles.length})`}</SectionLabel>
+        
+        {filteredArticles.length === 0 ? (
+          <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد مقالات مطابقة</div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+            {filteredArticles.map(article => {
+              const catInfo = getCategoryInfo(article.category);
+              const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
               return (
-                <Card key={c.id} onClick={()=>setActiveCat(c.id)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
-                  <IconBadge Icon={CatIcon} color={c.color} size={42}/>
-                  <div style={{fontSize:14,fontWeight:700,color:$.L1,marginTop:sp[3],marginBottom:4,lineHeight:1.3}}>{c.name}</div>
-                  <div style={{fontSize:11,color:$.L3}}>{c.count} مقالات</div>
+                <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
+                    <div style={{width:60,height:60,borderRadius:16,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 4px 12px ${catInfo.color}33`}}>
+                      <CatIcon size={30} color="#ffffff" strokeWidth={2.4} absoluteStrokeWidth/>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4}}>{article.title}</div>
+                      <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginBottom:sp[2],overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{article.excerpt}</p>
+                      <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
+                        <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={11}/>
+                        <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4}}><Clock size={11}/><span style={{fontSize:11,fontWeight:600}}>{article.readTime} د</span></div>
+                        <Chip text={article.level} color={getLevelColor(article.level)} bg={`${getLevelColor(article.level)}15`} size={11}/>
+                      </div>
+                    </div>
+                  </div>
                 </Card>
               );
             })}
           </div>
-        </>
-      )}
-
-      <div style={{display:"flex",gap:sp[2],marginBottom:sp[4],overflowX:"auto",paddingBottom:4}}>
-        {allCategories.map(c => {
-          const CatIcon = CATEGORY_ICONS[c.iconName] || BookOpen;
-          return (
-            <button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flex:"none",padding:`${sp[2]}px ${sp[4]}px`,borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:activeCat===c.id?c.color:$.F4,color:activeCat===c.id?"#fff":$.L2,fontSize:13,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
-              <CatIcon size={14} strokeWidth={2.2}/>
-              <span>{c.name}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <SectionLabel>{activeCat === "all" ? `جميع المقالات (${filteredArticles.length})` : `${getCategoryInfo(activeCat).name} (${filteredArticles.length})`}</SectionLabel>
-      
-      {filteredArticles.length === 0 ? (
-        <div style={{padding:`${sp[8]}px ${sp[4]}px`,textAlign:"center",color:$.L3,fontSize:14,background:$.surface,borderRadius:16}}>لا توجد مقالات مطابقة</div>
-      ) : (
-        <div style={{display:"flex",flexDirection:"column",gap:sp[3]}}>
-          {filteredArticles.map(article => {
-            const catInfo = getCategoryInfo(article.category);
-            const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-            return (
-              <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:`${sp[4]}px`,cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
-                  <div style={{width:60,height:60,borderRadius:16,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 4px 12px ${catInfo.color}33`}}>
-                    <CatIcon size={30} color="#ffffff" strokeWidth={2.4} absoluteStrokeWidth/>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.4,marginBottom:4}}>{article.title}</div>
-                    <p style={{fontSize:12,color:$.L3,lineHeight:1.5,marginBottom:sp[2],overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{article.excerpt}</p>
-                    <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
-                      <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={11}/>
-                      <div style={{display:"flex",alignItems:"center",gap:3,color:$.L4}}><Clock size={11}/><span style={{fontSize:11,fontWeight:600}}>{article.readTime} د</span></div>
-                      <Chip text={article.level} color={getLevelColor(article.level)} bg={`${getLevelColor(article.level)}15`} size={11}/>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      <Sheet open={!!activeArticle} onClose={()=>setActiveArticle(null)}>
-        {activeArticle && (
-          <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-            {(() => {
-              const catInfo = getCategoryInfo(activeArticle.category);
-              const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-              return (
-                <>
-                  <div style={{background:catInfo.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",top:-40,left:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
-                    <div style={{position:"relative"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-                        <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
-                          <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
-                          <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{catInfo.name}</span>
-                        </div>
-                        <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
-                      </div>
-                      <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{activeArticle.title}</h2>
-                      <div style={{display:"flex",alignItems:"center",gap:sp[4],color:"rgba(255,255,255,0.85)"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:5}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.readTime} دقائق</span></div>
-                        <div style={{display:"flex",alignItems:"center",gap:5}}><Calendar size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.date}</span></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{fontSize:15,color:$.L2,lineHeight:1.9,fontWeight:400}}>
-                    {activeArticle.content.split("\n\n").filter(p=>p.trim()).map((paragraph,i) => {
-                      const trimmed = paragraph.trim();
-                      if (trimmed.startsWith("═══")) {
-                        const headerText = trimmed.replace(/═/g,"").trim();
-                        return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3],paddingBottom:sp[2],borderBottom:`2px solid ${catInfo.color}30`,letterSpacing:"-0.3px"}}>{headerText}</h3>;
-                      }
-                      if (trimmed.includes("•") || trimmed.match(/^[-*]/m)) {
-                        return <div key={i} style={{marginBottom:sp[4]}}>
-                          {trimmed.split("\n").map((line,j) => {
-                            const l = line.trim();
-                            if (!l) return null;
-                            if (l.startsWith("•") || l.startsWith("-")) {
-                              return <div key={j} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2]}}>
-                                <div style={{marginTop:8,width:5,height:5,borderRadius:"50%",background:catInfo.color,flexShrink:0}}/>
-                                <span style={{flex:1}}>{l.replace(/^[•-]\s*/,"")}</span>
-                              </div>;
-                            }
-                            return <p key={j} style={{marginBottom:sp[2]}}>{l}</p>;
-                          })}
-                        </div>;
-                      }
-                      return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
-                    })}
-                  </div>
-
-                  <div style={{marginTop:sp[6],paddingTop:sp[5],borderTop:`1px solid ${$.sepL}`,textAlign:"center"}}>
-                    <p style={{fontSize:12,color:$.L4,marginBottom:sp[3]}}>هل أعجبتك المقالة؟</p>
-                    <div style={{display:"flex",justifyContent:"center",gap:sp[3]}}>
-                      <button style={{background:`${catInfo.color}15`,color:catInfo.color,border:"none",borderRadius:12,padding:`${sp[2]}px ${sp[4]}px`,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:"inherit"}}>
-                        <Share2 size={14}/>
-                        <span>مشاركة</span>
-                      </button>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
         )}
-      </Sheet>
+
+        <Sheet open={!!activeArticle} onClose={()=>setActiveArticle(null)}>
+          {activeArticle && (
+            <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
+              {(() => {
+                const catInfo = getCategoryInfo(activeArticle.category);
+                const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
+                return (
+                  <>
+                    <div style={{background:catInfo.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5],position:"relative",overflow:"hidden"}}>
+                      <div style={{position:"absolute",top:-40,left:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}/>
+                      <div style={{position:"relative"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+                          <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
+                            <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
+                            <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{catInfo.name}</span>
+                          </div>
+                          <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
+                        </div>
+                        <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:sp[3],letterSpacing:"-0.4px"}}>{activeArticle.title}</h2>
+                        <div style={{display:"flex",alignItems:"center",gap:sp[4],color:"rgba(255,255,255,0.85)"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}><Clock size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.readTime} دقائق</span></div>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}><Calendar size={13}/><span style={{fontSize:13,fontWeight:600}}>{activeArticle.date}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:15,color:$.L2,lineHeight:1.9,fontWeight:400}}>
+                      {activeArticle.content.split("\n\n").filter(p=>p.trim()).map((paragraph,i) => {
+                        const trimmed = paragraph.trim();
+                        if (trimmed.startsWith("═══")) {
+                          const headerText = trimmed.replace(/═/g,"").trim();
+                          return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3],paddingBottom:sp[2],borderBottom:`2px solid ${catInfo.color}30`,letterSpacing:"-0.3px"}}>{headerText}</h3>;
+                        }
+                        if (trimmed.includes("•") || trimmed.match(/^[-*]/m)) {
+                          return <div key={i} style={{marginBottom:sp[4]}}>
+                            {trimmed.split("\n").map((line,j) => {
+                              const l = line.trim();
+                              if (!l) return null;
+                              if (l.startsWith("•") || l.startsWith("-")) {
+                                return <div key={j} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2]}}>
+                                  <div style={{marginTop:8,width:5,height:5,borderRadius:"50%",background:catInfo.color,flexShrink:0}}/>
+                                  <span style={{flex:1}}>{l.replace(/^[•-]\s*/,"")}</span>
+                                </div>;
+                              }
+                              return <p key={j} style={{marginBottom:sp[2]}}>{l}</p>;
+                            })}
+                          </div>;
+                        }
+                        return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </Sheet>
+      </div>
     </div>
   );
 }
@@ -1154,12 +1183,37 @@ function BottomNav({tab,setTab}) {
   );
 }
 
+function SideNav({tab,setTab}) {
+  return (
+    <nav style={{position:"fixed",top:0,right:0,bottom:0,width:240,zIndex:999,display:"flex",flexDirection:"column",background:$.surface,borderLeft:`0.5px solid ${$.sepL}`,padding:`${sp[6]}px ${sp[4]}px`,boxShadow:"-2px 0 20px rgba(0,0,0,0.03)"}}>
+      <div style={{padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[6]}}>
+        <h2 style={{fontSize:24,fontWeight:800,color:$.blue,letterSpacing:"-0.8px"}}>هامور</h2>
+        <p style={{fontSize:11,color:$.L4,marginTop:2}}>دراسة جدوى ذكية</p>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:sp[1]}}>
+        {NAV.map(({id,label,Icon})=>{
+          const on=tab===id;
+          return (
+            <button key={id} onClick={()=>setTab(id)} style={{display:"flex",alignItems:"center",gap:sp[3],background:on?`${$.blue}12`:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit",transition:"all 0.2s"}}>
+              <Icon size={20} color={on?$.blue:$.L3} strokeWidth={on?2.1:1.8}/>
+              <span style={{fontSize:14,fontWeight:on?700:500,color:on?$.blue:$.L2}}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 export default function HamourApp() {
+  const screen = useScreenSize();
   const [tab,setTab]=useState("home");
   const [result,setResult]=useState(null);
   
   const handleAnalyze=useCallback((data)=>{setResult(data);setTab("analysis");},[]);
   const handleViewSaved=useCallback((analysis)=>{setResult(analysis);setTab("analysis");},[]);
+
+  const useSideNav = screen.isDesktop;
 
   return (
     <>
@@ -1172,13 +1226,13 @@ export default function HamourApp() {
         *{-webkit-tap-highlight-color:transparent;}
         @keyframes _spin{to{transform:rotate(360deg);}}
       `}</style>
-      <div style={{minHeight:"100vh",maxWidth:430,margin:"0 auto",background:$.bg,position:"relative",paddingBottom:90}}>
+      <div style={{minHeight:"100vh",background:$.bg,position:"relative",paddingBottom:useSideNav?0:90,marginRight:useSideNav?240:0}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={()=>setTab("analysis")} onViewSaved={()=>setTab("saved")}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewSaved}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen/>}
-        <BottomNav tab={tab} setTab={setTab}/>
+        {useSideNav ? <SideNav tab={tab} setTab={setTab}/> : <BottomNav tab={tab} setTab={setTab}/>}
       </div>
     </>
   );
