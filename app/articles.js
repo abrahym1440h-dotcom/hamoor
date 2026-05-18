@@ -2,15 +2,16 @@
 // آخر تحديث: يناير 2026
 
 export const ARTICLE_CATEGORIES = [
-  { id: "food", name: "أطعمة ومشروبات", icon: "🍽", color: "#FF9500", gradient: "linear-gradient(145deg,#FF9500,#E07800)" },
-  { id: "retail", name: "تجزئة وتسوق", icon: "🛍", color: "#AF52DE", gradient: "linear-gradient(145deg,#AF52DE,#7830B0)" },
-  { id: "services", name: "خدمات شخصية", icon: "💄", color: "#FF2D92", gradient: "linear-gradient(145deg,#FF2D92,#C81E70)" },
-  { id: "education", name: "تعليم وتدريب", icon: "📚", color: "#007AFF", gradient: "linear-gradient(145deg,#007AFF,#0050C0)" },
-  { id: "fitness", name: "لياقة ورياضة", icon: "💪", color: "#34C759", gradient: "linear-gradient(145deg,#34C759,#1C8C36)" },
-  { id: "entrepreneurship", name: "رواد الأعمال", icon: "💼", color: "#5856D6", gradient: "linear-gradient(145deg,#5856D6,#3A3899)" },
-  { id: "marketing", name: "التسويق", icon: "📊", color: "#32ADE6", gradient: "linear-gradient(145deg,#32ADE6,#1880B8)" },
-  { id: "finance", name: "مالي ومحاسبي", icon: "💰", color: "#FFCC00", gradient: "linear-gradient(145deg,#FFCC00,#CC9900)" },
+  { id: "food", name: "أطعمة ومشروبات", iconName: "Utensils", color: "#FF9500", gradient: "linear-gradient(145deg,#FF9500,#E07800)" },
+  { id: "retail", name: "تجزئة وتسوق", iconName: "ShoppingBag", color: "#AF52DE", gradient: "linear-gradient(145deg,#AF52DE,#7830B0)" },
+  { id: "services", name: "خدمات شخصية", iconName: "Sparkle", color: "#FF2D92", gradient: "linear-gradient(145deg,#FF2D92,#C81E70)" },
+  { id: "education", name: "تعليم وتدريب", iconName: "GraduationCap", color: "#007AFF", gradient: "linear-gradient(145deg,#007AFF,#0050C0)" },
+  { id: "fitness", name: "لياقة ورياضة", iconName: "Dumbbell", color: "#34C759", gradient: "linear-gradient(145deg,#34C759,#1C8C36)" },
+  { id: "entrepreneurship", name: "رواد الأعمال", iconName: "Briefcase", color: "#5856D6", gradient: "linear-gradient(145deg,#5856D6,#3A3899)" },
+  { id: "marketing", name: "التسويق", iconName: "Activity", color: "#32ADE6", gradient: "linear-gradient(145deg,#32ADE6,#1880B8)" },
+  { id: "finance", name: "مالي ومحاسبي", iconName: "PieChart", color: "#FFCC00", gradient: "linear-gradient(145deg,#FFCC00,#CC9900)" },
 ];
+
 
 export const ARTICLES = [
   // ═══════════════════════════════════════════
