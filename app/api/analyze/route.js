@@ -11,23 +11,25 @@ export async function POST(req) {
       return Response.json({ error: "البيانات ناقصة" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      console.log("❌ GEMINI_API_KEY not found");
-      return Response.json({ error: "مفتاح Gemini غير موجود" }, { status: 500 });
+      console.log("❌ GROQ_API_KEY not found");
+      return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
     }
 
     console.log("✅ API Key found");
     const budgetNum = parseInt(budget);
 
-    const prompt = `أنت خبير اقتصادي سعودي بخبرة 25 سنة. حلّل هذا المشروع بصرامة وواقعية تامة بدون أي مجاملة.
+    const systemPrompt = `أنت خبير اقتصادي سعودي بخبرة 25 سنة في السوق السعودي. ترجع JSON صحيح فقط بدون أي نص إضافي، تحلل بصرامة وواقعية تامة بدون مجاملة.`;
+
+    const userPrompt = `حلّل هذا المشروع بصرامة شديدة وواقعية تامة بدون أي مجاملة.
 
 ⛔ قواعد صارمة:
 1. ممنوع المجاملة أو التفاؤل غير المبرر
 2. إذا الميزانية غير كافية، اذكر ذلك صراحة
 3. إذا الفكرة غير منطقية (مثل نادي كرة قدم بـ 2 مليون)، ارفضها واقترح بدائل
 4. استخدم أرقام واقعية للسوق السعودي 2025-2026
-5. اذكر منافسين حقيقيين بأسماء معروفة (ستاربكس، البيك، كودو، نون، إكسترا، جرير، إلخ)
+5. اذكر منافسين حقيقيين بأسماء معروفة (ستاربكس، البيك، كودو، نون، إكسترا، جرير)
 6. خصص التحليل للمدينة المحددة (الرياض ≠ الباحة ≠ تبوك)
 
 📊 معايير السكور (0-100):
@@ -48,7 +50,7 @@ export async function POST(req) {
 - المدينة: ${city}
 - الميزانية: ${budgetNum.toLocaleString()} ريال
 
-أرجع JSON صحيح فقط بدون أي نص قبله أو بعده:
+أرجع JSON صحيح فقط:
 
 {
   "score": <0-100>,
@@ -117,65 +119,57 @@ export async function POST(req) {
   }
 }`;
 
-    console.log("🚀 Calling Gemini 2.0 Flash...");
+    console.log("🚀 Calling Groq (Llama 3.3)...");
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 8192
-          }
-        })
-      }
-    );
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 8000,
+        response_format: { type: "json_object" }
+      })
+    });
 
-    console.log("📡 Gemini Status:", response.status);
+    console.log("📡 Groq Status:", response.status);
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("❌ Gemini Error:", errText.substring(0, 500));
+      console.error("❌ Groq Error:", errText.substring(0, 500));
       return Response.json({ 
-        error: "خطأ من Gemini API: " + response.status,
-        details: errText.substring(0, 300)
+        error: "خطأ من Groq: " + response.status
       }, { status: 500 });
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data.choices?.[0]?.message?.content;
 
     if (!text) {
-      console.error("❌ No response from Gemini");
-      return Response.json({ error: "لا يوجد رد من Gemini" }, { status: 500 });
+      console.error("❌ No response from Groq");
+      return Response.json({ error: "لا يوجد رد" }, { status: 500 });
     }
 
     console.log("✅ Got response, length:", text.length);
 
-    let jsonStr = text.trim();
-    jsonStr = jsonStr.replace(/```json\s*/g, "").replace(/```\s*/g, "");
-    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
-
     try {
-      const result = JSON.parse(jsonStr);
+      const result = JSON.parse(text);
       console.log("✅ JSON parsed successfully");
       return Response.json(result);
     } catch (parseErr) {
       console.error("❌ Parse Error:", parseErr.message);
-      console.error("First 300 chars:", text.substring(0, 300));
-      return Response.json({ 
-        error: "خطأ في معالجة النتيجة"
-      }, { status: 500 });
+      return Response.json({ error: "خطأ في معالجة النتيجة" }, { status: 500 });
     }
 
   } catch (error) {
     console.error("❌ Server Error:", error.message);
-    return Response.json({ 
-      error: "خطأ في الخادم: " + error.message
-    }, { status: 500 });
+    return Response.json({ error: "خطأ في الخادم: " + error.message }, { status: 500 });
   }
 }
