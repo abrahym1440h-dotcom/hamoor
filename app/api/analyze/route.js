@@ -1,187 +1,141 @@
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-
 export async function POST(req) {
   try {
-    const { idea, city, budget } = await req.json();
+    const body = await req.json();
+    const { idea, city, budget } = body;
+
+    console.log("📥 Request received:", { idea, city, budget });
 
     if (!idea || !city || !budget) {
+      console.log("❌ Missing data");
       return Response.json({ error: "البيانات ناقصة" }, { status: 400 });
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
+    
     if (!apiKey) {
-      return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
+      console.log("❌ ANTHROPIC_API_KEY not found");
+      return Response.json({ error: "مفتاح API غير موجود في الخادم" }, { status: 500 });
     }
+
+    console.log("✅ API Key found, length:", apiKey.length);
 
     const budgetNum = parseInt(budget);
 
-    const systemPrompt = `أنت خبير اقتصادي ومستشار أعمال متخصص في السوق السعودي بخبرة 20+ سنة. 
+    const prompt = `أنت خبير اقتصادي ومستشار أعمال متخصص في السوق السعودي بخبرة 20+ سنة.
 
 🎯 مهمتك: تحليل المشاريع بصرامة ووضوح وواقعية تامة.
 
 ⛔ قواعد صارمة:
-1. ممنوع المجاملة أو التفاؤل الزائف.
-2. إذا كانت الميزانية غير كافية للمشروع، قل ذلك بصراحة وحدد الحد الأدنى الواقعي.
-3. إذا كانت الفكرة سيئة أو غير قابلة للتطبيق، ارفضها واقترح بدائل.
-4. استخدم أرقام واقعية من السوق السعودي (إيجارات، رواتب، تكاليف).
-5. اذكر منافسين حقيقيين بأسماء معروفة في السعودية.
-6. خذ بعين الاعتبار خصائص المدينة المحددة (الرياض ≠ الباحة ≠ تبوك).
-7. كن مفصّلاً جداً - كل نقطة يجب أن تشرح "لماذا" و"كيف".
-8. التحليل يجب أن يكون كافياً لاتخاذ قرار حقيقي.
-
-📊 معايير التقييم (السكور /100):
-- 80-100: مشروع ممتاز قابل للتنفيذ
-- 60-79: مشروع جيد لكن يحتاج تعديلات
-- 40-59: مشروع متوسط مع مخاطر عالية
-- 20-39: مشروع ضعيف يحتاج إعادة نظر
-- 0-19: مشروع فاشل أو غير قابل للتنفيذ
-
-🚨 مهم جداً: 
-- ميزانية أقل من الحد الأدنى الواقعي = سكور تلقائي أقل من 40
-- فكرة غير منطقية (مثل نادي كرة قدم بميزانية صغيرة) = سكور أقل من 30 + توضيح صريح
-
-أرجع الإجابة بصيغة JSON صحيحة 100% بدون أي نص قبلها أو بعدها.`;
-
-    const userPrompt = `حلّل هذا المشروع تحليلاً مفصلاً جداً:
+1. ممنوع المجاملة أو التفاؤل الزائف
+2. إذا كانت الميزانية غير كافية، قل ذلك بصراحة
+3. إذا كانت الفكرة سيئة، ارفضها واقترح بدائل
+4. استخدم أرقام واقعية من السوق السعودي
+5. اذكر منافسين حقيقيين بأسماء معروفة
+6. خذ بعين الاعتبار خصائص المدينة (الرياض ≠ الباحة ≠ تبوك)
 
 📋 المشروع: ${idea}
 📍 الموقع: ${city}
 💰 الميزانية: ${budgetNum.toLocaleString()} ريال سعودي
 
-أرجع JSON بهذا الشكل بالضبط:
+أرجع JSON فقط بدون أي نص آخر بهذا الشكل بالضبط:
 
 {
-  "score": <رقم من 0-100>,
-  "decision": "<عنوان قرار واضح في 5-10 كلمات>",
-  "decision_type": "<positive أو negative>",
-  "summary": "<ملخص مفصل في 3-4 أسطر يحدد الواقع بصراحة>",
-  "market_demand": "<منخفض/متوسط/عالي/عالي جداً>",
-  "competition": "<منخفضة/متوسطة/عالية/عالية جداً>",
-  "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
-  "risk_level": "<منخفض/متوسط/عالي/عالي جداً>",
+  "score": 65,
+  "decision": "عنوان قرار واضح",
+  "decision_type": "positive",
+  "summary": "ملخص مفصل في 3-4 أسطر",
+  "market_demand": "عالي",
+  "competition": "متوسطة",
+  "cost_level": "متوسط",
+  "risk_level": "متوسط",
   "market_analysis": {
-    "market_size": "<حجم السوق بالأرقام، مثلاً: 2.3 مليار ريال سنوياً>",
-    "target_audience": "<وصف مفصل للجمهور المستهدف مع الأعمار والدخل>",
-    "buying_patterns": "<أنماط الشراء والسلوك>",
-    "seasonality": "<متى الذروة ومتى التراجع>",
-    "expected_market_share": "<النسبة المتوقعة، مثلاً: 0.5% - 2%>",
-    "growth_potential": "<وصف إمكانية النمو على 3-5 سنوات>",
+    "market_size": "2.3 مليار ريال سنوياً",
+    "target_audience": "وصف الجمهور",
+    "buying_patterns": "أنماط الشراء",
+    "seasonality": "متى الذروة",
+    "expected_market_share": "0.5% - 2%",
+    "growth_potential": "وصف النمو",
     "competitors": [
-      {"name": "<اسم منافس حقيقي>", "strength": "<نقطة قوته>", "weakness": "<نقطة ضعفه>"},
-      {"name": "<اسم منافس حقيقي>", "strength": "<نقطة قوته>", "weakness": "<نقطة ضعفه>"},
-      {"name": "<اسم منافس حقيقي>", "strength": "<نقطة قوته>", "weakness": "<نقطة ضعفه>"}
+      {"name": "اسم منافس", "strength": "نقطة قوة", "weakness": "نقطة ضعف"},
+      {"name": "اسم منافس", "strength": "نقطة قوة", "weakness": "نقطة ضعف"},
+      {"name": "اسم منافس", "strength": "نقطة قوة", "weakness": "نقطة ضعف"}
     ]
   },
   "financial_analysis": {
     "setup_costs": {
-      "rent_deposit": <رقم>,
-      "renovation": <رقم>,
-      "equipment": <رقم>,
-      "licenses": <رقم>,
-      "initial_inventory": <رقم>,
-      "marketing_launch": <رقم>,
-      "working_capital": <رقم>,
-      "total": <مجموع>
+      "rent_deposit": 30000,
+      "renovation": 50000,
+      "equipment": 40000,
+      "licenses": 10000,
+      "initial_inventory": 20000,
+      "marketing_launch": 15000,
+      "working_capital": 35000,
+      "total": 200000
     },
     "monthly_costs": {
-      "rent": <رقم>,
-      "salaries": <رقم>,
-      "utilities": <رقم>,
-      "materials": <رقم>,
-      "marketing": <رقم>,
-      "maintenance": <رقم>,
-      "other": <رقم>,
-      "total": <مجموع>
+      "rent": 10000,
+      "salaries": 25000,
+      "utilities": 3000,
+      "materials": 15000,
+      "marketing": 5000,
+      "maintenance": 2000,
+      "other": 3000,
+      "total": 63000
     },
     "revenue_projection": {
-      "month_1": <رقم>,
-      "month_3": <رقم>,
-      "month_6": <رقم>,
-      "month_12": <رقم>,
-      "year_2_monthly": <رقم>,
-      "year_3_monthly": <رقم>
+      "month_1": 30000,
+      "month_3": 60000,
+      "month_6": 90000,
+      "month_12": 120000,
+      "year_2_monthly": 150000,
+      "year_3_monthly": 180000
     },
-    "break_even_months": <رقم>,
-    "roi_percentage": <رقم>,
-    "annual_profit_year1": <رقم>,
-    "annual_profit_year3": <رقم>
+    "break_even_months": 14,
+    "roi_percentage": 35,
+    "annual_profit_year1": 200000,
+    "annual_profit_year3": 600000
   },
   "swot": {
-    "strengths": ["<نقطة قوة 1 مع شرح>", "<نقطة قوة 2 مع شرح>", "<نقطة قوة 3 مع شرح>"],
-    "weaknesses": ["<نقطة ضعف 1 مع شرح>", "<نقطة ضعف 2 مع شرح>", "<نقطة ضعف 3 مع شرح>"],
-    "opportunities": ["<فرصة 1 مع شرح>", "<فرصة 2 مع شرح>", "<فرصة 3 مع شرح>"],
-    "threats": ["<تهديد 1 مع شرح>", "<تهديد 2 مع شرح>", "<تهديد 3 مع شرح>"]
+    "strengths": ["نقطة قوة 1", "نقطة قوة 2", "نقطة قوة 3"],
+    "weaknesses": ["نقطة ضعف 1", "نقطة ضعف 2", "نقطة ضعف 3"],
+    "opportunities": ["فرصة 1", "فرصة 2", "فرصة 3"],
+    "threats": ["تهديد 1", "تهديد 2", "تهديد 3"]
   },
   "recommendations": [
-    "<توصية استراتيجية مفصلة 1>",
-    "<توصية استراتيجية مفصلة 2>",
-    "<توصية استراتيجية مفصلة 3>",
-    "<توصية استراتيجية مفصلة 4>",
-    "<توصية استراتيجية مفصلة 5>"
+    "توصية 1",
+    "توصية 2",
+    "توصية 3",
+    "توصية 4",
+    "توصية 5"
   ],
   "kpis": [
-    {"name": "<اسم المؤشر>", "target": "<القيمة المستهدفة>", "description": "<شرح المؤشر>"},
-    {"name": "<اسم المؤشر>", "target": "<القيمة المستهدفة>", "description": "<شرح المؤشر>"},
-    {"name": "<اسم المؤشر>", "target": "<القيمة المستهدفة>", "description": "<شرح المؤشر>"},
-    {"name": "<اسم المؤشر>", "target": "<القيمة المستهدفة>", "description": "<شرح المؤشر>"}
+    {"name": "اسم", "target": "قيمة", "description": "شرح"},
+    {"name": "اسم", "target": "قيمة", "description": "شرح"},
+    {"name": "اسم", "target": "قيمة", "description": "شرح"},
+    {"name": "اسم", "target": "قيمة", "description": "شرح"}
   ],
   "risk_analysis": [
-    {
-      "risk": "<اسم المخاطرة>",
-      "description": "<شرح المخاطرة بالتفصيل>",
-      "probability": "<منخفض/متوسط/عالي>",
-      "impact": "<طفيف/متوسط/شديد>",
-      "mitigation": "<خطة التخفيف بالتفصيل>"
-    },
-    {
-      "risk": "<اسم المخاطرة>",
-      "description": "<شرح المخاطرة بالتفصيل>",
-      "probability": "<منخفض/متوسط/عالي>",
-      "impact": "<طفيف/متوسط/شديد>",
-      "mitigation": "<خطة التخفيف بالتفصيل>"
-    },
-    {
-      "risk": "<اسم المخاطرة>",
-      "description": "<شرح المخاطرة بالتفصيل>",
-      "probability": "<منخفض/متوسط/عالي>",
-      "impact": "<طفيف/متوسط/شديد>",
-      "mitigation": "<خطة التخفيف بالتفصيل>"
-    },
-    {
-      "risk": "<اسم المخاطرة>",
-      "description": "<شرح المخاطرة بالتفصيل>",
-      "probability": "<منخفض/متوسط/عالي>",
-      "impact": "<طفيف/متوسط/شديد>",
-      "mitigation": "<خطة التخفيف بالتفصيل>"
-    }
+    {"risk": "مخاطرة 1", "description": "شرح", "probability": "متوسط", "impact": "شديد", "mitigation": "خطة"},
+    {"risk": "مخاطرة 2", "description": "شرح", "probability": "عالي", "impact": "متوسط", "mitigation": "خطة"},
+    {"risk": "مخاطرة 3", "description": "شرح", "probability": "متوسط", "impact": "متوسط", "mitigation": "خطة"},
+    {"risk": "مخاطرة 4", "description": "شرح", "probability": "منخفض", "impact": "متوسط", "mitigation": "خطة"}
   ],
-  "alternative_idea": "<فكرة بديلة محتملة إذا كانت الفكرة الحالية غير مجدية، أو فارغ إذا كانت الفكرة جيدة>",
-  "alternative_city": "<مدينة بديلة إذا كانت المدينة الحالية غير مناسبة، أو فارغ إذا كانت المدينة مناسبة>",
+  "alternative_idea": "فكرة بديلة أو فارغ",
+  "alternative_city": "مدينة بديلة أو فارغ",
   "locations": {
-    "best": {
-      "name": "<اسم الموقع/الحي الأفضل>",
-      "score": <نسبة من 0-100>,
-      "reason": "<شرح مفصل لماذا هذا الموقع الأفضل>"
-    },
-    "worst": {
-      "name": "<اسم الموقع/الحي الأسوأ>",
-      "score": <نسبة من 0-100>,
-      "reason": "<شرح مفصل لماذا هذا الموقع الأسوأ>"
-    }
+    "best": {"name": "اسم", "score": 85, "reason": "شرح"},
+    "worst": {"name": "اسم", "score": 25, "reason": "شرح"}
   }
 }
 
-⚠️ تذكير نهائي: 
-- لا مجاملة. 
-- الواقعية أولاً. 
-- لو الميزانية صغيرة جداً، قل ذلك صراحة. 
-- لو الفكرة غريبة، ارفضها مع التوضيح.
-- أرجع JSON فقط بدون أي نص آخر.`;
+⚠️ تذكير: لا مجاملة. الواقعية أولاً. أرجع JSON فقط.`;
 
-    const response = await fetch(ANTHROPIC_API_URL, {
+    console.log("🚀 Calling Claude API...");
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -191,36 +145,49 @@ export async function POST(req) {
       body: JSON.stringify({
         model: "claude-haiku-4-5",
         max_tokens: 4000,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }]
+        messages: [{ role: "user", content: prompt }]
       })
     });
 
+    console.log("📡 Claude API Response Status:", response.status);
+
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Claude API Error:", errText);
-      return Response.json({ error: "خطأ في خدمة التحليل، حاول مرة أخرى" }, { status: 500 });
+      console.error("❌ Claude API Error:", errText);
+      return Response.json({ 
+        error: "خطأ من Claude API: " + response.status,
+        details: errText.substring(0, 500)
+      }, { status: 500 });
     }
 
     const data = await response.json();
+    console.log("✅ Claude responded successfully");
+    
     const text = data.content[0].text;
+    console.log("📝 Response length:", text.length);
 
-    // استخراج JSON من النص
     let jsonStr = text.trim();
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (jsonMatch) jsonStr = jsonMatch[0];
 
     try {
       const result = JSON.parse(jsonStr);
+      console.log("✅ JSON parsed successfully");
       return Response.json(result);
     } catch (parseErr) {
-      console.error("Parse Error:", parseErr);
-      console.error("Raw text:", text);
-      return Response.json({ error: "خطأ في معالجة النتيجة" }, { status: 500 });
+      console.error("❌ Parse Error:", parseErr.message);
+      console.error("Raw text first 500 chars:", text.substring(0, 500));
+      return Response.json({ 
+        error: "خطأ في معالجة النتيجة",
+        details: parseErr.message
+      }, { status: 500 });
     }
 
   } catch (error) {
-    console.error("Server Error:", error);
-    return Response.json({ error: "خطأ في الخادم: " + error.message }, { status: 500 });
+    console.error("❌ Server Error:", error.message);
+    console.error("Stack:", error.stack);
+    return Response.json({ 
+      error: "خطأ في الخادم: " + error.message
+    }, { status: 500 });
   }
 }
