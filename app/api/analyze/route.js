@@ -1,4 +1,4 @@
-import { CITIES_DATA, COMPETITORS_BY_SECTOR, SALARIES, LICENSES, detectSector, getCityBrief, getSectorBrief } from "../data.js";
+import { CITIES_DATA, COMPETITORS_BY_SECTOR, SALARIES, LICENSES, detectSector, getCityBrief, getSectorBrief, getFinancialBrief } from "../data.js";
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -23,10 +23,13 @@ export async function POST(req) {
     const sector = detectSector(idea);
     const cityBrief = getCityBrief(cityName) || cityName;
     const sectorBrief = getSectorBrief(sector);
+    const financialBrief = getFinancialBrief(sector);
 
-    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة. صارم، صادق، لا تجامل. ترجع JSON صحيح فقط.`;
+    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى. صارم، صادق، لا تجامل. ترجع JSON صحيح فقط.
 
-    const userPrompt = `حلّل هذا المشروع بصرامة وواقعية:
+مبدأك: الأرقام المالية المعطاة لك من دراسات جدوى حقيقية - استخدمها كأساس ولا تخترع أرقاماً من خيالك.`;
+
+    const userPrompt = `حلّل هذا المشروع بصرامة وواقعية تامة:
 
 المشروع: ${idea}
 المدينة: ${cityName}${neighborhood ? `\nالحي: ${neighborhood}` : ''}
@@ -37,29 +40,41 @@ ${cityBrief}
 
 ${sectorBrief}
 
+${financialBrief}
+
 الرواتب: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
 التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}
 
-قواعد صارمة:
-1. لا مجاملة - لو الفكرة سيئة قلها
-2. ميزانية غير كافية = سكور أقل من 35
-3. المنافسون: اذكر 5 منافسين معروفين في ${cityName} تحديداً
-4. الأحياء: استخدم أحياء حقيقية من قائمة ${cityName} أعلاه
-5. الإيجارات: من النطاق الواقعي لـ ${cityName}
+═══ قواعد التحليل الصارمة ═══
 
-البدائل (مهم جداً): اقترح 5 مشاريع بديلة حقيقية ومحددة:
-- كل بديل اسم مشروع واضح يقدر ينفذه المستخدم (مثل: محمصة قهوة مع توصيل، مغسلة سيارات متنقلة، متجر هدايا)
-- ممنوع أوصاف عامة مثل "مشروع في قطاع آخر"
-- كل بديل مناسب لمدينة ${cityName}${neighborhood ? ` وحي ${neighborhood}` : ''} وميزانية قريبة من ${budgetNum.toLocaleString()} ريال
-- نوّع: مشاريع من قطاعات مختلفة، أحجام مختلفة، بعضها موسمي يناسب ${cityName}
+1. الأرقام المالية: استخدم الأرقام المعطاة أعلاه كأساس إلزامي. عدّلها حسب:
+   - حجم المدينة: ${cityName} (مدينة كبيرة = الحد الأعلى، صغيرة = الحد الأدنى)
+   - الحي إن وُجد
+   - لا تخترع أرقاماً خارج النطاقات المعطاة إلا بسبب واضح
 
-أرجع JSON فقط:
+2. مطابقة الميزانية مع التكلفة:
+   - إذا ميزانية المستخدم أقل من الحد الأدنى للتأسيس = سكور أقل من 35 + توضيح صريح كم ينقصه
+   - إذا كافية = حلل بالتفصيل
+
+3. الإيرادات: استخدم السيناريو المناسب (ضعيف/متوسط/قوي) حسب واقعية المشروع والموقع. كن متحفظاً - الأغلب يبدأ ضعيف.
+
+4. نقطة التعادل والـ ROI: احسبها من الأرقام الفعلية، واسترشد بنقطة التعادل النموذجية المعطاة.
+
+5. المنافسون: اذكر 5 منافسين معروفين في ${cityName} تحديداً.
+
+6. الأحياء: استخدم أحياء حقيقية من قائمة ${cityName} فقط.
+
+7. البدائل: 5 مشاريع حقيقية محددة بأسماء واضحة (مثل: محمصة قهوة مع توصيل، مغسلة سيارات متنقلة) - ممنوع أوصاف عامة. كل بديل مناسب لـ ${cityName}${neighborhood ? ` وحي ${neighborhood}` : ''} وميزانية قريبة من ${budgetNum.toLocaleString()} ريال.
+
+8. لا مجاملة: لو الفكرة ضعيفة أو الميزانية غير كافية، قلها بوضوح في decision و summary.
+
+أرجع JSON صحيح فقط:
 
 {
-  "score": <0-100>,
-  "decision": "<قرار 6-10 كلمات>",
+  "score": <0-100 واقعي>,
+  "decision": "<قرار صريح 6-10 كلمات>",
   "decision_type": "<positive أو negative>",
-  "summary": "<ملخص واقعي 5 أسطر>",
+  "summary": "<ملخص واقعي 5-6 أسطر: الميزانية كافية أو لا؟ كم المطلوب فعلياً؟ المخاطر؟>",
   "market_demand": "<منخفض/متوسط/عالي/عالي جداً>",
   "competition": "<منخفضة/متوسطة/عالية/عالية جداً>",
   "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
@@ -69,8 +84,8 @@ ${sectorBrief}
     "target_audience": "<الجمهور في ${cityName}>",
     "buying_patterns": "<أنماط الشراء>",
     "seasonality": "<الموسمية>",
-    "expected_market_share": "<النسبة>",
-    "growth_potential": "<النمو>",
+    "expected_market_share": "<النسبة الواقعية>",
+    "growth_potential": "<النمو على 5 سنوات>",
     "competitors": [
       {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
       {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
@@ -108,11 +123,11 @@ ${sectorBrief}
     {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"}
   ],
   "alternatives": [
-    {"idea": "<اسم مشروع حقيقي محدد مناسب لـ ${cityName}>", "score": <0-100>, "reason": "<لماذا مناسب>", "budget_needed": "<مبلغ بالريال>"},
-    {"idea": "<اسم مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
-    {"idea": "<اسم مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
-    {"idea": "<اسم مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
-    {"idea": "<اسم مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"}
+    {"idea": "<مشروع حقيقي محدد مناسب لـ ${cityName}>", "score": <0-100>, "reason": "<لماذا مناسب>", "budget_needed": "<مبلغ بالريال>"},
+    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
+    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
+    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
+    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"}
   ],
   "alternative_idea": "",
   "alternative_city": "",
@@ -136,7 +151,7 @@ ${sectorBrief}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.5,
+        temperature: 0.4,
         max_tokens: 6000,
         response_format: { type: "json_object" }
       })
