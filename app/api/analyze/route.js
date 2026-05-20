@@ -19,133 +19,110 @@ export async function POST(req) {
     }
 
     const budgetNum = parseInt(budget);
-    
-    // 🎯 استخراج اسم المدينة (إذا كان فيه "حي" نحذفه)
     const cityName = city.split(" - ")[0].trim();
+    const neighborhood = city.includes(" - حي ") ? city.split(" - حي ")[1].trim() : null;
     
-    // 🔍 كشف القطاع تلقائياً
     const sector = detectSector(idea);
-    console.log("🏪 Detected sector:", sector);
+    console.log("🏪 Sector:", sector, "| City:", cityName, "| Neighborhood:", neighborhood);
     
-    // 📊 جلب بيانات المدينة والقطاع
     const cityBrief = getCityBrief(cityName) || `معلومات المدينة: ${cityName}`;
     const sectorBrief = getSectorBrief(sector);
-    
-    console.log("🚀 Calling Groq...");
 
     const systemPrompt = `أنت "أبو عبدالله الراجحي" - خبير استثماري سعودي بخبرة 30 سنة، صارم وصادق، لا تجامل أبداً. ترجع JSON صحيح فقط بدون أي نص إضافي.
 
 ⛔ قواعدك:
-1. لا مجاملة - حتى لو الفكرة سيئة قلها مباشرة
+1. لا مجاملة - لو الفكرة سيئة قلها مباشرة
 2. ميزانية أقل من 60% من المطلوب = سكور أقل من 30
 3. فكرة غير منطقية = سكور أقل من 25
-4. استخدم البيانات المعطاة لك بدقة
-5. اقترح 5 بدائل واقعية على الأقل`;
+4. استخدم البيانات المعطاة بدقة
+5. **5 بدائل واقعية مختلفة جداً** (وليست متشابهة)
+6. اذكر المنافسين الأشهر في ${cityName} تحديداً`;
 
-    const userPrompt = `📋 المشروع المراد تحليله:
+    const userPrompt = `📋 المشروع:
 - الفكرة: ${idea}
-- المدينة: ${cityName}
+- المدينة: ${cityName}${neighborhood ? `\n- الحي: ${neighborhood}` : ''}
 - الميزانية: ${budgetNum.toLocaleString()} ريال
-- القطاع المكتشف: ${sector}
+- القطاع: ${sector}
 
 ${cityBrief}
 
 ${sectorBrief}
 
-💼 الرواتب الشهرية في السوق السعودي:
+💼 الرواتب: 
 - موظف سعودي: ${SALARIES.emp_saudi}
-- مدير سعودي: ${SALARIES.mgr_saudi}
 - خبرة عربية: ${SALARIES.exp_arab}
 - عمالة آسيوية: ${SALARIES.worker_asian}
 
 📜 التراخيص:
 - سجل تجاري: ${LICENSES.commercial_register}
 - رخصة بلدية: ${LICENSES.municipal_license}
-- تأمينات: ${LICENSES.social_insurance}
 - ضريبة قيمة مضافة: ${LICENSES.vat}
 
-⚠️ تعليمات صارمة:
-1. استخدم الأحياء الحقيقية من القائمة أعلاه (لا تخترع أحياء)
-2. استخدم المنافسين الحقيقيين من القائمة
-3. الإيجارات يجب أن تكون من النطاق المذكور لـ ${cityName}
-4. اقترح 5 بدائل واقعية متنوعة (مشاريع مختلفة كلياً، وأفكار مطوّرة من الفكرة الأصلية)
-5. كل بديل يجب أن يكون مناسب للميزانية ${budgetNum.toLocaleString()} ريال
+⚠️ تعليمات مهمة جداً:
+
+1. **المنافسون**: اذكر 5 منافسين **معروفين وموجودين في ${cityName}** تحديداً. ركّز على:
+   - السلاسل الكبيرة اللي عندها فروع في ${cityName}
+   - منافسين محليين معروفين في ${cityName}${neighborhood ? ` وخاصة في حي ${neighborhood} والأحياء المحيطة` : ''}
+   - استخدم القائمة العامة كمرجع لكن اختر الأنسب لـ ${cityName}
+
+2. **الأحياء**: استخدم الأحياء الحقيقية من القائمة أعلاه فقط${neighborhood ? `. الحي المختار: ${neighborhood}` : ''}
+
+3. **5 بدائل مختلفة كلياً**:
+   - بديل 1: تطوير من نفس الفكرة (نفس القطاع)
+   - بديل 2: مشروع مختلف كلياً في قطاع آخر
+   - بديل 3: مشروع متخصص أصغر بنفس الميزانية
+   - بديل 4: مشروع موسمي مناسب لـ ${cityName}
+   - بديل 5: مشروع إبداعي مبتكر
+   - كل بديل بميزانية مناسبة للمستخدم
+
+4. **الإيجارات**: استخدم النطاق الواقعي لـ ${cityName}
+
+5. **الموقع الأفضل**: اقترح حي حقيقي في ${cityName} مع تفسير
 
 أرجع JSON صحيح فقط:
 
 {
   "score": <0-100>,
-  "decision": "<قرار صريح 6-10 كلمات>",
+  "decision": "<قرار 6-10 كلمات>",
   "decision_type": "<positive أو negative>",
-  "summary": "<ملخص واقعي 5-6 أسطر: هل الميزانية كافية؟ هل الفكرة منطقية؟ الحد الأدنى المطلوب؟ المخاطر؟>",
+  "summary": "<ملخص 5-6 أسطر صريح>",
   "market_demand": "<منخفض/متوسط/عالي/عالي جداً>",
   "competition": "<منخفضة/متوسطة/عالية/عالية جداً>",
   "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "risk_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "market_analysis": {
-    "market_size": "<حجم السوق بالأرقام لـ ${cityName}>",
-    "target_audience": "<وصف تفصيلي للجمهور في ${cityName}>",
-    "buying_patterns": "<أنماط الشراء الفعلية>",
-    "seasonality": "<متى الذروة والتراجع مع الأسباب>",
-    "expected_market_share": "<النسبة الواقعية>",
+    "market_size": "<حجم السوق لـ ${cityName}>",
+    "target_audience": "<جمهور ${cityName}>",
+    "buying_patterns": "<أنماط الشراء>",
+    "seasonality": "<الموسمية>",
+    "expected_market_share": "<النسبة المتوقعة>",
     "growth_potential": "<النمو على 5 سنوات>",
     "competitors": [
-      {"name": "<منافس حقيقي من القائمة>", "strength": "<قوة محددة>", "weakness": "<ضعف قابل للاستغلال>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"}
+      {"name": "<منافس معروف في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"}
     ]
   },
   "financial_analysis": {
-    "setup_costs": {
-      "rent_deposit": <3 أشهر إيجار حسب الحي>,
-      "renovation": <واقعي>,
-      "equipment": <واقعي>,
-      "licenses": <سجل + رخصة + دفاع مدني>,
-      "initial_inventory": <واقعي>,
-      "marketing_launch": <واقعي>,
-      "working_capital": <3 أشهر تشغيل>,
-      "total": <مجموع>
-    },
-    "monthly_costs": {
-      "rent": <إيجار شهري حسب ${cityName}>,
-      "salaries": <رواتب واقعية>,
-      "utilities": <كهرباء وماء>,
-      "materials": <مواد>,
-      "marketing": <تسويق>,
-      "maintenance": <صيانة>,
-      "other": <أخرى>,
-      "total": <مجموع>
-    },
-    "revenue_projection": {
-      "month_1": <واقعي>,
-      "month_3": <واقعي>,
-      "month_6": <واقعي>,
-      "month_12": <واقعي>,
-      "year_2_monthly": <واقعي>,
-      "year_3_monthly": <واقعي>
-    },
-    "break_even_months": <عدد>,
-    "roi_percentage": <نسبة>,
-    "annual_profit_year1": <رقم>,
-    "annual_profit_year3": <رقم>
+    "setup_costs": {"rent_deposit": 0, "renovation": 0, "equipment": 0, "licenses": 0, "initial_inventory": 0, "marketing_launch": 0, "working_capital": 0, "total": 0},
+    "monthly_costs": {"rent": 0, "salaries": 0, "utilities": 0, "materials": 0, "marketing": 0, "maintenance": 0, "other": 0, "total": 0},
+    "revenue_projection": {"month_1": 0, "month_3": 0, "month_6": 0, "month_12": 0, "year_2_monthly": 0, "year_3_monthly": 0},
+    "break_even_months": 0,
+    "roi_percentage": 0,
+    "annual_profit_year1": 0,
+    "annual_profit_year3": 0
   },
   "swot": {
-    "strengths": ["<قوة مع شرح 1>", "<قوة 2>", "<قوة 3>", "<قوة 4>"],
+    "strengths": ["<قوة 1>", "<قوة 2>", "<قوة 3>", "<قوة 4>"],
     "weaknesses": ["<ضعف 1>", "<ضعف 2>", "<ضعف 3>"],
     "opportunities": ["<فرصة 1>", "<فرصة 2>", "<فرصة 3>"],
     "threats": ["<تهديد 1>", "<تهديد 2>", "<تهديد 3>"]
   },
-  "recommendations": [
-    "<توصية عملية 1>",
-    "<توصية 2>",
-    "<توصية 3>",
-    "<توصية 4>",
-    "<توصية 5>"
-  ],
+  "recommendations": ["<توصية 1>", "<توصية 2>", "<توصية 3>", "<توصية 4>", "<توصية 5>"],
   "kpis": [
-    {"name": "<اسم>", "target": "<قيمة محددة>", "description": "<شرح>"},
+    {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
     {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
     {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
     {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"}
@@ -157,19 +134,21 @@ ${sectorBrief}
     {"risk": "<مخاطرة 4>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"}
   ],
   "alternatives": [
-    {"idea": "<بديل 1 مناسب للميزانية والمدينة>", "score": <سكور>, "reason": "<لماذا أفضل>", "budget_needed": "<المبلغ المطلوب>"},
-    {"idea": "<بديل 2 مختلف كلياً>", "score": <سكور>, "reason": "<السبب>", "budget_needed": "<المبلغ>"},
-    {"idea": "<بديل 3 تطوير من الفكرة>", "score": <سكور>, "reason": "<السبب>", "budget_needed": "<المبلغ>"},
-    {"idea": "<بديل 4 من قطاع آخر>", "score": <سكور>, "reason": "<السبب>", "budget_needed": "<المبلغ>"},
-    {"idea": "<بديل 5 إبداعي>", "score": <سكور>, "reason": "<السبب>", "budget_needed": "<المبلغ>"}
+    {"idea": "<بديل 1: تطوير من نفس الفكرة>", "score": <0-100>, "reason": "<لماذا أفضل>", "budget_needed": "<مبلغ بالريال>"},
+    {"idea": "<بديل 2: قطاع آخر مختلف>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
+    {"idea": "<بديل 3: مشروع متخصص أصغر>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
+    {"idea": "<بديل 4: موسمي لـ ${cityName}>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
+    {"idea": "<بديل 5: إبداعي مبتكر>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"}
   ],
-  "alternative_idea": "<أفضل بديل مختصر>",
-  "alternative_city": "<مدينة بديلة أفضل أو فارغ>",
+  "alternative_idea": "<أفضل بديل>",
+  "alternative_city": "<مدينة بديلة أو فارغ>",
   "locations": {
-    "best": {"name": "<اسم حي حقيقي من القائمة في ${cityName}>", "score": <0-100>, "reason": "<شرح: ديموغرافيا، حركة، قوة شرائية>"},
-    "worst": {"name": "<اسم حي حقيقي>", "score": <0-100>, "reason": "<شرح>"}
+    "best": {"name": "<حي حقيقي في ${cityName}>", "score": <0-100>, "reason": "<شرح>"},
+    "worst": {"name": "<حي حقيقي>", "score": <0-100>, "reason": "<شرح>"}
   }
 }`;
+
+    console.log("🚀 Calling Groq...");
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -194,9 +173,7 @@ ${sectorBrief}
     if (!response.ok) {
       const errText = await response.text();
       console.error("❌ Groq Error:", errText.substring(0, 500));
-      return Response.json({ 
-        error: response.status === 413 ? "البيانات كبيرة، جاري التحسين" : "خطأ من Groq: " + response.status
-      }, { status: 500 });
+      return Response.json({ error: "خطأ من Groq: " + response.status }, { status: 500 });
     }
 
     const data = await response.json();
