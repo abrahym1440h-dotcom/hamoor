@@ -12,7 +12,7 @@ import {
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
 
-const $ = {
+const LIGHT = {
   bg:"#F2F2F7", surface:"#FFFFFF", L1:"#1C1C1E", L2:"rgba(60,60,67,0.78)",
   L3:"rgba(60,60,67,0.54)", L4:"rgba(60,60,67,0.26)",
   blue:"#007AFF", green:"#34C759", red:"#FF3B30", orange:"#FF9500", purple:"#AF52DE",
@@ -20,6 +20,18 @@ const $ = {
   F3:"rgba(120,120,128,0.12)", F4:"rgba(120,120,128,0.08)", F5:"rgba(120,120,128,0.04)",
   sep:"rgba(60,60,67,0.29)", sepL:"rgba(60,60,67,0.10)",
 };
+
+const DARK = {
+  bg:"#000000", surface:"#1C1C1E", L1:"#FFFFFF", L2:"rgba(235,235,245,0.78)",
+  L3:"rgba(235,235,245,0.54)", L4:"rgba(235,235,245,0.30)",
+  blue:"#0A84FF", green:"#32D74B", red:"#FF453A", orange:"#FF9F0A", purple:"#BF5AF2",
+  teal:"#64D2FF", indigo:"#5E5CE6", pink:"#FF375F", yellow:"#FFD60A",
+  F3:"rgba(120,120,128,0.32)", F4:"rgba(120,120,128,0.24)", F5:"rgba(120,120,128,0.16)",
+  sep:"rgba(84,84,88,0.65)", sepL:"rgba(84,84,88,0.40)",
+};
+
+let $ = LIGHT;
+
 const SH = {
   card:"0 1px 0 rgba(0,0,0,0.05),0 2px 12px rgba(0,0,0,0.05),0 4px 24px rgba(0,0,0,0.04)",
   lift:"0 2px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.08),0 16px 48px rgba(0,0,0,0.06)",
@@ -30,7 +42,7 @@ const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
   useEffect(() => {
-    function handleResize() {
+    function handleResize() 
       const w = window.innerWidth;
       setSize({ width: w, isMobile: w < 768, isTablet: w >= 768 && w < 1024, isDesktop: w >= 1024 });
     }
