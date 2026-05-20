@@ -474,3 +474,129 @@ export function getSectorBrief(sectorName) {
 - معدل الفشل: ${rates.failure}%
 - ملاحظة: ${rates.note}`.trim();
 }
+
+// ═══════════════════════════════════════════════════════════
+// 💰 البيانات المالية الواقعية لكل قطاع (من دراسات جدوى 2025-2026)
+// مصادر: ريادة، مدارج، البوصلة، آفاق الجدوى، اقتصاديات، رواد الأعمال
+// ═══════════════════════════════════════════════════════════
+
+export const SECTOR_FINANCIALS = {
+  "مقاهي": {
+    setup_total: { min: 70000, mid: 130000, max: 200000 },
+    monthly_costs: { min: 15000, mid: 24000, max: 35000 },
+    revenue: { weak: 35000, medium: 65000, strong: 100000 },
+    profit_margin: "15-25%",
+    break_even_months: "9-14 شهر",
+    note: "القهوة المختصة أعلى هامش. الموقع وجودة الباريستا عاملان حاسمان. عربة القهوة المتنقلة بديل بتكلفة 60-90 ألف."
+  },
+  "مطاعم": {
+    setup_total: { min: 150000, mid: 320000, max: 500000 },
+    monthly_costs: { min: 30000, mid: 40000, max: 55000 },
+    revenue: { weak: 55000, medium: 95000, strong: 150000 },
+    profit_margin: "10-20%",
+    break_even_months: "12-20 شهر",
+    note: "85% من المطاعم تفشل في أول 18 شهر. المطاعم الشعبية والمتخصصة الصغيرة أقل مخاطرة من الفاخرة."
+  },
+  "وجبات سريعة": {
+    setup_total: { min: 100000, mid: 145000, max: 200000 },
+    monthly_costs: { min: 15000, mid: 20000, max: 28000 },
+    revenue: { weak: 40000, medium: 55000, strong: 80000 },
+    profit_margin: "15-22%",
+    break_even_months: "8-14 شهر",
+    note: "دوران سريع للأرباح. منافسة شرسة من السلاسل العالمية. مطعم مضغوط/كبسات صغير نموذج ناجح."
+  },
+  "حلويات": {
+    setup_total: { min: 80000, mid: 160000, max: 280000 },
+    monthly_costs: { min: 18000, mid: 28000, max: 42000 },
+    revenue: { weak: 40000, medium: 75000, strong: 130000 },
+    profit_margin: "25-40%",
+    break_even_months: "10-16 شهر",
+    note: "هامش ربح ممتاز. الطلب يرتفع في المواسم والمناسبات. التميز في المنتج أساس النجاح."
+  },
+  "تجزئة": {
+    setup_total: { min: 80000, mid: 180000, max: 350000 },
+    monthly_costs: { min: 15000, mid: 28000, max: 50000 },
+    revenue: { weak: 45000, medium: 90000, strong: 170000 },
+    profit_margin: "10-20%",
+    break_even_months: "12-20 شهر",
+    note: "متأثر بالتجارة الإلكترونية. المخزون يبتلع رأس المال. التخصص في فئة محددة أفضل."
+  },
+  "أزياء": {
+    setup_total: { min: 100000, mid: 220000, max: 400000 },
+    monthly_costs: { min: 20000, mid: 35000, max: 60000 },
+    revenue: { weak: 50000, medium: 110000, strong: 200000 },
+    profit_margin: "20-35%",
+    break_even_months: "12-18 شهر",
+    note: "هامش جيد. الموضة سريعة التغير = مخاطرة مخزون. التصاميم الحصرية ميزة تنافسية."
+  },
+  "إلكترونيات": {
+    setup_total: { min: 120000, mid: 280000, max: 500000 },
+    monthly_costs: { min: 20000, mid: 35000, max: 60000 },
+    revenue: { weak: 70000, medium: 140000, strong: 280000 },
+    profit_margin: "8-15%",
+    break_even_months: "14-24 شهر",
+    note: "هامش ضعيف يحتاج حجم مبيعات كبير. منافسة قوية من نون وإكسترا وجرير. الإكسسوارات أعلى ربحاً."
+  },
+  "صالونات": {
+    setup_total: { min: 60000, mid: 200000, max: 500000 },
+    monthly_costs: { min: 15000, mid: 22000, max: 35000 },
+    revenue: { weak: 20000, medium: 35000, strong: 60000 },
+    profit_margin: "25-45%",
+    break_even_months: "10-18 شهر",
+    note: "هامش ممتاز. مهارة الكوادر والسمعة أساس النجاح. خدمات الليزر والسبا ترفع الدخل."
+  },
+  "لياقة": {
+    setup_total: { min: 150000, mid: 350000, max: 700000 },
+    monthly_costs: { min: 25000, mid: 45000, max: 80000 },
+    revenue: { weak: 40000, medium: 90000, strong: 180000 },
+    profit_margin: "20-35%",
+    break_even_months: "14-24 شهر",
+    note: "الاشتراكات الشهرية دخل ثابت. الأجهزة استثمار كبير. النوادي النسائية طلب مرتفع."
+  },
+  "تعليم": {
+    setup_total: { min: 50000, mid: 150000, max: 350000 },
+    monthly_costs: { min: 15000, mid: 30000, max: 60000 },
+    revenue: { weak: 35000, medium: 75000, strong: 150000 },
+    profit_margin: "30-50%",
+    break_even_months: "8-15 شهر",
+    note: "أعلى هامش ربح. الطلب متزايد. التدريب الأونلاين يقلل التكاليف بشكل كبير."
+  },
+  "تقنية": {
+    setup_total: { min: 30000, mid: 100000, max: 250000 },
+    monthly_costs: { min: 10000, mid: 25000, max: 50000 },
+    revenue: { weak: 30000, medium: 80000, strong: 200000 },
+    profit_margin: "35-60%",
+    break_even_months: "6-14 شهر",
+    note: "أفضل قطاع: هامش عالي، تكلفة تأسيس منخفضة، نمو سريع. التحدي الأكبر هو الكفاءات."
+  },
+  "خياطة": {
+    setup_total: { min: 40000, mid: 90000, max: 180000 },
+    monthly_costs: { min: 10000, mid: 18000, max: 30000 },
+    revenue: { weak: 25000, medium: 45000, strong: 80000 },
+    profit_margin: "30-45%",
+    break_even_months: "8-14 شهر",
+    note: "مستقر، مخاطرة منخفضة. السمعة والمهارة أساس العمل. الطلب يرتفع في المواسم."
+  }
+};
+
+// 🛠️ مساعد لبناء البيانات المالية للبرومبت
+export function getFinancialBrief(sectorName) {
+  const f = SECTOR_FINANCIALS[sectorName];
+  if (!f) return "";
+  
+  return `
+💰 الأرقام المالية الواقعية لقطاع "${sectorName}" (من دراسات جدوى سعودية 2025-2026):
+
+تكلفة التأسيس الإجمالية: ${f.setup_total.min.toLocaleString()} - ${f.setup_total.max.toLocaleString()} ريال (متوسط: ${f.setup_total.mid.toLocaleString()})
+التكاليف الشهرية: ${f.monthly_costs.min.toLocaleString()} - ${f.monthly_costs.max.toLocaleString()} ريال (متوسط: ${f.monthly_costs.mid.toLocaleString()})
+الإيرادات الشهرية المتوقعة:
+  - أداء ضعيف (بداية/موقع سيئ): ${f.revenue.weak.toLocaleString()} ريال
+  - أداء متوسط (واقعي): ${f.revenue.medium.toLocaleString()} ريال
+  - أداء قوي (موقع ممتاز/إدارة محترفة): ${f.revenue.strong.toLocaleString()} ريال
+هامش الربح الصافي: ${f.profit_margin}
+نقطة التعادل النموذجية: ${f.break_even_months}
+ملاحظة الخبراء: ${f.note}
+
+⚠️ استخدم هذه الأرقام كمرجع أساسي. عدّلها حسب المدينة (مدن كبيرة = أعلى، مدن صغيرة = أقل) وحسب الحي.`.trim();
+}
+
