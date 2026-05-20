@@ -728,22 +728,7 @@ function AnalysisScreen({result}) {
             </Section>
           </div>}
 
-                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
-                    <Sparkles size={16} color={$.purple}/>
-                    <div style={{fontSize:12,fontWeight:700,color:$.purple}}>فكرة بديلة</div>
-                  </div>
-                  <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.6}}>{result.alternative_idea}</div>
-                </div>}
-                {result.alternative_city && <div style={{background:`${$.purple}06`,borderRadius:14,padding:`${sp[4]}px`,border:`1.5px solid ${$.purple}20`}}>
-                  <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
-                    <MapPin size={16} color={$.purple}/>
-                    <div style={{fontSize:12,fontWeight:700,color:$.purple}}>مدينة بديلة</div>
-                  </div>
-                  <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.6}}>{result.alternative_city}</div>
-                </div>}
-              </div>
-            </Section>
-          </div>}
+                 
         </div>
       </div>
     </div>
