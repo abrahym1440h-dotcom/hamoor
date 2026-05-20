@@ -686,10 +686,48 @@ function AnalysisScreen({result}) {
             )}
           </div>
 
-          {(result.alternative_idea || result.alternative_city) && <div style={{marginTop:sp[5]}}>
-            <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple} subtitle="خيارات بديلة قد تكون أفضل">
-              <div style={{display:"grid",gridTemplateColumns:screen.isDesktop||screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
-                {result.alternative_idea && <div style={{background:`${$.purple}06`,borderRadius:14,padding:`${sp[4]}px`,border:`1.5px solid ${$.purple}20`}}>
+          {(result.alternatives?.length > 0 || result.alternative_idea || result.alternative_city) && <div style={{marginTop:sp[5]}}>
+            <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple} subtitle={`${result.alternatives?.length || 1} خيارات بديلة قد تكون أفضل`}>
+              {result.alternatives?.length > 0 && (
+                <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3],marginBottom:sp[4]}}>
+                  {result.alternatives.map((alt, i) => {
+                    const scoreColor = alt.score>=70?$.green : alt.score>=50?$.orange : $.red;
+                    return (
+                      <div key={i} style={{background:`${$.purple}06`,borderRadius:14,padding:`${sp[4]}px`,border:`1.5px solid ${$.purple}25`}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[3]}}>
+                          <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                            <div style={{width:28,height:28,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700}}>{i+1}</div>
+                            <div style={{fontSize:11,fontWeight:700,color:$.purple}}>بديل {i+1}</div>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                            <div style={{fontSize:11,color:$.L3}}>السكور</div>
+                            <div style={{fontSize:18,fontWeight:800,color:scoreColor}}>{alt.score}</div>
+                          </div>
+                        </div>
+                        <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.5,marginBottom:sp[2]}}>{alt.idea}</div>
+                        {alt.reason && <p style={{fontSize:13,color:$.L2,lineHeight:1.7,marginBottom:sp[3]}}>{alt.reason}</p>}
+                        {alt.budget_needed && (
+                          <div style={{display:"flex",alignItems:"center",gap:sp[2],paddingTop:sp[3],borderTop:`0.5px solid ${$.sepL}`}}>
+                            <Briefcase size={14} color={$.purple}/>
+                            <span style={{fontSize:12,color:$.L3,fontWeight:600}}>الميزانية المطلوبة:</span>
+                            <span style={{fontSize:13,fontWeight:700,color:$.L1}}>{alt.budget_needed}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {result.alternative_city && <div style={{background:`${$.blue}06`,borderRadius:14,padding:`${sp[4]}px`,border:`1.5px solid ${$.blue}20`}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
+                  <MapPin size={16} color={$.blue}/>
+                  <div style={{fontSize:12,fontWeight:700,color:$.blue}}>مدينة بديلة مقترحة</div>
+                </div>
+                <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.6}}>{result.alternative_city}</div>
+              </div>}
+            </Section>
+          </div>}
+
                   <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
                     <Sparkles size={16} color={$.purple}/>
                     <div style={{fontSize:12,fontWeight:700,color:$.purple}}>فكرة بديلة</div>
