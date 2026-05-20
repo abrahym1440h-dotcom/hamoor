@@ -92,6 +92,40 @@ async function apiCall(endpoint, body) {
 
 const fmt = n => (n||0).toLocaleString("en-US");
 
+const CITY_MARKET_SCORE = {
+  "الرياض":100,"جدة":92,"الدمام":80,"الخبر":76,"مكة المكرمة":85,
+  "المدينة المنورة":78,"الطائف":62,"تبوك":60,"أبها":58,"الباحة":48,
+  "القصيم":70,"حائل":54,"نجران":46,"جازان":64,"ينبع":52,"الجوف":44,"عرعر":42
+};
+
+const SECTOR_CITY_FIT = {
+  1:{"الرياض":90,"جدة":92,"الخبر":88,"أبها":85,"الباحة":80,"الطائف":82,def:75},
+  2:{"الرياض":88,"جدة":90,"مكة المكرمة":92,"المدينة المنورة":90,"الخبر":85,def:78},
+  3:{"الرياض":82,"جدة":84,"مكة المكرمة":86,"القصيم":80,def:74},
+  4:{"الرياض":85,"جدة":85,"مكة المكرمة":88,"تبوك":80,def:75},
+  5:{"الرياض":85,"جدة":83,"الدمام":82,def:72},
+  6:{"الرياض":88,"جدة":90,"الخبر":82,def:70},
+  7:{"الرياض":84,"جدة":82,"تبوك":78,def:68},
+  8:{"الرياض":86,"جدة":88,"أبها":78,def:74},
+  9:{"الرياض":78,"القصيم":84,"المدينة المنورة":82,def:76},
+  10:{"الرياض":90,"جدة":86,"القصيم":82,def:76},
+  11:{"الرياض":88,"الخبر":85,"تبوك":80,def:70},
+  12:{"الرياض":95,"جدة":88,"تبوك":82,def:68}
+};
+
+function cityScore(s, c) {
+  if (c === "all") return s.score;
+  const sr = 100 - (parseInt(String(s.failure_rate).replace(/\D/g,"")) || 50);
+  const m = CITY_MARKET_SCORE[c] || 55;
+  const ft = SECTOR_CITY_FIT[s.id] || {};
+  const f = ft[c] || ft.def || 70;
+  return Math.min(99, Math.max(20, Math.round(sr*0.4 + m*0.3 + f*0.3)));
+}
+
+function scoreColor(v) {
+  return v>=75 ? $.green : v>=60 ? $.orange : $.red;
+}
+
 function Spinner({sz=20, clr="#fff"}) {
   return <div style={{width:sz,height:sz,flexShrink:0,border:`2.5px solid ${clr}28`,borderTop:`2.5px solid ${clr}`,borderRadius:"50%",animation:"_spin .72s linear infinite"}}/>;
 }
@@ -213,7 +247,6 @@ const FEATURED_SECTORS = [
   {id:"fit", name:"لياقة ورياضة", Icon:Dumbbell, color:$.green, score:78, growth:"+20%"},
   {id:"sweets", name:"حلويات", Icon:Cake, color:$.pink, score:72, growth:"+18%"}
 ];
-
 function AnalyzeForm({onAnalyze, onClose}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
@@ -686,12 +719,12 @@ function AnalysisScreen({result}) {
             )}
           </div>
 
-          {(result.alternatives?.length > 0 || result.alternative_idea || result.alternative_city) && <div style={{marginTop:sp[5]}}>
+          {(result.alternatives?.length > 0 || result.alternative_city) && <div style={{marginTop:sp[5]}}>
             <Section title="بدائل مقترحة" Icon={Lightbulb} color={$.purple} subtitle={`${result.alternatives?.length || 1} خيارات بديلة قد تكون أفضل`}>
               {result.alternatives?.length > 0 && (
                 <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3],marginBottom:sp[4]}}>
                   {result.alternatives.map((alt, i) => {
-                    const scoreColor = alt.score>=70?$.green : alt.score>=50?$.orange : $.red;
+                    const aColor = alt.score>=70?$.green : alt.score>=50?$.orange : $.red;
                     return (
                       <div key={i} style={{background:`${$.purple}06`,borderRadius:14,padding:`${sp[4]}px`,border:`1.5px solid ${$.purple}25`}}>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[3]}}>
@@ -701,7 +734,7 @@ function AnalysisScreen({result}) {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
                             <div style={{fontSize:11,color:$.L3}}>السكور</div>
-                            <div style={{fontSize:18,fontWeight:800,color:scoreColor}}>{alt.score}</div>
+                            <div style={{fontSize:18,fontWeight:800,color:aColor}}>{alt.score}</div>
                           </div>
                         </div>
                         <div style={{fontSize:15,fontWeight:700,color:$.L1,lineHeight:1.5,marginBottom:sp[2]}}>{alt.idea}</div>
@@ -727,14 +760,11 @@ function AnalysisScreen({result}) {
               </div>}
             </Section>
           </div>}
-
-                 
         </div>
       </div>
     </div>
   );
 }
-
 function SavedAnalysesScreen({onViewAnalysis}) {
   const screen = useScreenSize();
   const [analyses, setAnalyses] = useState([]);
@@ -871,7 +901,7 @@ const SECTORS_DATA = [
     failure_reasons:["إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية","موقع ضعيف أو في حي ميت بدون حركة كافية","ضعف التمييز - كل المقاهي صارت متشابهة","تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء","عدم الاستمرارية في الجودة بسبب دوران الباريستا"],
     competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد","حلواني"],
     sub_ideas:["كوفي متخصص في القهوة الكورية","عربة قهوة متنقلة","كوفي بطابع تراثي سعودي"],
-    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفاً","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبّع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
+    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفا","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبّع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
     last_updated:"يناير 2026"
   },
   {
@@ -1030,12 +1060,11 @@ function SectorsScreen() {
     if (cat !== "all" && s.category !== cat) return false;
     if (q && !s.name.includes(q)) return false;
     return true;
-  });
+  }).map(s => ({...s, dynScore: cityScore(s, cityFilter)})).sort((a,b) => b.dynScore - a.dynScore);
 
-  const sc = s => s.score>=75?$.green : s.score>=60?$.orange : $.red;
   const containerStyle = screen.isDesktop ? {maxWidth:1200, margin:"0 auto"} : screen.isTablet ? {maxWidth:900, margin:"0 auto"} : {};
-
   const cityNote = active && cityFilter !== "all" ? active.city_notes?.[cityFilter] : null;
+  const activeDynScore = active ? cityScore(active, cityFilter) : 0;
 
   return (
     <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
@@ -1057,7 +1086,7 @@ function SectorsScreen() {
         <div style={{marginBottom:sp[5],background:$.surface,borderRadius:12,padding:sp[3],boxShadow:SH.card}}>
           <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
             <MapPin size={14} color={$.blue}/>
-            <span style={{fontSize:12,fontWeight:700,color:$.L2}}>فلترة حسب المدينة (لرؤية ملاحظات مخصصة)</span>
+            <span style={{fontSize:12,fontWeight:700,color:$.L2}}>اختر المدينة - الأرقام تتغير حسب كل مدينة</span>
           </div>
           <div style={{position:"relative"}}>
             <select value={cityFilter} onChange={e=>setCityFilter(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer",fontSize:13}}>
@@ -1079,9 +1108,9 @@ function SectorsScreen() {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
                       <span style={{fontSize:16,fontWeight:700,color:$.L1}}>{s.name}</span>
-                      <span style={{fontSize:20,fontWeight:800,color:sc(s)}}>{s.score}<span style={{fontSize:12,fontWeight:600,color:$.L4}}>/100</span></span>
+                      <span style={{fontSize:20,fontWeight:800,color:scoreColor(s.dynScore)}}>{s.dynScore}<span style={{fontSize:12,fontWeight:600,color:$.L4}}>/100</span></span>
                     </div>
-                    <Bar pct={s.score} color={sc(s)}/>
+                    <Bar pct={s.dynScore} color={scoreColor(s.dynScore)}/>
                     <div style={{display:"flex",gap:sp[2],marginTop:sp[3],flexWrap:"wrap"}}>
                       <Chip text={"نمو "+s.growth} color={$.green} bg={`${$.green}15`}/>
                       <Chip text={"فشل "+s.failure_rate} color={$.red} bg={`${$.red}15`}/>
@@ -1109,9 +1138,9 @@ function SectorsScreen() {
                 <IconBadge Icon={active.Icon} color={active.color} size={52}/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
-                  <div style={{fontSize:11,color:$.L4,marginTop:2}}>آخر تحديث: {active.last_updated}</div>
+                  <div style={{fontSize:11,color:$.L4,marginTop:2}}>{cityFilter==="all"?"تقييم عام":"تقييم خاص بـ "+cityFilter}</div>
                 </div>
-                <div style={{fontSize:32,fontWeight:800,color:active.color}}>{active.score}</div>
+                <div style={{fontSize:32,fontWeight:800,color:scoreColor(activeDynScore)}}>{activeDynScore}</div>
               </div>
 
               {cityNote && (
@@ -1152,7 +1181,7 @@ function SectorsScreen() {
                 </Card>
               </div>
 
-              <Section title="الجمهور المستهدف" Icon={Users} color={$.blue}>
+              <Section title="الjمهور المستهدف" Icon={Users} color={$.blue}>
                 <p style={{fontSize:14,color:$.L2,lineHeight:1.8}}>{active.audience}</p>
               </Section>
 
@@ -1386,6 +1415,3 @@ export default function HamourApp() {
     </>
   );
 }
-const _CMS={"الرياض":100,"جدة":92,"الدمام":80,"الخبر":76,"مكة المكرمة":85,"المدينة المنورة":78,"الطائف":62,"تبوك":60,"أبها":58,"الباحة":48,"القصيم":70,"حائل":54,"نجران":46,"جازان":64,"ينبع":52,"الجوف":44,"عرعر":42};
-const _SCF={1:{"الرياض":90,"جدة":92,"الخبر":88,"أبها":85,"الباحة":80,"الطائف":82,def:75},2:{"الرياض":88,"جدة":90,"مكة المكرمة":92,"المدينة المنورة":90,"الخبر":85,def:78},3:{"الرياض":82,"جدة":84,"مكة المكرمة":86,"القصيم":80,def:74},4:{"الرياض":85,"جدة":85,"مكة المكرمة":88,"تبوك":80,def:75},5:{"الرياض":85,"جدة":83,"الدمام":82,def:72},6:{"الرياض":88,"جدة":90,"الخبر":82,def:70},7:{"الرياض":84,"جدة":82,"تبوك":78,def:68},8:{"الرياض":86,"جدة":88,"أبها":78,def:74},9:{"الرياض":78,"القصيم":84,"المدينة المنورة":82,def:76},10:{"الرياض":90,"جدة":86,"القصيم":82,def:76},11:{"الرياض":88,"الخبر":85,"تبوك":80,def:70},12:{"الرياض":95,"جدة":88,"تبوك":82,def:68}};
-function cityScore(s,c){if(c==="all")return s.score;const sr=100-(parseInt(String(s.failure_rate).replace(/\D/g,""))||50);const m=_CMS[c]||55;const ft=_SCF[s.id]||{};const f=ft[c]||ft.def||70;return Math.min(99,Math.max(20,Math.round(sr*0.4+m*0.3+f*0.3)));}
