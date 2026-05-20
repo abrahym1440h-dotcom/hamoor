@@ -600,3 +600,67 @@ export function getFinancialBrief(sectorName) {
 ⚠️ استخدم هذه الأرقام كمرجع أساسي. عدّلها حسب المدينة (مدن كبيرة = أعلى، مدن صغيرة = أقل) وحسب الحي.`.trim();
 }
 
+// ═══════════════════════════════════════════════════════════
+// 📊 معادلة تقييم القطاعات لكل مدينة (ثابتة ومحسوبة)
+// ═══════════════════════════════════════════════════════════
+
+// تصنيف حجم سوق كل مدينة (0-100)
+const CITY_MARKET_SCORE = {
+  "الرياض": 100, "جدة": 92, "الدمام": 80, "الخبر": 76,
+  "مكة المكرمة": 85, "المدينة المنورة": 78, "الطائف": 62,
+  "تبوك": 60, "أبها": 58, "الباحة": 48, "القصيم": 70,
+  "حائل": 54, "نجران": 46, "جازان": 64, "ينبع": 52,
+  "الجوف": 44, "عرعر": 42
+};
+
+// تطابق كل قطاع مع طبيعة كل مدينة (0-100)
+// يعكس: هل المدينة مناسبة لهذا النوع من المشاريع؟
+const SECTOR_CITY_FIT = {
+  "مقاهي": { "الرياض": 90, "جدة": 92, "الخبر": 88, "أبها": 85, "الباحة": 80, "الطائف": 82, "default": 75 },
+  "مطاعم": { "الرياض": 88, "جدة": 90, "مكة المكرمة": 92, "المدينة المنورة": 90, "الخبر": 85, "default": 78 },
+  "وجبات سريعة": { "الرياض": 85, "جدة": 85, "مكة المكرمة": 88, "الدمام": 82, "default": 75 },
+  "حلويات": { "الرياض": 82, "جدة": 84, "مكة المكرمة": 86, "المدينة المنورة": 85, "القصيم": 80, "default": 74 },
+  "تجزئة": { "الرياض": 85, "جدة": 83, "الدمام": 82, "القصيم": 78, "default": 72 },
+  "أزياء": { "الرياض": 88, "جدة": 90, "الخبر": 82, "default": 70 },
+  "إلكترونيات": { "الرياض": 84, "جدة": 82, "الدمام": 80, "default": 68 },
+  "صالونات": { "الرياض": 86, "جدة": 88, "الخبر": 84, "أبها": 78, "default": 74 },
+  "لياقة": { "الرياض": 88, "جدة": 86, "الخبر": 85, "الدمام": 82, "default": 70 },
+  "تعليم": { "الرياض": 90, "جدة": 86, "القصيم": 82, "المدينة المنورة": 80, "default": 76 },
+  "تقنية": { "الرياض": 95, "جدة": 88, "الخبر": 84, "تبوك": 82, "default": 68 },
+  "خياطة": { "الرياض": 78, "جدة": 78, "مكة المكرمة": 84, "المدينة المنورة": 82, "default": 76 }
+};
+
+// 🧮 حساب سكور القطاع في مدينة معينة (ثابت - نفس النتيجة دائماً)
+export function getSectorScore(sectorName, cityName) {
+  const successRate = (SUCCESS_RATES[sectorName]?.success || 50);
+  const marketScore = CITY_MARKET_SCORE[cityName] || 55;
+  const fitTable = SECTOR_CITY_FIT[sectorName] || {};
+  const fitScore = fitTable[cityName] || fitTable.default || 70;
+
+  // المعادلة: نجاح 40% + سوق 30% + تطابق 30%
+  const score = Math.round(
+    (successRate * 0.4) +
+    (marketScore * 0.3) +
+    (fitScore * 0.3)
+  );
+
+  return Math.min(99, Math.max(20, score));
+}
+
+// 🏷️ تصنيف السكور لمستوى وصفي
+export function getSectorLevel(score) {
+  if (score >= 80) return { label: "فرصة ممتازة", color: "green" };
+  if (score >= 65) return { label: "فرصة جيدة", color: "blue" };
+  if (score >= 50) return { label: "فرصة متوسطة", color: "orange" };
+  return { label: "فرصة ضعيفة", color: "red" };
+}
+
+// 📋 بناء ملخص تقييم كل القطاعات لمدينة (للعرض أو للبرومبت)
+export function getAllSectorsForCity(cityName) {
+  const sectors = Object.keys(SUCCESS_RATES);
+  return sectors.map(s => {
+    const score = getSectorScore(s, cityName);
+    const level = getSectorLevel(score);
+    return { sector: s, score, level: level.label, color: level.color };
+  }).sort((a, b) => b.score - a.score);
+}
