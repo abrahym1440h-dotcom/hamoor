@@ -1,13 +1,15 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
-  ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun
+  ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
+  LogOut, Mail, Lock, User
 } from "lucide-react";
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
@@ -53,35 +55,7 @@ function useScreenSize() {
   return size;
 }
 
-const STORAGE_KEY = "hamour_analyses";
 const THEME_KEY = "hamour_theme";
-
-function saveAnalysis(analysis) {
-  if (typeof window === "undefined") return;
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const newAnalysis = { ...analysis, id: Date.now().toString(), savedAt: new Date().toISOString() };
-    saved.unshift(newAnalysis);
-    if (saved.length > 50) saved.splice(50);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    return newAnalysis;
-  } catch(e) { return null; }
-}
-
-function getSavedAnalyses() {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
-  catch(e) { return []; }
-}
-
-function deleteAnalysis(id) {
-  if (typeof window === "undefined") return;
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const filtered = saved.filter(a => a.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch(e) {}
-}
 
 function formatDate(isoString) {
   if (!isoString) return "";
@@ -260,7 +234,70 @@ const FEATURED_SECTORS = [
   {id:"fit", name:"لياقة ورياضة", Icon:Dumbbell, color:$.green, score:78, growth:"+20%"},
   {id:"sweets", name:"حلويات", Icon:Cake, color:$.pink, score:72, growth:"+18%"}
 ];
-function AnalyzeForm({onAnalyze, onClose}) {
+function AuthScreen({onSuccess}) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const canGo = email.trim() && password.trim() && !busy;
+
+  async function go() {
+    if (!canGo) return;
+    setBusy(true); setErr(null);
+    try {
+      if (mode === "signup") {
+        await signUp(email.trim(), password);
+      } else {
+        await signIn(email.trim(), password);
+      }
+      const user = await getCurrentUser();
+      if (user) onSuccess(user);
+      else setErr("تعذّر تسجيل الدخول، حاول مرة أخرى");
+    } catch(e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{minHeight:"100vh",background:$.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[6]}px ${sp[5]}px`}}>
+      <div style={{width:"100%",maxWidth:400}}>
+        <div style={{textAlign:"center",marginBottom:sp[8]}}>
+          <div style={{width:72,height:72,borderRadius:22,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[4],boxShadow:SH.blue}}>
+            <BarChart2 size={34} color="#fff" strokeWidth={2.2}/>
+          </div>
+          <h1 style={{fontSize:32,fontWeight:800,color:$.L1,letterSpacing:"-1px",marginBottom:6}}>هامور</h1>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.6}}>دراسة جدوى ذكية للسوق السعودي</p>
+        </div>
+
+        <Card style={{padding:`${sp[6]}px ${sp[5]}px`}}>
+          <div style={{display:"flex",background:$.F3,borderRadius:12,padding:3,marginBottom:sp[5]}}>
+            <button onClick={()=>{setMode("login");setErr(null);}} style={{flex:1,padding:`${sp[2]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:mode==="login"?$.surface:"transparent",color:mode==="login"?$.blue:$.L3,fontSize:14,fontWeight:mode==="login"?700:500,boxShadow:mode==="login"?SH.card:"none"}}>تسجيل الدخول</button>
+            <button onClick={()=>{setMode("signup");setErr(null);}} style={{flex:1,padding:`${sp[2]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:mode==="signup"?$.surface:"transparent",color:mode==="signup"?$.blue:$.L3,fontSize:14,fontWeight:mode==="signup"?700:500,boxShadow:mode==="signup"?SH.card:"none"}}>حساب جديد</button>
+          </div>
+
+          <FormField label="البريد الإلكتروني" icon={<Mail size={14} color={$.L4}/>}>
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="example@email.com" inputMode="email" autoCapitalize="none" style={{...iStyle(),direction:"ltr",textAlign:"left"}}/>
+          </FormField>
+          <FormField label="كلمة المرور" icon={<Lock size={14} color={$.L4}/>}>
+            <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" style={{...iStyle(),direction:"ltr",textAlign:"left"}}/>
+          </FormField>
+
+          {mode==="signup" && <p style={{fontSize:11,color:$.L4,marginTop:-sp[2],marginBottom:sp[3],lineHeight:1.5}}>استخدم 6 أحرف على الأقل لكلمة المرور</p>}
+
+          {err && <div style={{marginBottom:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+
+          <button onClick={go} disabled={!canGo} style={{width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+            {busy?<><Spinner sz={17}/>لحظة…</>:<>{mode==="signup"?"إنشاء الحساب":"دخول"}</>}
+          </button>
+        </Card>
+
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[5],lineHeight:1.6}}>تحليلاتك تُحفظ في حسابك وتظهر على أي جهاز تسجّل دخوله</p>
+      </div>
+    </div>
+  );
+}
+
+function AnalyzeForm({onAnalyze, onClose, user}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
   const [city,setCity]=useState("الرياض");
@@ -285,8 +322,11 @@ function AnalyzeForm({onAnalyze, onClose}) {
       const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
       const r = await apiCall("analyze", { idea:fullIdea, city:fullLocation, budget:cleanBudget });
       const analysis = {...r, idea:fullIdea, city:fullLocation, budget:cleanBudget};
-      const saved = saveAnalysis(analysis);
-      onAnalyze(saved || analysis);
+      let saved = analysis;
+      try {
+        if (user) saved = await saveAnalysisCloud(analysis, user.id);
+      } catch(e) {}
+      onAnalyze(saved);
       if (onClose) onClose();
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
@@ -332,15 +372,12 @@ function AnalyzeForm({onAnalyze, onClose}) {
   );
 }
 
-function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors, onGoLearning}) {
+function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors, onGoLearning, user, analyses}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
-  const [saved, setSaved] = useState([]);
 
-  useEffect(() => { setSaved(getSavedAnalyses()); }, [lastResult]);
-
-  const totalAnalyses = saved.length;
-  const positiveCount = saved.filter(a => a.decision_type === "positive").length;
+  const totalAnalyses = analyses.length;
+  const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
   const successRate = totalAnalyses > 0 ? Math.round((positiveCount / totalAnalyses) * 100) : 0;
   const featuredArticles = ARTICLES.slice(0, 3);
 
@@ -413,17 +450,17 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
               </Card>
               <Card style={{padding:sp[4]}}>
                 <IconBadge Icon={Clock} color={$.blue} size={36}/>
-                <div style={{fontSize:13,fontWeight:800,color:$.L1,marginTop:sp[2],lineHeight:1.3}}>{saved[0] ? formatDate(saved[0].savedAt) : "-"}</div>
+                <div style={{fontSize:13,fontWeight:800,color:$.L1,marginTop:sp[2],lineHeight:1.3}}>{analyses[0] ? formatDate(analyses[0].savedAt) : "-"}</div>
                 <div style={{fontSize:11,color:$.L3,marginTop:2,fontWeight:600}}>آخر تحليل</div>
               </Card>
             </div>
           )}
 
-          {saved.length > 0 && (
+          {analyses.length > 0 && (
             <div style={{marginBottom:sp[6]}}>
               <SectionLabel action={<button onClick={onViewSaved} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:600,color:$.blue,fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}><span>عرض الكل</span><ChevronRight size={14}/></button>}>آخر تحليلاتك</SectionLabel>
               <div style={{display:"flex",gap:sp[3],overflowX:"auto",paddingBottom:sp[2]}}>
-                {saved.slice(0,5).map(a => {
+                {analyses.slice(0,5).map(a => {
                   const pos = a.decision_type === "positive";
                   const color = pos ? $.green : $.red;
                   return (
@@ -488,12 +525,11 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
       </div>
 
       <Sheet open={showForm} onClose={()=>setShowForm(false)}>
-        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)}/>
+        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user}/>
       </Sheet>
     </div>
   );
 }
-
 const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات"];
 
 function AnalysisScreen({result}) {
@@ -778,24 +814,20 @@ function AnalysisScreen({result}) {
     </div>
   );
 }
-function SavedAnalysesScreen({onViewAnalysis}) {
+
+function SavedAnalysesScreen({onViewAnalysis, analyses, onRefresh}) {
   const screen = useScreenSize();
-  const [analyses, setAnalyses] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => { setAnalyses(getSavedAnalyses()); }, []);
-
-  function handleDelete(id) {
-    deleteAnalysis(id);
-    setAnalyses(getSavedAnalyses());
+  async function handleDelete(id) {
+    setBusy(true);
+    try {
+      await deleteAnalysisCloud(id);
+      await onRefresh();
+    } catch(e) {}
+    setBusy(false);
     setConfirmDelete(null);
-  }
-
-  function handleClearAll() {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
-      setAnalyses([]);
-    }
   }
 
   const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
@@ -812,7 +844,7 @@ function SavedAnalysesScreen({onViewAnalysis}) {
               <Archive size={36} color={$.purple} strokeWidth={1.5}/>
             </div>
             <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>لا توجد تحليلات بعد</h3>
-            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320}}>عند تحليل أي مشروع، سيتم حفظه تلقائياً هنا</p>
+            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320}}>عند تحليل أي مشروع، سيتم حفظه تلقائياً في حسابك</p>
           </div>
         </div>
       </div>
@@ -823,7 +855,7 @@ function SavedAnalysesScreen({onViewAnalysis}) {
     <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
       <div style={containerStyle}>
         <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:4}}>تحليلاتي</h1>
-        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{analyses.length} تحليلات محفوظة</p>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{analyses.length} تحليلات محفوظة في حسابك</p>
         
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[3],marginBottom:sp[5]}}>
           <Card style={{padding:sp[4]}}>
@@ -875,8 +907,6 @@ function SavedAnalysesScreen({onViewAnalysis}) {
           })}
         </div>
 
-        <button onClick={handleClearAll} style={{marginTop:sp[6],width:"100%",background:"transparent",color:$.L4,border:`1.5px dashed ${$.L4}`,borderRadius:12,padding:sp[3],fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>حذف كل التحليلات</button>
-
         <Sheet open={!!confirmDelete} onClose={()=>setConfirmDelete(null)}>
           <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
             <div style={{width:64,height:64,borderRadius:20,background:`${$.red}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
@@ -886,7 +916,7 @@ function SavedAnalysesScreen({onViewAnalysis}) {
             <p style={{fontSize:14,color:$.L3,marginBottom:sp[6]}}>سيتم حذف هذا التحليل نهائياً ولا يمكن استرجاعه</p>
             <div style={{display:"flex",gap:sp[3]}}>
               <button onClick={()=>setConfirmDelete(null)} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
-              <button onClick={()=>handleDelete(confirmDelete)} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>حذف</button>
+              <button onClick={()=>handleDelete(confirmDelete)} disabled={busy} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{busy?<Spinner sz={15}/>:"حذف"}</button>
             </div>
           </div>
         </Sheet>
@@ -894,7 +924,6 @@ function SavedAnalysesScreen({onViewAnalysis}) {
     </div>
   );
 }
-
 const CATEGORIES = [
   {id:"all", name:"الكل", color:$.blue},
   {id:"food", name:"أطعمة", color:$.orange},
@@ -914,7 +943,7 @@ const SECTORS_DATA = [
     failure_reasons:["إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية","موقع ضعيف أو في حي ميت بدون حركة كافية","ضعف التمييز - كل المقاهي صارت متشابهة","تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء","عدم الاستمرارية في الجودة بسبب دوران الباريستا"],
     competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد","حلواني"],
     sub_ideas:["كوفي متخصص في القهوة الكورية","عربة قهوة متنقلة","كوفي بطابع تراثي سعودي"],
-    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفاً","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبّع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
+    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفاً","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
     last_updated:"يناير 2026"
   },
   {
@@ -924,7 +953,7 @@ const SECTORS_DATA = [
     audience:"عائلات، عمال، موظفون، شباب في الخروجات الأسبوعية",
     top_cities:["الرياض","جدة","الدمام","الخبر","مكة المكرمة"],
     success_tips:["تخصص واضح - مطعم لمأكولات محددة أفضل من قائمة طويلة","اتساق في الجودة - الزبون يجي عشان طعم معين","خدمة توصيل قوية عبر كل المنصات","تسعير منافس وعروض موسمية","موقع في مجمعات تجارية أو شوارع رئيسية مزدحمة","نظافة المطبخ والخدمة - أهم من أي شي ثاني"],
-    failure_reasons:["قائمة طعام كبيرة جداً تسبب هدر في المواد","ضعف الإدارة المالية والمخزون","منافسة شرسة من السلاسل الكبيرة (البيك، كودو، هرفي)","موسمية صعبة في رمضان والإجازات","صعوبة إيجاد طباخين ماهرين والاحتفاظ بهم"],
+    failure_reasons:["قائمة طعام كبيرة جدا تسبب هدر في المواد","ضعف الإدارة المالية والمخزون","منافسة شرسة من السلاسل الكبيرة (البيك، كودو، هرفي)","موسمية صعبة في رمضان والإجازات","صعوبة إيجاد طباخين ماهرين والاحتفاظ بهم"],
     competitors:["البيك","كودو","هرفي","ماكدونالدز","ماجستيك","الطازج","البرج"],
     sub_ideas:["مطعم متخصص في الكبسة","مطعم آسيوي شعبي","فطور صباحي راقي"],
     city_notes:{"الباحة":"المطاعم العائلية والشعبية الأنجح - الزبائن يحبون الأكل التراثي","مكة المكرمة":"موسم الحج والعمرة يضاعف الطلب - استعد للذروة","المدينة المنورة":"السياحة الدينية تخلق طلب مستمر للأكل العائلي","الطائف":"المصيف يفتح فرصة موسمية ممتازة"},
@@ -979,7 +1008,7 @@ const SECTORS_DATA = [
     failure_reasons:["تشابه التصاميم مع المنافسين","تسعير ضعيف لا يغطي التكاليف","موقع غير ملائم للجمهور المستهدف","ضعف التسويق الرقمي","عدم متابعة الموضة الحالية"],
     competitors:["مزون","نهى","أنوار","حلا الترك","نسك","عبايات الرياض"],
     sub_ideas:["عبايات شبابية عصرية","فساتين سهرة مستوردة","عبايات صلاة فاخرة"],
-    city_notes:{"الباحة":"الأعراس الموسمية والسياحة تخلق طلب جيد","القصيم":"السوق المحافظ يفضّل العبايات التقليدية والمستورة"},
+    city_notes:{"الباحة":"الأعراس الموسمية والسياحة تخلق طلب جيد","القصيم":"السوق المحافظ يفضل العبايات التقليدية والمستورة"},
     last_updated:"يناير 2026"
   },
   {
@@ -1368,7 +1397,7 @@ const NAV = [
 
 function BottomNav({tab,setTab,dark,toggleDark}) {
   return (
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:dark?"rgba(28,28,30,0.92)":"rgba(246,246,248,0.88)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderTop:`0.5px solid ${$.sepL}`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:dark?"rgba(23,32,51,0.94)":"rgba(246,246,248,0.88)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderTop:`0.5px solid ${$.sepL}`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
       {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={20} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:9,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
       <button onClick={toggleDark} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}>
         <div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:"transparent"}}>{dark?<Sun size={20} color={$.yellow} strokeWidth={1.8}/>:<Moon size={20} color={$.L4} strokeWidth={1.8}/>}</div>
@@ -1378,14 +1407,14 @@ function BottomNav({tab,setTab,dark,toggleDark}) {
   );
 }
 
-function SideNav({tab,setTab,dark,toggleDark}) {
+function SideNav({tab,setTab,dark,toggleDark,user,onLogout}) {
   return (
     <nav style={{position:"fixed",top:0,right:0,bottom:0,width:240,zIndex:999,display:"flex",flexDirection:"column",background:$.surface,borderLeft:`0.5px solid ${$.sepL}`,padding:`${sp[6]}px ${sp[4]}px`}}>
       <div style={{padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[6]}}>
         <h2 style={{fontSize:24,fontWeight:800,color:$.blue}}>هامور</h2>
         <p style={{fontSize:11,color:$.L4,marginTop:2}}>دراسة جدوى ذكية</p>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:sp[1]}}>
+      <div style={{display:"flex",flexDirection:"column",gap:sp[1],flex:1}}>
         {NAV.map(({id,label,Icon})=>{
           const on=tab===id;
           return (
@@ -1400,7 +1429,35 @@ function SideNav({tab,setTab,dark,toggleDark}) {
           <span style={{fontSize:14,fontWeight:500,color:$.L2}}>{dark?"الوضع النهاري":"الوضع الليلي"}</span>
         </button>
       </div>
+      <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[3]}}>
+        {user && <div style={{display:"flex",alignItems:"center",gap:sp[2],padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[1]}}>
+          <div style={{width:32,height:32,borderRadius:"50%",background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><User size={16} color={$.blue}/></div>
+          <span style={{fontSize:11,color:$.L3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</span>
+        </div>}
+        <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:sp[3],background:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit",width:"100%"}}>
+          <LogOut size={20} color={$.red} strokeWidth={1.8}/>
+          <span style={{fontSize:14,fontWeight:500,color:$.red}}>تسجيل الخروج</span>
+        </button>
+      </div>
     </nav>
+  );
+}
+
+function ProfileScreen({user, onLogout, analyses}) {
+  const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
+  return (
+    <Card style={{marginTop:sp[5],overflow:"hidden"}}>
+      <div style={{padding:`${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3],borderBottom:`0.5px solid ${$.sepL}`}}>
+        <div style={{width:48,height:48,borderRadius:"50%",background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><User size={24} color={$.blue}/></div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,color:$.L3,marginBottom:2}}>مسجّل دخول باسم</div>
+          <div style={{fontSize:14,fontWeight:700,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",direction:"ltr",textAlign:"right"}}>{user?.email}</div>
+        </div>
+      </div>
+      <button onClick={onLogout} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],background:"transparent",border:"none",cursor:"pointer",padding:`${sp[4]}px`,fontFamily:"inherit",fontSize:14,fontWeight:600,color:$.red}}>
+        <LogOut size={16}/><span>تسجيل الخروج</span>
+      </button>
+    </Card>
   );
 }
 
@@ -1409,14 +1466,40 @@ export default function HamourApp() {
   const [tab,setTab]=useState("home");
   const [result,setResult]=useState(null);
   const [dark,setDark]=useState(false);
-  const [ready,setReady]=useState(false);
+  const [user,setUser]=useState(null);
+  const [analyses,setAnalyses]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  const refreshAnalyses = useCallback(async (u) => {
+    const target = u || user;
+    if (!target) { setAnalyses([]); return; }
+    try {
+      const data = await getAnalysesCloud(target.id);
+      setAnalyses(data);
+    } catch(e) { setAnalyses([]); }
+  }, [user]);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(THEME_KEY);
       if (saved === "dark") { $ = DARK; setDark(true); }
     } catch(e) {}
-    setReady(true);
+
+    let mounted = true;
+    getCurrentUser().then(async (u) => {
+      if (!mounted) return;
+      setUser(u);
+      if (u) await refreshAnalyses(u);
+      setLoading(false);
+    }).catch(() => { if (mounted) setLoading(false); });
+
+    const sub = onAuthChange((u) => {
+      setUser(u);
+      if (u) refreshAnalyses(u);
+      else setAnalyses([]);
+    });
+
+    return () => { mounted = false; if (sub) sub.unsubscribe(); };
   }, []);
 
   function toggleDark() {
@@ -1425,11 +1508,54 @@ export default function HamourApp() {
     $ = next ? DARK : LIGHT;
     try { localStorage.setItem(THEME_KEY, next ? "dark" : "light"); } catch(e) {}
   }
-  
-  const handleAnalyze=useCallback((data)=>{setResult(data);setTab("analysis");},[]);
+
+  async function handleLogout() {
+    await signOut();
+    setUser(null);
+    setAnalyses([]);
+    setResult(null);
+    setTab("home");
+  }
+
+  async function handleAuthSuccess(u) {
+    setUser(u);
+    await refreshAnalyses(u);
+  }
+
+  const handleAnalyze=useCallback(async (data)=>{
+    setResult(data);
+    setTab("analysis");
+    await refreshAnalyses();
+  },[refreshAnalyses]);
+
   const handleViewSaved=useCallback((analysis)=>{setResult(analysis);setTab("analysis");},[]);
 
   const useSideNav = screen.isDesktop;
+
+  if (loading) {
+    return (
+      <div style={{minHeight:"100vh",background:$.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Spinner sz={32} clr={$.blue}/>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <style>{`
+          *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+          html,body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;direction:rtl;background:${$.bg};color:${$.L1};-webkit-font-smoothing:antialiased;}
+          button,input,select,textarea{font-family:inherit;}
+          *{-webkit-tap-highlight-color:transparent;}
+          @keyframes _spin{to{transform:rotate(360deg);}}
+        `}</style>
+        <div key={dark?"d":"l"}>
+          <AuthScreen onSuccess={handleAuthSuccess}/>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -1443,12 +1569,17 @@ export default function HamourApp() {
         @keyframes _spin{to{transform:rotate(360deg);}}
       `}</style>
       <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,position:"relative",paddingBottom:useSideNav?0:90,marginRight:useSideNav?240:0}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={handleViewSaved} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")}/>}
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={handleViewSaved} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} user={user} analyses={analyses}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
-        {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewSaved}/>}
+        {tab==="saved" && (
+          <div>
+            <SavedAnalysesScreen onViewAnalysis={handleViewSaved} analyses={analyses} onRefresh={refreshAnalyses}/>
+            {!useSideNav && <div style={{padding:`0 ${sp[5]}px`}}><div style={{maxWidth:1100,margin:"0 auto"}}><ProfileScreen user={user} onLogout={handleLogout} analyses={analyses}/></div></div>}
+          </div>
+        )}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen/>}
-        {useSideNav ? <SideNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark}/> : <BottomNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark}/>}
+        {useSideNav ? <SideNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark} user={user} onLogout={handleLogout}/> : <BottomNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark}/>}
       </div>
     </>
   );
