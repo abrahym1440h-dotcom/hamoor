@@ -9,8 +9,8 @@ export const metadata = {
     statusBarStyle: "black-translucent"
   },
   icons: {
-    icon: "/IMG_0090.png",
-    apple: "/IMG_0090.png"
+    icon: "/IMG_0090.jpeg",
+    apple: "/IMG_0090.jpeg"
   }
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#0E1726" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="HAMOUR" />
-        <link rel="apple-touch-icon" href="/IMG_0090.png" />
+        <link rel="apple-touch-icon" href="/IMG_0090.jpeg" />
       </head>
       <body style={{ margin: 0, padding: 0 }}>{children}</body>
     </html>
