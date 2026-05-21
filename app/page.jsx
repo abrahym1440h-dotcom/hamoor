@@ -22,12 +22,12 @@ const LIGHT = {
 };
 
 const DARK = {
-  bg:"#000000", surface:"#1C1C1E", L1:"#FFFFFF", L2:"rgba(235,235,245,0.78)",
-  L3:"rgba(235,235,245,0.54)", L4:"rgba(235,235,245,0.30)",
-  blue:"#0A84FF", green:"#32D74B", red:"#FF453A", orange:"#FF9F0A", purple:"#BF5AF2",
-  teal:"#64D2FF", indigo:"#5E5CE6", pink:"#FF375F", yellow:"#FFD60A",
-  F3:"rgba(120,120,128,0.32)", F4:"rgba(120,120,128,0.24)", F5:"rgba(120,120,128,0.16)",
-  sep:"rgba(84,84,88,0.65)", sepL:"rgba(84,84,88,0.40)",
+  bg:"#0E1726", surface:"#172033", L1:"#F4F6FB", L2:"rgba(228,233,242,0.80)",
+  L3:"rgba(228,233,242,0.55)", L4:"rgba(228,233,242,0.32)",
+  blue:"#3B6FD4", green:"#32D74B", red:"#FF5A4E", orange:"#FF9F0A", purple:"#A98AE6",
+  teal:"#5BC8E8", indigo:"#6E7BE0", pink:"#E8628A", yellow:"#FFD60A",
+  F3:"rgba(120,135,170,0.26)", F4:"rgba(120,135,170,0.18)", F5:"rgba(120,135,170,0.10)",
+  sep:"rgba(120,135,170,0.45)", sepL:"rgba(120,135,170,0.22)",
 };
 
 let $ = LIGHT;
