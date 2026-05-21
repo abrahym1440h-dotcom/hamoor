@@ -7,7 +7,7 @@ import {
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
-  ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info
+  ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun
 } from "lucide-react";
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
@@ -42,7 +42,7 @@ const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
   useEffect(() => {
-    function handleResize() 
+    function handleResize() {
       const w = window.innerWidth;
       setSize({ width: w, isMobile: w < 768, isTablet: w >= 768 && w < 1024, isDesktop: w >= 1024 });
     }
@@ -54,6 +54,7 @@ function useScreenSize() {
 }
 
 const STORAGE_KEY = "hamour_analyses";
+const THEME_KEY = "hamour_theme";
 
 function saveAnalysis(analysis) {
   if (typeof window === "undefined") return;
@@ -228,7 +229,7 @@ function Row({label, value, valueColor=$.L1, bold=false, note=null}) {
   </div>;
 }
 
-const iStyle = {width:"100%",boxSizing:"border-box",background:$.F5,border:"1.5px solid transparent",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:15,color:$.L1,fontFamily:"inherit",outline:"none",appearance:"none",WebkitAppearance:"none"};
+const iStyle = () => ({width:"100%",boxSizing:"border-box",background:$.F5,border:"1.5px solid transparent",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:15,color:$.L1,fontFamily:"inherit",outline:"none",appearance:"none",WebkitAppearance:"none"});
 
 function FormField({label, icon, children}) {
   return <div style={{marginBottom:sp[4]}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:7}}>{icon}<label style={{fontSize:12,fontWeight:600,color:$.L3}}>{label}</label></div>{children}</div>;
@@ -301,25 +302,25 @@ function AnalyzeForm({onAnalyze, onClose}) {
         </div>
       </div>
       <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
-        <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle}/>
+        <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle()}/>
       </FormField>
       <FormField label="تفاصيل المشروع (اختياري)" icon={<Sparkles size={14} color={$.L4}/>}>
-        <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية" rows={3} style={{...iStyle,resize:"none",lineHeight:1.5}}/>
+        <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية" rows={3} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
       </FormField>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
         <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
           <div style={{position:"relative"}}>
-            <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+            <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
             <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
           </div>
         </FormField>
         <FormField label="الحي (اختياري)" icon={<MapPin size={14} color={$.L4}/>}>
-          <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا" style={iStyle}/>
+          <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا" style={iStyle()}/>
         </FormField>
       </div>
       <FormField label="الميزانية بالريال السعودي" icon={<Briefcase size={14} color={$.L4}/>}>
         <div style={{position:"relative"}}>
-          <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle,paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
+          <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
           <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
         </div>
       </FormField>
@@ -378,7 +379,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
 
       <div style={{padding:screen.isDesktop?`${sp[6]}px ${sp[10]}px ${sp[16]}px`:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[5]}}>
         <div style={containerStyle}>
-          <Card onClick={()=>setShowForm(true)} style={{cursor:"pointer",boxShadow:SH.lift,marginBottom:sp[5],background:"linear-gradient(145deg,#FFFFFF,#F8FAFF)",border:`1.5px solid ${$.blue}15`}}>
+          <Card onClick={()=>setShowForm(true)} style={{cursor:"pointer",boxShadow:SH.lift,marginBottom:sp[5],border:`1.5px solid ${$.blue}15`}}>
             <div style={{padding:screen.isDesktop?`${sp[6]}px ${sp[7]}px`:`${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
               <div style={{width:screen.isDesktop?72:56,height:screen.isDesktop?72:56,borderRadius:18,background:"linear-gradient(145deg,#007AFF,#0050C0)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:SH.blue,flexShrink:0}}>
                 <Sparkles size={screen.isDesktop?32:26} color="#fff" strokeWidth={2}/>
@@ -913,7 +914,7 @@ const SECTORS_DATA = [
     failure_reasons:["إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية","موقع ضعيف أو في حي ميت بدون حركة كافية","ضعف التمييز - كل المقاهي صارت متشابهة","تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء","عدم الاستمرارية في الجودة بسبب دوران الباريستا"],
     competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد","حلواني"],
     sub_ideas:["كوفي متخصص في القهوة الكورية","عربة قهوة متنقلة","كوفي بطابع تراثي سعودي"],
-    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفا","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبّع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
+    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفاً","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبّع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
     last_updated:"يناير 2026"
   },
   {
@@ -935,8 +936,8 @@ const SECTORS_DATA = [
     payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
     audience:"نساء، عائلات، مناسبات (أعراس، تخرج، مواليد)، مكاتب",
     top_cities:["الرياض","جدة","الدمام","القصيم","المدينة المنورة"],
-    success_tips:["تصوير احترافي للمنتجات للسوشيال ميديا","تغليف فاخر يصلح للهدايا والمناسبات","توصيل سريع مع المحافظة على جودة المنتج","تخصص في نوع معين (كنافة، بقلاوة، كيكات مناسبات، إلخ)","ابتكار طعمات جديدة باستمرار","حسابات قوية في إنستقرام وتيك توك"],
-    failure_reasons:["تقليد المنافسين بدل الابتكار","ضعف التغليف يضر التجربة","عدم اتساق الجودة بين الوجبات","تسعير غير صحيح","إهمال الموسمية (رمضان، أعياد، فصل الشتاء)"],
+    success_tips:["تصوير احترافي للمنتجات للسوشيال ميديا","تغليف فاخر يصلح للهدايا والمناسبات","توصيل سريع مع المحافظة على جودة المنتج","تخصص في نوع معين (كنافة، بقلاوة، كيكات مناسبات)","ابتكار طعمات جديدة باستمرار","حسابات قوية في إنستقرام وتيك توك"],
+    failure_reasons:["تقليد المنافسين بدل الابتكار","ضعف التغليف يضر التجربة","عدم اتساق الجودة بين الوجبات","تسعير غير صحيح","إهمال الموسمية (رمضان، أعياد)"],
     competitors:["صابا","عبدالصمد القرشي","ميلانو","لافيت","الإمبراطور","تشيز كيك فاكتوري"],
     sub_ideas:["حلويات صحية بدون سكر","تخصص في الكنافة الفاخرة","كيكات تخرج وأعراس"],
     city_notes:{"القصيم":"معروفة بالحلويات التقليدية - فرصة للابتكار العصري","الباحة":"السوق المحلي صغير لكن أقل منافسة - فرصة جيدة"},
@@ -948,8 +949,8 @@ const SECTORS_DATA = [
     payback:"15-24 شهر", margin:"20-30%", competition:"عالية",
     audience:"شباب، طلاب، عمال، موظفون في استراحة الغداء",
     top_cities:["الرياض","جدة","الدمام","تبوك","الخبر"],
-    success_tips:["سرعة التحضير - أقل من 5 دقائق","تسعير منافس - أقل من السلاسل العالمية","موقع قريب من الجامعات أو المناطق الصناعية","توصيل عبر كل تطبيقات التوصيل بفعالية","بساطة القائمة - تركيز على 3-5 منتجات أساسية","نظافة عالية ومستمرة"],
-    failure_reasons:["منافسة شرسة من السلاسل العالمية","ضعف الجودة في المواد الخام","ارتفاع تكاليف اللحوم والدجاج","صعوبة المحافظة على نفس الجودة في الذروة","اعتماد كامل على التوصيل بدون حضور قوي في المحل"],
+    success_tips:["سرعة التحضير - أقل من 5 دقائق","تسعير منافس - أقل من السلاسل العالمية","موقع قريب من الجامعات أو المناطق الصناعية","توصيل عبر كل تطبيقات التوصيل بفعالية","بساطة القائمة - تركيز على 3-5 منتجات","نظافة عالية ومستمرة"],
+    failure_reasons:["منافسة شرسة من السلاسل العالمية","ضعف الجودة في المواد الخام","ارتفاع تكاليف اللحوم والدجاج","صعوبة المحافظة على الجودة في الذروة","اعتماد كامل على التوصيل"],
     competitors:["ماكدونالدز","برجر كنق","KFC","البيك","شوكسي","صب واي"],
     sub_ideas:["برجر سعودي بنكهات محلية","شاورما مختصة فاخرة","ساندوتشات صحية"],
     city_notes:{"تبوك":"نمو نيوم يجلب آلاف العمال - طلب عالي على الوجبات السريعة"},
@@ -987,7 +988,7 @@ const SECTORS_DATA = [
     payback:"30-48 شهر", margin:"8-18%", competition:"عالية جداً",
     audience:"شباب، موظفون، طلاب، عائلات",
     top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
-    success_tips:["أسعار منافسة (الهامش قليل، الكمية تفرق)","ضمان موثوق وخدمة ما بعد البيع","تشكيلة متنوعة من الماركات","صيانة في المحل لتمييز عن المنافسين","حسابات سوشيال قوية مع مراجعات للمنتجات","تعاون مع شركات الأقساط (تابي، تمارا، تسهيل)"],
+    success_tips:["أسعار منافسة (الهامش قليل، الكمية تفرق)","ضمان موثوق وخدمة ما بعد البيع","تشكيلة متنوعة من الماركات","صيانة في المحل لتمييز عن المنافسين","حسابات سوشيال قوية مع مراجعات","تعاون مع شركات الأقساط (تابي، تمارا)"],
     failure_reasons:["هامش ربح ضعيف يصعب الاستمرار","منافسة قاتلة من المتاجر الإلكترونية","تزييف المنتجات وفقدان الثقة","تخزين بضاعة قديمة تنخفض قيمتها","صعوبة الحصول على وكالات حصرية"],
     competitors:["إكسترا","جرير","نون","أمازون","السيف غاليري","لولو هايبر","ماكس"],
     sub_ideas:["إكسسوارات الجوالات","صيانة وإصلاح متخصصة","قطع غيار كمبيوترات"],
@@ -1000,7 +1001,7 @@ const SECTORS_DATA = [
     payback:"18-24 شهر", margin:"25-40%", competition:"متوسطة",
     audience:"نساء 18-55 سنة، رجال 18-50 (للحلاقة)، مناسبات",
     top_cities:["الرياض","جدة","الخبر","الدمام","أبها"],
-    success_tips:["مصففين موهوبين من بلاد متخصصة (لبنان، تركيا، البرازيل)","تجربة فاخرة - استقبال، تشكيلة قهوة، خصوصية","نظام حجز إلكتروني (واتساب، تطبيق)","تخصص في خدمات معينة (أعراس، علاج بشرة، شعر)","نظافة وتعقيم على أعلى مستوى","تنظيم الوقت - عدم تأخير الزبائن"],
+    success_tips:["مصففين موهوبين من بلاد متخصصة","تجربة فاخرة - استقبال، قهوة، خصوصية","نظام حجز إلكتروني (واتساب، تطبيق)","تخصص في خدمات معينة (أعراس، علاج بشرة)","نظافة وتعقيم على أعلى مستوى","تنظيم الوقت - عدم تأخير الزبائن"],
     failure_reasons:["دوران الموظفين السريع","عدم النظافة والتعقيم الكافي","تسعير غير واضح يفاجئ الزبون","ضعف التسويق الرقمي","إهمال خدمة الزبون والمتابعة"],
     competitors:["روزا","إكسير","توني آند جاي","رويال","حلا للتجميل","ميرنا"],
     sub_ideas:["صالون رجالي راقي","صالون متخصص في الأعراس","عيادة جلدية تجميلية"],
@@ -1086,7 +1087,7 @@ function SectorsScreen() {
 
         <div style={{position:"relative",marginBottom:sp[4]}}>
           <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن قطاع…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن قطاع…" style={{...iStyle(),paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
         </div>
 
         <div style={{display:"flex",gap:sp[2],marginBottom:sp[3],overflowX:"auto",paddingBottom:4}}>
@@ -1101,7 +1102,7 @@ function SectorsScreen() {
             <span style={{fontSize:12,fontWeight:700,color:$.L2}}>اختر المدينة - الأرقام تتغير حسب كل مدينة</span>
           </div>
           <div style={{position:"relative"}}>
-            <select value={cityFilter} onChange={e=>setCityFilter(e.target.value)} style={{...iStyle,paddingLeft:sp[8],cursor:"pointer",fontSize:13}}>
+            <select value={cityFilter} onChange={e=>setCityFilter(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",fontSize:13}}>
               <option value="all">كل المدن (عام)</option>
               {CITIES.map(c=><option key={c}>{c}</option>)}
             </select>
@@ -1193,7 +1194,7 @@ function SectorsScreen() {
                 </Card>
               </div>
 
-              <Section title="الjمهور المستهدف" Icon={Users} color={$.blue}>
+              <Section title="الجمهور المستهدف" Icon={Users} color={$.blue}>
                 <p style={{fontSize:14,color:$.L2,lineHeight:1.8}}>{active.audience}</p>
               </Section>
 
@@ -1279,7 +1280,7 @@ function LearningScreen() {
 
         <div style={{position:"relative",marginBottom:sp[5]}}>
           <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في المقالات…" style={{...iStyle,paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث في المقالات…" style={{...iStyle(),paddingRight:40,background:$.surface,boxShadow:SH.card}}/>
         </div>
 
         <div style={{display:"flex",gap:sp[2],marginBottom:sp[4],overflowX:"auto",paddingBottom:4}}>
@@ -1365,15 +1366,19 @@ const NAV = [
   {id:"learning",label:"التعلم",Icon:BookOpen}
 ];
 
-function BottomNav({tab,setTab}) {
+function BottomNav({tab,setTab,dark,toggleDark}) {
   return (
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:"rgba(246,246,248,0.88)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderTop:`0.5px solid rgba(60,60,67,0.18)`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:dark?"rgba(28,28,30,0.92)":"rgba(246,246,248,0.88)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderTop:`0.5px solid ${$.sepL}`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
       {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={20} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:9,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
+      <button onClick={toggleDark} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}>
+        <div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:"transparent"}}>{dark?<Sun size={20} color={$.yellow} strokeWidth={1.8}/>:<Moon size={20} color={$.L4} strokeWidth={1.8}/>}</div>
+        <span style={{fontSize:9,fontWeight:500,color:$.L4}}>{dark?"نهاري":"ليلي"}</span>
+      </button>
     </nav>
   );
 }
 
-function SideNav({tab,setTab}) {
+function SideNav({tab,setTab,dark,toggleDark}) {
   return (
     <nav style={{position:"fixed",top:0,right:0,bottom:0,width:240,zIndex:999,display:"flex",flexDirection:"column",background:$.surface,borderLeft:`0.5px solid ${$.sepL}`,padding:`${sp[6]}px ${sp[4]}px`}}>
       <div style={{padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[6]}}>
@@ -1390,6 +1395,10 @@ function SideNav({tab,setTab}) {
             </button>
           );
         })}
+        <button onClick={toggleDark} style={{display:"flex",alignItems:"center",gap:sp[3],background:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit",marginTop:sp[2]}}>
+          {dark?<Sun size={20} color={$.yellow} strokeWidth={1.8}/>:<Moon size={20} color={$.L3} strokeWidth={1.8}/>}
+          <span style={{fontSize:14,fontWeight:500,color:$.L2}}>{dark?"الوضع النهاري":"الوضع الليلي"}</span>
+        </button>
       </div>
     </nav>
   );
@@ -1399,6 +1408,23 @@ export default function HamourApp() {
   const screen = useScreenSize();
   const [tab,setTab]=useState("home");
   const [result,setResult]=useState(null);
+  const [dark,setDark]=useState(false);
+  const [ready,setReady]=useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved === "dark") { $ = DARK; setDark(true); }
+    } catch(e) {}
+    setReady(true);
+  }, []);
+
+  function toggleDark() {
+    const next = !dark;
+    setDark(next);
+    $ = next ? DARK : LIGHT;
+    try { localStorage.setItem(THEME_KEY, next ? "dark" : "light"); } catch(e) {}
+  }
   
   const handleAnalyze=useCallback((data)=>{setResult(data);setTab("analysis");},[]);
   const handleViewSaved=useCallback((analysis)=>{setResult(analysis);setTab("analysis");},[]);
@@ -1411,18 +1437,18 @@ export default function HamourApp() {
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         html,body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;direction:rtl;background:${$.bg};color:${$.L1};-webkit-font-smoothing:antialiased;}
         button,input,select,textarea{font-family:inherit;}
-        select option{background:#fff;color:${$.L1};}
+        select option{background:${$.surface};color:${$.L1};}
         ::-webkit-scrollbar{width:0;height:0;}
         *{-webkit-tap-highlight-color:transparent;}
         @keyframes _spin{to{transform:rotate(360deg);}}
       `}</style>
-      <div style={{minHeight:"100vh",background:$.bg,position:"relative",paddingBottom:useSideNav?0:90,marginRight:useSideNav?240:0}}>
+      <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,position:"relative",paddingBottom:useSideNav?0:90,marginRight:useSideNav?240:0}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={handleViewSaved} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewSaved}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen/>}
-        {useSideNav ? <SideNav tab={tab} setTab={setTab}/> : <BottomNav tab={tab} setTab={setTab}/>}
+        {useSideNav ? <SideNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark}/> : <BottomNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark}/>}
       </div>
     </>
   );
