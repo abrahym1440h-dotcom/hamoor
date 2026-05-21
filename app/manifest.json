@@ -1,0 +1,16 @@
+{
+  "name": "HAMOUR",
+  "short_name": "HAMOUR",
+  "description": "دراسة جدوى ذكية للسوق السعودي",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E1726",
+  "theme_color": "#0E1726",
+  "icons": [
+    {
+      "src": "/IMG_6930.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
