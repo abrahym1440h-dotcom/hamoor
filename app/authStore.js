@@ -1,31 +1,26 @@
 import { supabase } from "./supabaseClient";
 
-// ===== تسجيل حساب جديد =====
 export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw new Error(translateError(error.message));
   return data;
 }
 
-// ===== تسجيل الدخول =====
 export async function signIn(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(translateError(error.message));
   return data;
 }
 
-// ===== تسجيل الخروج =====
 export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// ===== جلب المستخدم الحالي =====
 export async function getCurrentUser() {
   const { data } = await supabase.auth.getUser();
   return data?.user || null;
 }
 
-// ===== مراقبة حالة الدخول =====
 export function onAuthChange(callback) {
   const { data } = supabase.auth.onAuthStateChange((_event, session) => {
     callback(session?.user || null);
@@ -33,7 +28,6 @@ export function onAuthChange(callback) {
   return data?.subscription;
 }
 
-// ===== حفظ تحليل في الحساب =====
 export async function saveAnalysisCloud(analysis, userId) {
   const { data, error } = await supabase.from("analyses").insert({
     user_id: userId,
@@ -49,7 +43,6 @@ export async function saveAnalysisCloud(analysis, userId) {
   return data;
 }
 
-// ===== جلب تحليلات المستخدم =====
 export async function getAnalysesCloud(userId) {
   const { data, error } = await supabase
     .from("analyses")
@@ -69,28 +62,32 @@ export async function getAnalysesCloud(userId) {
   }));
 }
 
-// ===== حذف تحليل =====
 export async function deleteAnalysisCloud(id) {
   await supabase.from("analyses").delete().eq("id", id);
 }
 
-// ===== جلب حالة الاشتراك =====
 export async function getProfile(userId) {
-  if (!userId) return { is_premium: false };
+  if (!userId) return { is_premium: false, name: "" };
   try {
     let { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
     if (!data) {
       await supabase.from("profiles").insert({ id: userId, is_premium: false });
-      return { is_premium: false };
+      return { is_premium: false, name: "" };
     }
     return data;
   } catch(e) {
     try { await supabase.from("profiles").insert({ id: userId, is_premium: false }); } catch(e2) {}
-    return { is_premium: false };
+    return { is_premium: false, name: "" };
   }
 }
 
-// ===== تفعيل الاشتراك بكود =====
+export async function updateName(userId, name) {
+  if (!userId) throw new Error("سجّل الدخول أولاً");
+  const { error } = await supabase.from("profiles").update({ name: (name || "").trim() }).eq("id", userId);
+  if (error) throw new Error("تعذّر حفظ الاسم");
+  return true;
+}
+
 export async function activateWithCode(userId, code) {
   if (!userId) throw new Error("سجّل الدخول أولاً");
   const clean = (code || "").trim().toUpperCase();
@@ -105,11 +102,10 @@ export async function activateWithCode(userId, code) {
     .from("profiles")
     .update({ is_premium: true })
     .eq("id", userId);
-  if (upErr) throw new Error("تعذر تفعيل الاشتراك، حاول مرة أخرى");
+  if (upErr) throw new Error("تعذّر تفعيل الاشتراك، حاول مرة أخرى");
   return true;
 }
 
-// ===== ترجمة رسائل الخطأ للعربية =====
 function translateError(msg) {
   if (!msg) return "حدث خطأ، حاول مرة أخرى";
   const m = msg.toLowerCase();
