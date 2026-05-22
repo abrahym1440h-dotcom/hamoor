@@ -74,6 +74,41 @@ export async function deleteAnalysisCloud(id) {
   await supabase.from("analyses").delete().eq("id", id);
 }
 
+// ===== جلب حالة الاشتراك =====
+export async function getProfile(userId) {
+  if (!userId) return { is_premium: false };
+  try {
+    let { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+    if (!data) {
+      await supabase.from("profiles").insert({ id: userId, is_premium: false });
+      return { is_premium: false };
+    }
+    return data;
+  } catch(e) {
+    try { await supabase.from("profiles").insert({ id: userId, is_premium: false }); } catch(e2) {}
+    return { is_premium: false };
+  }
+}
+
+// ===== تفعيل الاشتراك بكود =====
+export async function activateWithCode(userId, code) {
+  if (!userId) throw new Error("سجّل الدخول أولاً");
+  const clean = (code || "").trim().toUpperCase();
+  if (!clean) throw new Error("أدخل كود التفعيل");
+  const { data, error } = await supabase
+    .from("activation_codes")
+    .select("code,active")
+    .eq("code", clean)
+    .single();
+  if (error || !data || !data.active) throw new Error("كود التفعيل غير صحيح");
+  const { error: upErr } = await supabase
+    .from("profiles")
+    .update({ is_premium: true })
+    .eq("id", userId);
+  if (upErr) throw new Error("تعذر تفعيل الاشتراك، حاول مرة أخرى");
+  return true;
+}
+
 // ===== ترجمة رسائل الخطأ للعربية =====
 function translateError(msg) {
   if (!msg) return "حدث خطأ، حاول مرة أخرى";
