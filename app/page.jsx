@@ -1305,6 +1305,7 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [q,setQ]=useState("");
   const [activeCat,setActiveCat]=useState("all");
+  const [accessFilter,setAccessFilter]=useState("all");
   const [activeArticle,setActiveArticle]=useState(null);
 
   const allCategories = [{id:"all", name:"الكل", iconName:"BookOpen", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)"}, ...ARTICLE_CATEGORIES];
@@ -1312,6 +1313,9 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
   const filteredArticles = ARTICLES.filter(a => {
     if (activeCat !== "all" && a.category !== activeCat) return false;
     if (q && !a.title.includes(q) && !a.excerpt.includes(q)) return false;
+    const isFree = FREE_ARTICLE_IDS.includes(a.id);
+    if (accessFilter === "free" && !isFree) return false;
+    if (accessFilter === "premium" && isFree) return false;
     return true;
   });
 
@@ -1355,11 +1359,29 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
           })}
         </div>
 
+        <div style={{display:"flex",gap:sp[2],marginBottom:sp[4]}}>
+          {[{id:"all",name:"الكل"},{id:"free",name:"المجانية"},{id:"premium",name:"للمشتركين"}].map(f => {
+            const on = accessFilter===f.id;
+            const fc = f.id==="free" ? $.green : f.id==="premium" ? $.orange : $.blue;
+            return (
+              <button key={f.id} onClick={()=>setAccessFilter(f.id)} style={{flex:1,padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:`1.5px solid ${on?fc:$.sepL}`,cursor:"pointer",fontFamily:"inherit",background:on?fc:"transparent",color:on?"#fff":$.L2,fontSize:12.5,fontWeight:on?700:600,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                {f.id==="free" && <Check size={13}/>}
+                {f.id==="premium" && <Crown size={13}/>}
+                <span>{f.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
+          {filteredArticles.length === 0 && (
+            <p style={{fontSize:13,color:$.L4,textAlign:"center",padding:`${sp[6]}px 0`,gridColumn:"1/-1"}}>لا توجد مقالات مطابقة لهذا الفلتر</p>
+          )}
           {filteredArticles.map((article, idx) => {
             const catInfo = getCategoryInfo(article.category);
             const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-            const locked = !isPremium && !FREE_ARTICLE_IDS.includes(article.id);
+            const isFree = FREE_ARTICLE_IDS.includes(article.id);
+            const locked = !isPremium && !isFree;
             return (
               <Card key={article.id} onClick={()=>handleArticleClick(article, idx)} style={{padding:sp[4],cursor:"pointer",position:"relative"}}>
                 {locked && (
@@ -1377,6 +1399,7 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
                     <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
                       <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={11}/>
                       <Chip text={article.level} color={getLevelColor(article.level)} bg={`${getLevelColor(article.level)}15`} size={11}/>
+                      {isFree && <Chip text="مجاني" color={$.green} bg={`${$.green}15`} size={11}/>}
                       {locked && <Chip text="للمشتركين" color={$.orange} bg={`${$.orange}15`} size={11}/>}
                     </div>
                   </div>
