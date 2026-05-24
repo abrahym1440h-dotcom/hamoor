@@ -21,7 +21,6 @@ export async function POST(req) {
     const cityName = city.split(" - ")[0].trim();
     const neighborhood = city.includes(" - حي ") ? city.split(" - حي ")[1].trim() : null;
 
-    // القطاع: نعتمد اختيار المستخدم إن وُجد، وإلا نكتشفه تلقائياً
     const isCustomSector = userSector === "أخرى / غير مدرج";
     const sector = (userSector && !isCustomSector) ? userSector : detectSector(idea);
 
@@ -29,27 +28,9 @@ export async function POST(req) {
     const sectorBrief = getSectorBrief(sector);
     const financialBrief = getFinancialBrief(sector);
 
-    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى الميدانية داخل السوق السعودي. عملت على مئات المشاريع الحقيقية وتعرف أرقامها بالريال والهللة.
-
-شخصيتك: صارم، صادق تماماً، لا تجامل أبداً. تتكلم بلغة عربية واضحة ومهنية يفهمها صاحب المشروع ويثق فيها. أنت لست متفائلاً ولست متشائماً - أنت واقعي.
-
-منهجيتك في التحليل (اتبعها بالترتيب قبل كتابة النتيجة):
-1. حدّد التكاليف الفعلية بناءً على الأرقام المرجعية المعطاة، وعدّلها حسب المدينة والحي.
-2. احسب مجموع بنود التأسيس، وتأكد أنه يساوي الإجمالي تماماً.
-3. احسب مجموع البنود الشهرية، وتأكد أنه يساوي الإجمالي تماماً.
-4. قدّر الإيرادات بتحفّظ (الأغلب يبدأ ضعيفاً).
-5. احسب نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية).
-6. احسب العائد على الاستثمار = (الربح السنوي ÷ رأس المال) × 100.
-7. راجع: هل كل الأرقام متسقة منطقياً مع بعضها؟ صحّح أي تناقض قبل الإخراج.
-
-مبدؤك الأساسي: الأرقام المالية المعطاة لك مستخرجة من دراسات جدوى حقيقية - استخدمها كأساس إلزامي ولا تخترع أرقاماً من خيالك. كل رقم تكتبه يجب أن يكون قابلاً للتبرير وناتجاً عن حساب واضح.
-
-ترجع JSON صحيح فقط، بدون أي نص قبله أو بعده.`;
-
-    const userPrompt = `حلّل هذا المشروع بصرامة وواقعية تامة كأنك تكتب دراسة جدوى حقيقية سيبني عليها المستخدم قراراً بأمواله:
-
-المشروع: ${idea}
-القطاع: ${sector}${isCustomSector ? ' (المستخدم اختار "غير مدرج" - حلّل الفكرة كما هي بناءً على طبيعتها وأقرب قطاع شبيه)' : ' (محدد من المستخدم)'}
+    // ═══ معطيات المشروع المشتركة ═══
+    const projectContext = `المشروع: ${idea}
+القطاع: ${sector}${isCustomSector ? ' (المستخدم اختار "غير مدرج" - حلّل الفكرة حسب طبيعتها وأقرب قطاع شبيه)' : ''}
 المدينة: ${cityName}${neighborhood ? `\nالحي: ${neighborhood}` : ''}
 الميزانية: ${budgetNum.toLocaleString()} ريال
 
@@ -60,48 +41,26 @@ ${sectorBrief}
 ${financialBrief}
 
 الرواتب: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
-التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}
+التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}`;
 
-═══ قواعد التحليل الصارمة ═══
+    // ═══ تعليمات الأسلوب المشتركة ═══
+    const styleGuide = `أسلوب الكتابة: اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وتنصحه بصدق. لغة عربية طبيعية وإنسانية، خاطبه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب العبارات الآلية ("يُعتبر"، "تجدر الإشارة"، "بشكل عام"). اشرح "لماذا" وراء كل رقم. لا مجاملة - كن صادقاً وواقعياً.`;
 
-1. واقعية الأرقام (الأهم): كل رقم مالي يجب أن يكون واقعياً ودقيقاً كأنه من السوق الفعلي. الأرقام تُحسب بدقة وليست تقديرات عشوائية - اجعل المجاميع متطابقة (مجموع بنود التأسيس = total، ومجموع البنود الشهرية = total). استخدم الأرقام المعطاة أعلاه كأساس إلزامي وعدّلها حسب:
-   - حجم المدينة: ${cityName} (مدينة كبيرة = الحد الأعلى من النطاق، صغيرة = الحد الأدنى)
-   - الحي إن وُجد (حي راقٍ = إيجار أعلى)
-   - لا تخترع أرقاماً خارج النطاقات المعطاة إلا بسبب واضح ومذكور
+    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى الميدانية داخل السوق السعودي. صارم، صادق، لا تجامل. الأرقام المالية المعطاة لك من دراسات جدوى حقيقية - استخدمها كأساس إلزامي ولا تخترع أرقاماً. اجعل المجاميع متطابقة (مجموع البنود = الإجمالي). ترجع JSON صحيح فقط، بدون أي نص قبله أو بعده.`;
 
-2. مطابقة الميزانية مع التكلفة:
-   - إذا ميزانية المستخدم أقل من الحد الأدنى للتأسيس = سكور أقل من 35 + توضيح صريح بالأرقام كم ينقصه بالضبط
-   - إذا كافية = حلل بالتفصيل الكامل
+    // ═══ الاستدعاء الأول: التحليل الأساسي ═══
+    const promptCore = `حلّل هذا المشروع بصرامة وواقعية تامة كدراسة جدوى حقيقية:
 
-3. أسلوب الكتابة (مهم جداً): اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وجهاً لوجه وتنصحه بصدق. استخدم لغة عربية طبيعية وإنسانية ودافئة - مو لغة آلية جافة. تحدّث معه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب تماماً العبارات الآلية المكررة مثل "يُعتبر"، "تجدر الإشارة"، "بشكل عام"، "في الختام"، "من الجدير بالذكر". اشرح "لماذا" وراء كل رقم وكل توصية بطريقة يفهمها أي شخص. كل جملة تعطي معلومة حقيقية يتصرف بناءً عليها. لا تبالغ في التفاؤل ولا في التخويف - كن صادقاً وواقعياً وإنسانياً.
+${projectContext}
 
-4. الإيرادات: استخدم السيناريو المناسب (ضعيف/متوسط/قوي) حسب واقعية المشروع والموقع. كن متحفظاً - الأغلب يبدأ ضعيفاً ثم ينمو تدريجياً.
+${styleGuide}
 
-5. نقطة التعادل والـ ROI: احسبها من الأرقام الفعلية المذكورة في تحليلك، واسترشد بنقطة التعادل النموذجية المعطاة. يجب أن تكون متسقة مع التكاليف والإيرادات التي ذكرتها.
-
-6. المنافسون (مهم جداً): اذكر 5 منافسين حقيقيين من نفس نوع المشروع بالضبط، وليس من القطاع العام. المنافس الحقيقي هو من يقدّم نفس المنتج تقريباً لنفس العميل. أمثلة توضيحية:
-   - مشروع "مطعم شاورما" → منافسوه مطاعم شاورما ومشاوي (مثل: شاورمر، شاورما هاوس، مطاعم شاورما محلية في ${cityName})، وليس ماكدونالدز أو KFC.
-   - مشروع "كوفي مختص" → منافسوه محامص ومقاهي قهوة مختصة، وليس مقهى وجبات.
-   - مشروع "محل عبايات" → منافسوه محلات العبايات، وليس محلات الأزياء العامة.
-   اختر منافسين فعليين موجودين في ${cityName} أو قريبين منها، من نفس فئة المشروع تحديداً. إذا كان السوق يغلب عليه محلات محلية صغيرة بلا أسماء شهيرة، قل ذلك بصراحة واذكرها كـ "محلات محلية في الحي".
-
-7. الأحياء: استخدم أحياء حقيقية من قائمة ${cityName} فقط.
-
-8. التعامل مع الأفكار غير التقليدية: بعض المستخدمين سيقدمون أفكاراً مبتكرة أو غير مألوفة أو "خارج الصندوق". لا ترفضها لمجرد غرابتها ولا تجاملها لمجرد جدّتها - حلّلها بنفس الصرامة: ابحث عن أقرب قطاع شبيه لها، قدّر أرقامها بمنطق واضح، واذكر بصراحة إن كانت سابقة لوقتها أو السوق غير جاهز لها. الفكرة المبتكرة الناجحة والفكرة المبتكرة الفاشلة كلاهما وارد - مهمتك التمييز بينهما بالأرقام والمنطق.
-
-9. لا مجاملة إطلاقاً: لو الفكرة ضعيفة أو الميزانية غير كافية أو الموقع غير مناسب، قلها بوضوح وصراحة في decision و summary. صاحب المشروع يثق فيك لأنك صادق، لا لأنك مشجّع.
-
-10. الخطة التنفيذية (أول 90 يوم): قسّمها إلى 3 مراحل واقعية (يوم 1-30، 31-60، 61-90). كل مرحلة فيها مهام عملية ملموسة يقدر صاحب المشروع ينفّذها فعلاً (تسجيل، تجهيز، توظيف، تسويق، افتتاح).
-
-11. تحليل التسعير: اقترح 3-5 منتجات أو خدمات رئيسية للمشروع، ولكل واحد سعر بيع مقترح بالريال، تكلفته التقريبية، وهامش الربح. الأسعار واقعية للسوق السعودي.
-
-12. تفصيل نقطة التعادل: وضّح بالأشهر متى يبدأ المشروع يغطّي تكاليفه، مع شرح إنساني مبسّط للرقم.
-
-13. ملف العميل المثالي: صف العميل الأساسي للمشروع بدقة - الفئة العمرية، مستوى الدخل، نمط حياته وسلوكه الشرائي، وأين تجده وكيف توصل له تسويقياً.
-
-14. متطلبات الترخيص: اذكر التراخيص والتصاريح الفعلية المطلوبة لهذا النوع من المشاريع في السعودية، مرتبة، مع جهة الإصدار لكل واحد.
-
-15. التميّز عن المنافسين: اقترح 3-4 طرق عملية وملموسة يتميّز بها المشروع عن منافسيه - ليست شعارات عامة بل أفكار قابلة للتطبيق.
+قواعد مهمة:
+- الأرقام واقعية ودقيقة، المجاميع متطابقة، عدّلها حسب حجم المدينة والحي.
+- إذا الميزانية أقل من الحد الأدنى للتأسيس = score أقل من 35 + توضيح صريح كم ينقص.
+- المنافسون: 5 منافسين من نفس نوع المشروع بالضبط (مطعم شاورما → مطاعم شاورما، وليس ماكدونالدز). إن غلب على السوق محلات محلية صغيرة، قل ذلك بصراحة.
+- نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية). الـ ROI = (الربح السنوي ÷ رأس المال) × 100.
+- الأحياء حقيقية من ${cityName}.
 
 أرجع JSON صحيح فقط:
 
@@ -109,20 +68,20 @@ ${financialBrief}
   "score": <0-100 واقعي>,
   "decision": "<قرار صريح 6-10 كلمات>",
   "decision_type": "<positive أو negative>",
-  "summary": "<ملخص واقعي 5-6 أسطر بأسلوب إنساني مباشر تخاطب فيه صاحب المشروع: هل ميزانيتك تكفي أو لا؟ كم تحتاج فعلياً بالريال؟ ما أبرز ما يقلقني في مشروعك؟ ما الذي يحدد نجاحك أو فشلك تحديداً؟ اجعله كلاماً يثق فيه القارئ ويشعر أنه نصيحة صادقة>",
+  "summary": "<ملخص 5-6 أسطر بأسلوب إنساني مباشر: هل ميزانيتك تكفي؟ كم تحتاج فعلياً؟ ما يقلقني؟ ما الذي يحدد نجاحك؟>",
   "market_demand": "<منخفض/متوسط/عالي/عالي جداً>",
   "competition": "<منخفضة/متوسطة/عالية/عالية جداً>",
   "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "risk_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "market_analysis": {
     "market_size": "<حجم السوق لـ ${cityName}>",
-    "target_audience": "<الجمهور في ${cityName}>",
+    "target_audience": "<الجمهور>",
     "buying_patterns": "<أنماط الشراء>",
     "seasonality": "<الموسمية>",
     "expected_market_share": "<النسبة الواقعية>",
     "growth_potential": "<النمو على 5 سنوات>",
     "competitors": [
-      {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
       {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
       {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
       {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
@@ -160,7 +119,26 @@ ${financialBrief}
   "locations": {
     "best": {"name": "<حي حقيقي في ${cityName}>", "score": <0-100>, "reason": "<شرح>"},
     "worst": {"name": "<حي حقيقي>", "score": <0-100>, "reason": "<شرح>"}
-  },
+  }
+}`;
+
+    // ═══ الاستدعاء الثاني: الخطة والتفاصيل ═══
+    const promptPlan = `أنت تكمل دراسة جدوى لهذا المشروع. ركّز على الخطة التنفيذية والتفاصيل العملية:
+
+${projectContext}
+
+${styleGuide}
+
+قواعد:
+- الخطة التنفيذية: 3 مراحل واقعية (1-30، 31-60، 61-90 يوم)، كل مرحلة مهام عملية ملموسة.
+- التسعير: 4 منتجات/خدمات رئيسية، لكل واحد سعر بيع وتكلفة وهامش ربح، أسعار واقعية للسوق السعودي.
+- العميل المثالي: صفه بدقة (العمر، الدخل، السلوك، أين تجده).
+- التراخيص: التصاريح الفعلية المطلوبة في السعودية مع جهة الإصدار.
+- التميّز: 3 طرق عملية ملموسة للتميّز عن المنافسين، ليست شعارات.
+
+أرجع JSON صحيح فقط:
+
+{
   "action_plan": [
     {"phase": "اليوم 1-30", "title": "<عنوان المرحلة>", "tasks": ["<مهمة>", "<مهمة>", "<مهمة>", "<مهمة>"]},
     {"phase": "اليوم 31-60", "title": "<عنوان المرحلة>", "tasks": ["<مهمة>", "<مهمة>", "<مهمة>", "<مهمة>"]},
@@ -177,7 +155,7 @@ ${financialBrief}
   },
   "break_even_detail": {
     "months": <عدد الأشهر>,
-    "explanation": "<شرح إنساني مبسّط: متى يبدأ المشروع يغطّي تكاليفه ولماذا، بأسلوب يخاطب صاحب المشروع>"
+    "explanation": "<شرح إنساني مبسّط: متى يبدأ المشروع يغطّي تكاليفه ولماذا>"
   },
   "ideal_customer": {
     "age_group": "<الفئة العمرية>",
@@ -191,84 +169,81 @@ ${financialBrief}
     {"name": "<اسم الترخيص>", "issuer": "<جهة الإصدار>"}
   ],
   "differentiation": [
-    "<طريقة عملية للتميّز عن المنافسين>",
+    "<طريقة عملية للتميّز>",
     "<طريقة عملية للتميّز>",
     "<طريقة عملية للتميّز>"
   ]
 }`;
 
-    console.log("Calling Groq...");
+    // دالة استدعاء Groq
+    async function callGroq(userPrompt) {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 3500,
+          response_format: { type: "json_object" }
+        })
+      });
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 8000,
-        response_format: { type: "json_object" }
-      })
-    });
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Groq Error:", response.status, errText.substring(0, 300));
+        throw new Error("خطأ من Groq: " + response.status);
+      }
 
-    console.log("Groq Status:", response.status);
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Groq Error:", errText.substring(0, 400));
-      return Response.json({ error: "خطأ من Groq: " + response.status }, { status: 500 });
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("لا يوجد رد من Groq");
+      return JSON.parse(text);
     }
 
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content;
+    console.log("Calling Groq (2 parallel requests)...");
 
-    if (!text) {
-      return Response.json({ error: "لا يوجد رد" }, { status: 500 });
-    }
+    // ═══ الاستدعاءان بالتوازي ═══
+    const [coreResult, planResult] = await Promise.all([
+      callGroq(promptCore),
+      callGroq(promptPlan)
+    ]);
 
-    console.log("Got response, length:", text.length);
+    // دمج النتيجتين
+    const merged = { ...coreResult, ...planResult };
+    const validated = validateFinancials(merged);
 
-    try {
-      const result = JSON.parse(text);
-      const validated = validateFinancials(result);
-      return Response.json(validated);
-    } catch (parseErr) {
-      console.error("Parse Error:", parseErr.message);
-      return Response.json({ error: "خطأ في معالجة النتيجة" }, { status: 500 });
-    }
+    console.log("Analysis complete");
+    return Response.json(validated);
 
   } catch (error) {
     console.error("Server Error:", error.message);
-    return Response.json({ error: "خطأ في الخادم: " + error.message }, { status: 500 });
+    return Response.json({ error: error.message || "خطأ في الخادم" }, { status: 500 });
   }
 }
 
 // ═══ طبقة التحقق الرياضي ═══
-// تفحص أرقام التحليل وتصحّح أي تناقض حسابي تلقائياً
 function validateFinancials(result) {
   try {
     const fa = result.financial_analysis;
     if (!fa) return result;
 
-    // 1. تصحيح مجموع تكاليف التأسيس
     if (fa.setup_costs) {
       const sc = fa.setup_costs;
       const sum = (sc.rent_deposit||0) + (sc.renovation||0) + (sc.equipment||0) +
                   (sc.licenses||0) + (sc.initial_inventory||0) + (sc.marketing_launch||0) +
                   (sc.working_capital||0);
-      // إذا الإجمالي مختلف عن المجموع الفعلي بأكثر من 1%، نصحّحه
       if (sum > 0 && Math.abs((sc.total||0) - sum) / sum > 0.01) {
         sc.total = sum;
       }
     }
 
-    // 2. تصحيح مجموع التكاليف الشهرية
     if (fa.monthly_costs) {
       const mc = fa.monthly_costs;
       const sum = (mc.rent||0) + (mc.salaries||0) + (mc.utilities||0) +
@@ -279,21 +254,18 @@ function validateFinancials(result) {
       }
     }
 
-    // 3. التحقق من نقطة التعادل والربح السنوي
     const setupTotal = fa.setup_costs?.total || 0;
     const monthlyTotal = fa.monthly_costs?.total || 0;
     const rev12 = fa.revenue_projection?.month_12 || 0;
 
     if (rev12 > 0 && monthlyTotal > 0) {
       const monthlyProfit = rev12 - monthlyTotal;
-      // الربح السنوي للسنة الأولى (تقدير متحفظ: متوسط نمو تدريجي)
       const rev1 = fa.revenue_projection?.month_1 || 0;
       const rev3 = fa.revenue_projection?.month_3 || 0;
       const rev6 = fa.revenue_projection?.month_6 || 0;
       const avgMonthlyRev = (rev1 + rev3*2 + rev6*3 + rev12*6) / 12;
       const estAnnualProfit = Math.round((avgMonthlyRev - monthlyTotal) * 12);
 
-      // إذا الربح السنوي المذكور بعيد جداً عن المحسوب، نصحّحه
       if (fa.annual_profit_year1 != null) {
         const stated = fa.annual_profit_year1;
         if (estAnnualProfit !== 0 && Math.abs(stated - estAnnualProfit) / Math.abs(estAnnualProfit) > 0.25) {
@@ -301,7 +273,6 @@ function validateFinancials(result) {
         }
       }
 
-      // تصحيح نقطة التعادل إذا كانت غير منطقية
       if (monthlyProfit > 0 && setupTotal > 0) {
         const estBreakEven = Math.ceil(setupTotal / monthlyProfit);
         if (fa.break_even_months != null && estBreakEven > 0 && estBreakEven <= 120) {
@@ -310,9 +281,14 @@ function validateFinancials(result) {
             fa.break_even_months = estBreakEven;
           }
         }
+        // مزامنة break_even_detail مع نقطة التعادل المحسوبة
+        if (result.break_even_detail && estBreakEven > 0 && estBreakEven <= 120) {
+          if (Math.abs((result.break_even_detail.months||0) - fa.break_even_months) > 3) {
+            result.break_even_detail.months = fa.break_even_months;
+          }
+        }
       }
 
-      // تصحيح ROI إذا كان غير متسق (ROI = ربح سنوي / رأس المال × 100)
       if (setupTotal > 0 && fa.annual_profit_year1 != null) {
         const estROI = Math.round((fa.annual_profit_year1 / setupTotal) * 100);
         if (fa.roi_percentage != null) {
@@ -326,6 +302,6 @@ function validateFinancials(result) {
     return result;
   } catch (e) {
     console.error("Validation error:", e.message);
-    return result; // عند أي خطأ، نرجّع النتيجة الأصلية بدون تعديل
+    return result;
   }
 }
