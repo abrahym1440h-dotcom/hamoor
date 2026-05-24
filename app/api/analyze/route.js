@@ -1,155 +1,94 @@
-import { CITIES_DATA, COMPETITORS_BY_SECTOR, SALARIES, LICENSES, detectSector, getCityBrief, getSectorBrief, getFinancialBrief } from "../data.js";
+import { CITIES_DATA, SECTOR_FINANCIALS, SALARIES, getCityBrief, getFinancialBrief } from "../data.js";
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req) {
   try {
-    const { idea, sector: userSector, city, budget } = await req.json();
-    console.log("Request:", { idea, userSector, city, budget });
+    const { budget, city, sector } = await req.json();
+    console.log("Suggestions Request:", { budget, city, sector });
 
-    if (!idea || !city || !budget) {
-      return Response.json({ error: "البيانات ناقصة" }, { status: 400 });
+    if (!budget) {
+      return Response.json({ error: "الميزانية مطلوبة" }, { status: 400 });
     }
 
-    const apiKey = process.env.GROQ_API_KEY;
+    // مفتاح Groq منفصل خاص بقسم الاقتراحات
+    const apiKey = process.env.GROQ_API_KEY_SUGGESTIONS;
     if (!apiKey) {
       return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
     }
 
     const budgetNum = parseInt(budget);
-    const cityName = city.split(" - ")[0].trim();
-    const neighborhood = city.includes(" - حي ") ? city.split(" - حي ")[1].trim() : null;
+    const cityName = city ? city.trim() : null;
+    const cityBrief = cityName ? (getCityBrief(cityName) || "") : "";
 
-    // القطاع: نعتمد اختيار المستخدم إن وُجد، وإلا نكتشفه تلقائياً
-    const isCustomSector = userSector === "أخرى / غير مدرج";
-    const sector = (userSector && !isCustomSector) ? userSector : detectSector(idea);
+    // إن حدد المستخدم قطاعاً، نمرر أرقامه. وإلا نمرر ملخص كل القطاعات
+    let sectorContext = "";
+    if (sector && sector !== "أخرى / غير مدرج" && SECTOR_FINANCIALS[sector]) {
+      sectorContext = `القطاع المطلوب: ${sector}\n${getFinancialBrief(sector)}`;
+    } else {
+      const allSectors = Object.keys(SECTOR_FINANCIALS).map(s => {
+        const f = SECTOR_FINANCIALS[s];
+        return `- ${s}: تأسيس ${f.setup_total.min.toLocaleString()}-${f.setup_total.max.toLocaleString()} ريال، هامش ${f.profit_margin}`;
+      }).join("\n");
+      sectorContext = `القطاعات المتاحة وأرقامها المرجعية:\n${allSectors}`;
+    }
 
-    const cityBrief = getCityBrief(cityName) || cityName;
-    const sectorBrief = getSectorBrief(sector);
-    const financialBrief = getFinancialBrief(sector);
+    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى الميدانية. مهمتك اقتراح مشاريع واقعية ومربحة تناسب ميزانية المستخدم بالضبط.
 
-    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى الميدانية داخل السوق السعودي. عملت على مئات المشاريع الحقيقية وتعرف أرقامها بالريال والهللة.
+شخصيتك: صادق تماماً، واقعي، لا تجامل. تقترح فقط مشاريع حقيقية قابلة للتنفيذ فعلاً في السوق السعودي بالميزانية المعطاة.
 
-شخصيتك: صارم، صادق تماماً، لا تجامل أبداً. تتكلم بلغة عربية واضحة ومهنية يفهمها صاحب المشروع ويثق فيها. أنت لست متفائلاً ولست متشائماً - أنت واقعي.
-
-مبدؤك الأساسي: الأرقام المالية المعطاة لك مستخرجة من دراسات جدوى حقيقية - استخدمها كأساس إلزامي ولا تخترع أرقاماً من خيالك. كل رقم تكتبه يجب أن يكون قابلاً للتبرير.
+مبدؤك: كل اقتراح يجب أن تكون ميزانيته ضمن قدرة المستخدم المالية، وأرقامه مستندة إلى دراسات الجدوى المعطاة لك. لا تقترح مشاريع تتجاوز الميزانية بكثير، ولا مشاريع وهمية.
 
 ترجع JSON صحيح فقط، بدون أي نص قبله أو بعده.`;
 
-    const userPrompt = `حلّل هذا المشروع بصرامة وواقعية تامة كأنك تكتب دراسة جدوى حقيقية سيبني عليها المستخدم قراراً بأمواله:
+    const userPrompt = `اقترح مشاريع استثمارية واقعية بناءً على المعطيات التالية:
 
-المشروع: ${idea}
-القطاع: ${sector}${isCustomSector ? ' (المستخدم اختار "غير مدرج" - حلّل الفكرة كما هي بناءً على طبيعتها وأقرب قطاع شبيه)' : ' (محدد من المستخدم)'}
-المدينة: ${cityName}${neighborhood ? `\nالحي: ${neighborhood}` : ''}
-الميزانية: ${budgetNum.toLocaleString()} ريال
+الميزانية المتاحة: ${budgetNum.toLocaleString()} ريال${cityName ? `\nالمدينة: ${cityName}` : '\nالمدينة: غير محددة (اقترح مشاريع تصلح لأغلب المدن السعودية)'}
 
 ${cityBrief}
 
-${sectorBrief}
+${sectorContext}
 
-${financialBrief}
+الرواتب المرجعية: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
 
-الرواتب: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
-التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}
+═══ قواعد الاقتراح الصارمة ═══
 
-═══ قواعد التحليل الصارمة ═══
+1. اقترح 6 مشاريع محددة بأسماء واضحة وعملية (مثل: محمصة قهوة مختصة مع توصيل، مغسلة سيارات متنقلة، مركز دورات تدريبية أونلاين) - ممنوع الأوصاف العامة الفضفاضة.
 
-1. واقعية الأرقام (الأهم): كل رقم مالي يجب أن يكون واقعياً ودقيقاً كأنه من السوق الفعلي. الأرقام تُحسب بدقة وليست تقديرات عشوائية - اجعل المجاميع متطابقة (مجموع بنود التأسيس = total، ومجموع البنود الشهرية = total). استخدم الأرقام المعطاة أعلاه كأساس إلزامي وعدّلها حسب:
-   - حجم المدينة: ${cityName} (مدينة كبيرة = الحد الأعلى من النطاق، صغيرة = الحد الأدنى)
-   - الحي إن وُجد (حي راقٍ = إيجار أعلى)
-   - لا تخترع أرقاماً خارج النطاقات المعطاة إلا بسبب واضح ومذكور
+2. كل مشروع يجب أن تكون تكلفة تأسيسه ضمن أو قريبة من ${budgetNum.toLocaleString()} ريال. لا تقترح مشاريع تحتاج ضعف الميزانية.
 
-2. مطابقة الميزانية مع التكلفة:
-   - إذا ميزانية المستخدم أقل من الحد الأدنى للتأسيس = سكور أقل من 35 + توضيح صريح بالأرقام كم ينقصه بالضبط
-   - إذا كافية = حلل بالتفصيل الكامل
+3. نوّع الاقتراحات: مشاريع آمنة مستقرة، ومشاريع نمو أعلى مخاطرة، وفكرة أو فكرتين مبتكرتين "خارج الصندوق" لكن قابلتين للتنفيذ فعلاً.
 
-3. لغة تبني الثقة: اكتب بلغة واضحة وعملية وصادقة. اشرح "لماذا" وراء كل رقم وكل توصية باختصار، لا تكتفِ بالنتيجة. تجنّب العبارات الفضفاضة والعامة. كل جملة يجب أن تعطي المستخدم معلومة حقيقية يقدر يتصرف بناءً عليها. لا تبالغ في التفاؤل ولا في التخويف.
+4. الأرقام واقعية ومستندة لدراسات الجدوى المعطاة. كن متحفظاً في تقدير الأرباح.
 
-4. الإيرادات: استخدم السيناريو المناسب (ضعيف/متوسط/قوي) حسب واقعية المشروع والموقع. كن متحفظاً - الأغلب يبدأ ضعيفاً ثم ينمو تدريجياً.
+5. لكل مشروع اذكر بصدق: لماذا يناسب هذه الميزانية، ومستوى المخاطرة، وأبرز تحدٍّ.
 
-5. نقطة التعادل والـ ROI: احسبها من الأرقام الفعلية المذكورة في تحليلك، واسترشد بنقطة التعادل النموذجية المعطاة. يجب أن تكون متسقة مع التكاليف والإيرادات التي ذكرتها.
+6. ${cityName ? `راعِ خصائص ${cityName} في اقتراحاتك` : 'اقترح مشاريع مرنة تصلح لمدن متعددة'}.
 
-6. المنافسون: اذكر 5 منافسين حقيقيين معروفين في ${cityName} تحديداً.
-
-7. الأحياء: استخدم أحياء حقيقية من قائمة ${cityName} فقط.
-
-8. التعامل مع الأفكار غير التقليدية: بعض المستخدمين سيقدمون أفكاراً مبتكرة أو غير مألوفة أو "خارج الصندوق". لا ترفضها لمجرد غرابتها ولا تجاملها لمجرد جدّتها - حلّلها بنفس الصرامة: ابحث عن أقرب قطاع شبيه لها، قدّر أرقامها بمنطق واضح، واذكر بصراحة إن كانت سابقة لوقتها أو السوق غير جاهز لها. الفكرة المبتكرة الناجحة والفكرة المبتكرة الفاشلة كلاهما وارد - مهمتك التمييز بينهما بالأرقام والمنطق.
-
-9. البدائل: 5 مشاريع حقيقية محددة بأسماء واضحة (مثل: محمصة قهوة مع توصيل، مغسلة سيارات متنقلة) - ممنوع أوصاف عامة. كل بديل مناسب لـ ${cityName}${neighborhood ? ` وحي ${neighborhood}` : ''} وميزانية قريبة من ${budgetNum.toLocaleString()} ريال.
-
-10. لا مجاملة إطلاقاً: لو الفكرة ضعيفة أو الميزانية غير كافية أو الموقع غير مناسب، قلها بوضوح وصراحة في decision و summary. صاحب المشروع يثق فيك لأنك صادق، لا لأنك مشجّع.
-
-أرجع JSON صحيح فقط:
+أرجع JSON صحيح فقط بهذا الشكل:
 
 {
-  "score": <0-100 واقعي>,
-  "decision": "<قرار صريح 6-10 كلمات>",
-  "decision_type": "<positive أو negative>",
-  "summary": "<ملخص واقعي 5-6 أسطر بلغة واضحة وصادقة: الميزانية كافية أو لا؟ كم المطلوب فعلياً بالريال؟ أبرز المخاطر؟ ما الذي يحدد نجاح أو فشل هذا المشروع تحديداً؟>",
-  "market_demand": "<منخفض/متوسط/عالي/عالي جداً>",
-  "competition": "<منخفضة/متوسطة/عالية/عالية جداً>",
-  "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
-  "risk_level": "<منخفض/متوسط/عالي/عالي جداً>",
-  "market_analysis": {
-    "market_size": "<حجم السوق لـ ${cityName}>",
-    "target_audience": "<الجمهور في ${cityName}>",
-    "buying_patterns": "<أنماط الشراء>",
-    "seasonality": "<الموسمية>",
-    "expected_market_share": "<النسبة الواقعية>",
-    "growth_potential": "<النمو على 5 سنوات>",
-    "competitors": [
-      {"name": "<منافس في ${cityName}>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"}
-    ]
-  },
-  "financial_analysis": {
-    "setup_costs": {"rent_deposit": 0, "renovation": 0, "equipment": 0, "licenses": 0, "initial_inventory": 0, "marketing_launch": 0, "working_capital": 0, "total": 0},
-    "monthly_costs": {"rent": 0, "salaries": 0, "utilities": 0, "materials": 0, "marketing": 0, "maintenance": 0, "other": 0, "total": 0},
-    "revenue_projection": {"month_1": 0, "month_3": 0, "month_6": 0, "month_12": 0, "year_2_monthly": 0, "year_3_monthly": 0},
-    "break_even_months": 0,
-    "roi_percentage": 0,
-    "annual_profit_year1": 0,
-    "annual_profit_year3": 0
-  },
-  "swot": {
-    "strengths": ["<قوة 1>", "<قوة 2>", "<قوة 3>", "<قوة 4>"],
-    "weaknesses": ["<ضعف 1>", "<ضعف 2>", "<ضعف 3>"],
-    "opportunities": ["<فرصة 1>", "<فرصة 2>", "<فرصة 3>"],
-    "threats": ["<تهديد 1>", "<تهديد 2>", "<تهديد 3>"]
-  },
-  "recommendations": ["<توصية 1>", "<توصية 2>", "<توصية 3>", "<توصية 4>", "<توصية 5>"],
-  "kpis": [
-    {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
-    {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
-    {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
-    {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"}
-  ],
-  "risk_analysis": [
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<منخفض/متوسط/عالي>", "impact": "<طفيف/متوسط/شديد>", "mitigation": "<خطة>"},
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"},
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"},
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"}
-  ],
-  "alternatives": [
-    {"idea": "<مشروع حقيقي محدد مناسب لـ ${cityName}>", "score": <0-100>, "reason": "<لماذا مناسب>", "budget_needed": "<مبلغ بالريال>"},
-    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
-    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
-    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"},
-    {"idea": "<مشروع حقيقي محدد>", "score": <0-100>, "reason": "<السبب>", "budget_needed": "<مبلغ>"}
-  ],
-  "alternative_idea": "",
-  "alternative_city": "",
-  "locations": {
-    "best": {"name": "<حي حقيقي في ${cityName}>", "score": <0-100>, "reason": "<شرح>"},
-    "worst": {"name": "<حي حقيقي>", "score": <0-100>, "reason": "<شرح>"}
-  }
-}`;
+  "budget_assessment": "<تقييم صريح 2-3 أسطر: هل هذه الميزانية جيدة؟ ما نوع المشاريع التي تفتحها؟ ما حدودها؟>",
+  "suggestions": [
+    {
+      "name": "<اسم المشروع المحدد>",
+      "sector": "<القطاع>",
+      "type": "<آمن / نمو / مبتكر>",
+      "setup_cost": "<التكلفة التقديرية بالريال - رقم أو نطاق>",
+      "monthly_profit_estimate": "<تقدير الربح الشهري الواقعي بالريال>",
+      "break_even": "<نقطة التعادل التقديرية بالأشهر>",
+      "risk_level": "<منخفض / متوسط / عالي>",
+      "why_fits": "<لماذا يناسب الميزانية - جملة واقعية>",
+      "main_challenge": "<أبرز تحدٍّ يواجه هذا المشروع>",
+      "success_tip": "<نصيحة عملية واحدة لنجاحه>"
+    }
+  ]
+}
 
-    console.log("Calling Groq...");
+ملاحظة: مصفوفة suggestions يجب أن تحتوي 6 مشاريع بالضبط.`;
+
+    console.log("Calling Groq for suggestions...");
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -163,8 +102,8 @@ ${financialBrief}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.4,
-        max_tokens: 6000,
+        temperature: 0.5,
+        max_tokens: 5000,
         response_format: { type: "json_object" }
       })
     });
@@ -184,7 +123,7 @@ ${financialBrief}
       return Response.json({ error: "لا يوجد رد" }, { status: 500 });
     }
 
-    console.log("Got response, length:", text.length);
+    console.log("Got suggestions response, length:", text.length);
 
     try {
       const result = JSON.parse(text);
