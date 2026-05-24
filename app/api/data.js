@@ -464,14 +464,12 @@ export function getCityBrief(cityName) {
 }
 
 export function getSectorBrief(sectorName) {
-  const competitors = COMPETITORS_BY_SECTOR[sectorName] || [];
   const rates = SUCCESS_RATES[sectorName] || { success: 50, failure: 50, note: "" };
   
   return `
 🏪 معطيات قطاع "${sectorName}":
-- المنافسون الحقيقيون: ${competitors.slice(0, 8).join("، ")}
-- معدل النجاح: ${rates.success}%
-- معدل الفشل: ${rates.failure}%
+- معدل النجاح في القطاع: ${rates.success}%
+- معدل الفشل في القطاع: ${rates.failure}%
 - ملاحظة: ${rates.note}`.trim();
 }
 
