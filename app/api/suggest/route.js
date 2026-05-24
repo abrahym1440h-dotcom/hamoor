@@ -12,8 +12,8 @@ export async function POST(req) {
       return Response.json({ error: "الميزانية مطلوبة" }, { status: 400 });
     }
 
-    // مفتاح Groq منفصل خاص بقسم الاقتراحات
-    const apiKey = process.env.GROQ_API_KEY_SUGGESTIONS;
+    // يستخدم نفس مفتاح Groq الخاص بالتحليل
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
     }
