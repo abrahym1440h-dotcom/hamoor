@@ -167,14 +167,13 @@ ${financialBrief}
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-120b",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
         temperature: 0.3,
-        max_completion_tokens: 8000,
-        reasoning_effort: "high",
+        max_tokens: 6000,
         response_format: { type: "json_object" }
       })
     });
