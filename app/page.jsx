@@ -999,6 +999,48 @@ function AnalysisScreen({result}) {
                   {result.break_even_detail.explanation && <p style={{fontSize:13,color:$.L2,lineHeight:1.8}}>{result.break_even_detail.explanation}</p>}
                 </Section>
               )}
+              {result.ideal_customer && (
+                <Section title="ملف العميل المثالي" Icon={Users} color={$.teal} subtitle="من هو عميلك وكيف توصل له">
+                  <div style={{display:"flex",flexDirection:"column",gap:sp[2]}}>
+                    {[{icon:Users,label:"الفئة العمرية",val:result.ideal_customer.age_group},{icon:Briefcase,label:"مستوى الدخل",val:result.ideal_customer.income_level},{icon:Activity,label:"نمط الحياة والسلوك",val:result.ideal_customer.behavior},{icon:MapPin,label:"أين تجده وكيف توصل له",val:result.ideal_customer.where_to_reach}].map(({icon:Icon,label,val},i)=>val && (
+                      <div key={i} style={{padding:`${sp[3]}px`,background:`${$.teal}06`,borderRadius:10}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                          <Icon size={13} color={$.teal}/>
+                          <span style={{fontSize:12,fontWeight:700,color:$.teal}}>{label}</span>
+                        </div>
+                        <p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
+              {result.licenses_needed?.length>0 && (
+                <Section title="التراخيص المطلوبة" Icon={Shield} color={$.orange} subtitle="التصاريح اللازمة وجهات إصدارها">
+                  {result.licenses_needed.map((lic,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],padding:`${sp[3]}px`,background:`${$.orange}06`,borderRadius:10,marginBottom:sp[2]}}>
+                      <div style={{width:24,height:24,borderRadius:7,background:`${$.orange}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <CheckCircle size={13} color={$.orange}/>
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:2}}>{lic.name}</div>
+                        {lic.issuer && <div style={{fontSize:12,color:$.L3}}>جهة الإصدار: {lic.issuer}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </Section>
+              )}
+              {result.differentiation?.length>0 && (
+                <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+                  <Section title="كيف تتميّز عن المنافسين" Icon={Sparkles} color={$.blue} subtitle="أفكار عملية تجعل مشروعك مختلفاً">
+                    {result.differentiation.map((d,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[2],background:`${$.blue}06`,padding:`${sp[3]}px`,borderRadius:10}}>
+                        <div style={{width:26,height:26,borderRadius:"50%",background:$.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                        <span style={{fontSize:13,color:$.L2,lineHeight:1.7,flex:1}}>{d}</span>
+                      </div>
+                    ))}
+                  </Section>
+                </div>
+              )}
             </>)}
           </div>
         </div>
