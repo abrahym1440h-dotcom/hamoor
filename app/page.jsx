@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -307,6 +307,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [done, setDone] = useState(false);
+  const [plan, setPlan] = useState("yearly");
 
   async function activate() {
     if (!code.trim() || busy) return;
@@ -319,6 +320,13 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
     finally { setBusy(false); }
   }
 
+  const FEATURES = [
+    `${PREMIUM_ANALYSES} تحليلات مشاريع شهرياً`,
+    "كل المقالات مفتوحة",
+    "قسم اقتراحات المشاريع",
+    "تحليل عميق بالذكاء الاصطناعي"
+  ];
+
   return (
     <Sheet open={open} onClose={onClose}>
       <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
@@ -327,35 +335,40 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
             <Crown size={34} color="#fff" strokeWidth={2.2}/>
           </div>
           <h2 style={{fontSize:22,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>اشترك في هامور</h2>
-          <p style={{fontSize:14,color:$.L3,lineHeight:1.7}}>افتح كل مزايا التطبيق واحصل على تحليلات ومقالات أكثر</p>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.7}}>افتح كل مزايا التطبيق واحصل على تحليلات واقتراحات بلا حدود</p>
         </div>
 
+        <div style={{background:$.F5,borderRadius:16,padding:sp[4],marginBottom:sp[5]}}>
+          <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>مزايا المشترك</div>
+          {FEATURES.map((f,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:i<FEATURES.length-1?sp[2]:0}}>
+              <div style={{width:18,height:18,borderRadius:"50%",background:`${$.green}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Check size={11} color={$.green} strokeWidth={3}/>
+              </div>
+              <span style={{fontSize:13,color:$.L1,fontWeight:600}}>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>اختر خطتك</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[5]}}>
-          <Card style={{padding:sp[4],border:`1.5px solid ${$.sepL}`}}>
-            <div style={{fontSize:13,fontWeight:700,color:$.L3,marginBottom:sp[3]}}>المجاني</div>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
-              <BarChart2 size={14} color={$.L4}/>
-              <span style={{fontSize:13,color:$.L2}}>{FREE_ANALYSES} تحليلات مشاريع</span>
+          <button onClick={()=>setPlan("monthly")} style={{position:"relative",textAlign:"right",padding:sp[4],borderRadius:16,border:`2px solid ${plan==="monthly"?$.orange:$.sepL}`,background:plan==="monthly"?`${$.orange}08`:$.surface,cursor:"pointer",fontFamily:"inherit"}}>
+            <div style={{fontSize:13,fontWeight:700,color:$.L2,marginBottom:sp[2]}}>شهري</div>
+            <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+              <span style={{fontSize:24,fontWeight:800,color:$.L1}}>19.99</span>
+              <span style={{fontSize:12,color:$.L3,fontWeight:600}}>ريال</span>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <BookOpen size={14} color={$.L4}/>
-              <span style={{fontSize:13,color:$.L2}}>{FREE_ARTICLES} مقالات</span>
+            <div style={{fontSize:11,color:$.L4,marginTop:2}}>شهرياً</div>
+          </button>
+          <button onClick={()=>setPlan("yearly")} style={{position:"relative",textAlign:"right",padding:sp[4],borderRadius:16,border:`2px solid ${plan==="yearly"?$.orange:$.sepL}`,background:plan==="yearly"?`${$.orange}08`:$.surface,cursor:"pointer",fontFamily:"inherit"}}>
+            <div style={{position:"absolute",top:-10,left:sp[3],background:$.green,color:"#fff",fontSize:10,fontWeight:800,padding:"3px 8px",borderRadius:8}}>وفّر شهرين</div>
+            <div style={{fontSize:13,fontWeight:700,color:$.L2,marginBottom:sp[2]}}>سنوي</div>
+            <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+              <span style={{fontSize:24,fontWeight:800,color:$.L1}}>199.99</span>
+              <span style={{fontSize:12,color:$.L3,fontWeight:600}}>ريال</span>
             </div>
-          </Card>
-          <Card style={{padding:sp[4],border:`1.5px solid ${$.orange}`,background:`${$.orange}08`}}>
-            <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:sp[3]}}>
-              <Crown size={14} color={$.orange}/>
-              <span style={{fontSize:13,fontWeight:700,color:$.orange}}>المشترك</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
-              <Check size={14} color={$.orange}/>
-              <span style={{fontSize:13,color:$.L1,fontWeight:600}}>{PREMIUM_ANALYSES} تحليلات مشاريع</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <Check size={14} color={$.orange}/>
-              <span style={{fontSize:13,color:$.L1,fontWeight:600}}>كل المقالات مفتوحة</span>
-            </div>
-          </Card>
+            <div style={{fontSize:11,color:$.L4,marginTop:2}}>≈ 16.66 ريال/شهر</div>
+          </button>
         </div>
 
         <button disabled style={{width:"100%",background:$.F3,color:$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,fontFamily:"inherit",marginBottom:sp[3],display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
@@ -393,7 +406,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
 const SECTOR_OPTIONS = [
   "مقاهي","مطاعم","وجبات سريعة","حلويات",
   "تجزئة","أزياء","إلكترونيات","صالونات",
-  "خياطة","تعليم","لياقة","تقنية","أخرى / غير مدرج"
+  "خياطة","تعليم","لياقة","تقنية"
 ];
 
 function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeedUpgrade}) {
@@ -1675,12 +1688,28 @@ function SideNav({active, onChange, user, dark, onToggleDark, isPremium}) {
   );
 }
 
-function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpgrade, onLogout, onNameUpdated}) {
+function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpgrade, onLogout, onNameUpdated, onSubscriptionChange}) {
   const screen = useScreenSize();
   const [name, setName] = useState(profile?.name || "");
   const [savingName, setSavingName] = useState(false);
   const [nameMsg, setNameMsg] = useState(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelErr, setCancelErr] = useState(null);
+
+  async function doCancel() {
+    if (cancelling) return;
+    setCancelling(true); setCancelErr(null);
+    try {
+      await cancelSubscription(user.id);
+      setConfirmCancel(false);
+      if (onSubscriptionChange) await onSubscriptionChange();
+    } catch(e) {
+      setCancelErr(e.message);
+    }
+    setCancelling(false);
+  }
 
   async function saveName() {
     if (savingName) return;
@@ -1751,7 +1780,11 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
             </button>
           )}
           {isPremium && (
-            <p style={{fontSize:12,color:$.L3,marginTop:sp[3],lineHeight:1.6}}>اشتراكك مفعّل — كل المزايا مفتوحة لك</p>
+            <>
+              <p style={{fontSize:12,color:$.L3,marginTop:sp[3],marginBottom:sp[3],lineHeight:1.6}}>اشتراكك مفعّل — كل المزايا مفتوحة لك</p>
+              {cancelErr && <div style={{marginBottom:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red}}>{cancelErr}</div>}
+              <button onClick={()=>setConfirmCancel(true)} style={{width:"100%",background:"transparent",color:$.red,border:`1.5px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء الاشتراك</button>
+            </>
           )}
         </Card>
 
@@ -1800,6 +1833,23 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
           <div style={{display:"flex",gap:sp[3]}}>
             <button onClick={()=>setConfirmLogout(false)} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
             <button onClick={onLogout} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>خروج</button>
+          </div>
+        </div>
+      </Sheet>
+
+      <Sheet open={confirmCancel} onClose={()=>!cancelling&&setConfirmCancel(false)}>
+        <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
+          <div style={{width:64,height:64,borderRadius:20,background:`${$.red}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
+            <Crown size={28} color={$.red}/>
+          </div>
+          <h3 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>إلغاء الاشتراك؟</h3>
+          <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>سيعود حسابك للباقة المجانية، وستفقد الوصول للمزايا المدفوعة مثل قسم الاقتراحات والتحليلات الكاملة</p>
+          {cancelErr && <div style={{marginBottom:sp[4],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red}}>{cancelErr}</div>}
+          <div style={{display:"flex",gap:sp[3]}}>
+            <button onClick={()=>setConfirmCancel(false)} disabled={cancelling} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:cancelling?"not-allowed":"pointer",fontFamily:"inherit"}}>تراجع</button>
+            <button onClick={doCancel} disabled={cancelling} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:cancelling?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              {cancelling?<><Spinner sz={14}/>جاري الإلغاء…</>:<>تأكيد الإلغاء</>}
+            </button>
           </div>
         </div>
       </Sheet>
@@ -1947,7 +1997,7 @@ export default function HamourApp() {
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="settings" && <SettingsScreen user={user} profile={profile} isPremium={isPremium} dark={dark} onToggleDark={toggleDark} onNeedUpgrade={()=>setShowUpgrade(true)} onLogout={handleLogout} onNameUpdated={handleNameUpdated}/>}
+        {tab==="settings" && <SettingsScreen user={user} profile={profile} isPremium={isPremium} dark={dark} onToggleDark={toggleDark} onNeedUpgrade={()=>setShowUpgrade(true)} onLogout={handleLogout} onNameUpdated={handleNameUpdated} onSubscriptionChange={handleActivated}/>}
       </div>
 
       {screen.isDesktop
