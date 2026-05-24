@@ -116,6 +116,56 @@ export async function cancelSubscription(userId) {
   return true;
 }
 
+// مدة التجديد: 7 أيام بالميلي ثانية
+const RESET_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
+
+// تجيب عدد التحليلات المستخدمة، وتصفّرها تلقائياً إذا مرّ أسبوع
+export async function getUsage(userId) {
+  if (!userId) return 0;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("analyses_used, usage_reset_at")
+      .eq("id", userId)
+      .single();
+    if (!data) return 0;
+
+    const resetAt = data.usage_reset_at ? new Date(data.usage_reset_at).getTime() : 0;
+    const now = Date.now();
+
+    // مرّ أسبوع أو أكثر = نصفّر العدّاد
+    if (!resetAt || (now - resetAt) >= RESET_PERIOD_MS) {
+      await supabase
+        .from("profiles")
+        .update({ analyses_used: 0, usage_reset_at: new Date().toISOString() })
+        .eq("id", userId);
+      return 0;
+    }
+    return data.analyses_used || 0;
+  } catch(e) {
+    return 0;
+  }
+}
+
+// تزيد عدّاد التحليلات بواحد (يُستدعى بعد كل تحليل ناجح)
+export async function incrementUsage(userId) {
+  if (!userId) return;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("analyses_used")
+      .eq("id", userId)
+      .single();
+    const current = data?.analyses_used || 0;
+    await supabase
+      .from("profiles")
+      .update({ analyses_used: current + 1 })
+      .eq("id", userId);
+  } catch(e) {
+    console.error("incrementUsage error:", e.message);
+  }
+}
+
 function translateError(msg) {
   if (!msg) return "حدث خطأ، حاول مرة أخرى";
   const m = msg.toLowerCase();
