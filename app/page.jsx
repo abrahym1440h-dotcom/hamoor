@@ -42,7 +42,8 @@ const SH = {
 const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 
 const FREE_ANALYSES = 2;
-const FREE_ARTICLES = 5;
+const FREE_ARTICLE_IDS = [1, 2, 3, 22, 23];
+const FREE_ARTICLES = FREE_ARTICLE_IDS.length;
 const PREMIUM_ANALYSES = 10;
 
 function useScreenSize() {
@@ -389,9 +390,16 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   );
 }
 
+const SECTOR_OPTIONS = [
+  "مقاهي ومشروبات","مطاعم وأكل","حلويات ومخبوزات","وجبات سريعة",
+  "تجزئة عامة","أزياء وعبايات","إلكترونيات","صالونات وتجميل",
+  "خياطة وتفصيل","تعليم وتدريب","لياقة ورياضة","خدمات تقنية","أخرى / غير مدرج"
+];
+
 function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeedUpgrade}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
+  const [sector,setSector]=useState("");
   const [city,setCity]=useState("الرياض");
   const [neighborhood,setNeighborhood]=useState("");
   const [budget,setBudget]=useState("");
@@ -400,7 +408,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
 
   const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
   const reachedLimit = analysesCount >= limit;
-  const canGo = idea.trim()&&budget.trim()&&!busy&&!reachedLimit;
+  const canGo = idea.trim()&&sector&&budget.trim()&&!busy&&!reachedLimit;
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -416,8 +424,8 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       const cleanBudget = budget.replace(/,/g, "");
       const fullIdea = details.trim() ? `${idea} - تفاصيل: ${details}` : idea;
       const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
-      const r = await apiCall("analyze", { idea:fullIdea, city:fullLocation, budget:cleanBudget });
-      const analysis = {...r, idea:fullIdea, city:fullLocation, budget:cleanBudget};
+      const r = await apiCall("analyze", { idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget });
+      const analysis = {...r, idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget};
       let saved = analysis;
       try {
         if (user) saved = await saveAnalysisCloud(analysis, user.id);
@@ -459,6 +467,15 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       </FormField>
       <FormField label="تفاصيل المشروع (اختياري)" icon={<Sparkles size={14} color={$.L4}/>}>
         <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="مثال: كوفي بأجواء يابانية، يقدم قهوة مختصة وحلويات أسيوية" rows={3} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
+      </FormField>
+      <FormField label="نوع القطاع" icon={<Layers size={14} color={$.L4}/>}>
+        <div style={{position:"relative"}}>
+          <select value={sector} onChange={e=>setSector(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:sector?$.L1:$.L4}}>
+            <option value="" disabled>اختر القطاع المناسب لمشروعك</option>
+            {SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+        </div>
       </FormField>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
         <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
@@ -1291,7 +1308,7 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
   }
 
   function handleArticleClick(article, index) {
-    if (!isPremium && index >= FREE_ARTICLES) { onNeedUpgrade(); return; }
+    if (!isPremium && !FREE_ARTICLE_IDS.includes(article.id)) { onNeedUpgrade(); return; }
     setActiveArticle(article);
   }
 
@@ -1324,7 +1341,7 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
           {filteredArticles.map((article, idx) => {
             const catInfo = getCategoryInfo(article.category);
             const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-            const locked = !isPremium && idx >= FREE_ARTICLES;
+            const locked = !isPremium && !FREE_ARTICLE_IDS.includes(article.id);
             return (
               <Card key={article.id} onClick={()=>handleArticleClick(article, idx)} style={{padding:sp[4],cursor:"pointer",position:"relative"}}>
                 {locked && (
