@@ -1,4 +1,4 @@
-import { CITIES_DATA, SECTOR_FINANCIALS, SALARIES, getCityBrief, getFinancialBrief } from "../../data.js";
+import { CITIES_DATA, SECTOR_FINANCIALS, SALARIES, getCityBrief, getFinancialBrief } from "../data.js";
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
