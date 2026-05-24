@@ -106,6 +106,16 @@ export async function activateWithCode(userId, code) {
   return true;
 }
 
+export async function cancelSubscription(userId) {
+  if (!userId) throw new Error("سجّل الدخول أولاً");
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_premium: false })
+    .eq("id", userId);
+  if (error) throw new Error("تعذّر إلغاء الاشتراك، حاول مرة أخرى");
+  return true;
+}
+
 function translateError(msg) {
   if (!msg) return "حدث خطأ، حاول مرة أخرى";
   const m = msg.toLowerCase();
