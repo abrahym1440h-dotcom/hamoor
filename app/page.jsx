@@ -501,7 +501,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
     </div>
   );
 }
-function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, user, analyses, isPremium, onNeedUpgrade}) {
+function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
 
@@ -648,6 +648,24 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
                 </Card>
               ))}
             </div>
+          </div>
+
+          <div style={{marginBottom:sp[6]}}>
+            <Card onClick={onGoSuggestions} style={{padding:sp[5],cursor:"pointer",background:"linear-gradient(135deg,#AF52DE,#7830B0)",border:"none"}}>
+              <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+                <div style={{width:52,height:52,borderRadius:16,background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Lightbulb size={26} color="#fff" strokeWidth={2.2}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                    <span style={{fontSize:16,fontWeight:800,color:"#fff"}}>محتار وش تستثمر؟</span>
+                    <Crown size={14} color="#FFD60A"/>
+                  </div>
+                  <p style={{fontSize:12.5,color:"rgba(255,255,255,0.85)",lineHeight:1.6}}>أدخل ميزانيتك واحصل على مشاريع واقعية تناسبك مدروسة حسب السوق السعودي</p>
+                </div>
+                <ChevronRight size={20} color="rgba(255,255,255,0.7)" style={{flexShrink:0}}/>
+              </div>
+            </Card>
           </div>
 
           <div style={{marginBottom:sp[5]}}>
@@ -1406,9 +1424,170 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
     </div>
   );
 }
+function SuggestionsScreen({isPremium, onNeedUpgrade}) {
+  const screen = useScreenSize();
+  const [budget,setBudget]=useState("");
+  const [city,setCity]=useState("");
+  const [sector,setSector]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+  const [result,setResult]=useState(null);
+
+  function handleBudgetChange(e) {
+    const raw = e.target.value.replace(/\D/g, "");
+    if (raw === "") { setBudget(""); return; }
+    setBudget(parseInt(raw).toLocaleString("en-US"));
+  }
+
+  async function go() {
+    if (!isPremium) { onNeedUpgrade(); return; }
+    if (!budget.trim() || busy) return;
+    setBusy(true); setErr(null); setResult(null);
+    try {
+      const cleanBudget = budget.replace(/,/g, "");
+      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null });
+      setResult(r);
+    } catch(e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  function typeColor(t) {
+    if (t==="آمن") return $.green;
+    if (t==="نمو") return $.blue;
+    if (t==="مبتكر") return $.purple;
+    return $.L3;
+  }
+  function riskColor(r) {
+    if (r==="منخفض") return $.green;
+    if (r==="متوسط") return $.orange;
+    return $.red;
+  }
+
+  const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : screen.isTablet ? {maxWidth:850, margin:"0 auto"} : {};
+
+  return (
+    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={containerStyle}>
+        <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[2]}}>
+          <div style={{width:46,height:46,borderRadius:14,background:"linear-gradient(145deg,#AF52DE,#7830B0)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Lightbulb size={22} color="#fff" strokeWidth={2}/>
+          </div>
+          <h1 style={{fontSize:screen.isDesktop?38:28,fontWeight:800,color:$.L1,letterSpacing:"-0.6px"}}>اقتراحات المشاريع</h1>
+        </div>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>أدخل ميزانيتك واحصل على مشاريع واقعية تناسب قدرتك المالية، مدروسة حسب السوق السعودي</p>
+
+        {!isPremium && (
+          <Card style={{padding:sp[5],border:`1.5px solid ${$.orange}30`,background:`${$.orange}08`,marginBottom:sp[5],textAlign:"center"}}>
+            <Crown size={28} color={$.orange} style={{marginBottom:sp[2]}}/>
+            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>قسم خاص بالمشتركين</div>
+            <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات مشاريع مخصصة لميزانيتك ومدينتك</p>
+            <button onClick={onNeedUpgrade} style={{background:$.orange,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>اشترك الآن</button>
+          </Card>
+        )}
+
+        <Card style={{padding:sp[5],marginBottom:sp[5],opacity:isPremium?1:0.55,pointerEvents:isPremium?"auto":"none"}}>
+          <FormField label="الميزانية المتاحة بالريال" icon={<Briefcase size={14} color={$.L4}/>}>
+            <div style={{position:"relative"}}>
+              <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
+              <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
+            </div>
+          </FormField>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+            <FormField label="المدينة (اختياري)" icon={<MapPin size={14} color={$.L4}/>}>
+              <div style={{position:"relative"}}>
+                <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:city?$.L1:$.L4}}>
+                  <option value="">كل المدن</option>
+                  {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+              </div>
+            </FormField>
+            <FormField label="القطاع (اختياري)" icon={<Layers size={14} color={$.L4}/>}>
+              <div style={{position:"relative"}}>
+                <select value={sector} onChange={e=>setSector(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:sector?$.L1:$.L4}}>
+                  <option value="">كل القطاعات</option>
+                  {SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+              </div>
+            </FormField>
+          </div>
+          {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+          <button onClick={go} disabled={!budget.trim()||busy} style={{width:"100%",marginTop:sp[4],background:budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3,color:budget.trim()&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:budget.trim()&&!busy?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+            {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
+          </button>
+        </Card>
+
+        {result && (
+          <>
+            {result.budget_assessment && (
+              <Card style={{padding:sp[5],marginBottom:sp[4],border:`1.5px solid ${$.purple}25`,background:`${$.purple}06`}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
+                  <Info size={15} color={$.purple}/>
+                  <span style={{fontSize:13,fontWeight:800,color:$.purple}}>تقييم ميزانيتك</span>
+                </div>
+                <p style={{fontSize:14,color:$.L1,lineHeight:1.8}}>{result.budget_assessment}</p>
+              </Card>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
+              {(result.suggestions||[]).map((s,i)=>(
+                <Card key={i} style={{padding:sp[5]}}>
+                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:sp[3],marginBottom:sp[3]}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:16,fontWeight:800,color:$.L1,lineHeight:1.4,marginBottom:sp[2]}}>{s.name}</div>
+                      <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+                        {s.sector && <Chip text={s.sector} color={$.L3} bg={$.F4}/>}
+                        {s.type && <Chip text={s.type} color={typeColor(s.type)} bg={`${typeColor(s.type)}15`}/>}
+                        {s.risk_level && <Chip text={`مخاطرة ${s.risk_level}`} color={riskColor(s.risk_level)} bg={`${riskColor(s.risk_level)}15`}/>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[2],marginBottom:sp[3]}}>
+                    <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
+                      <div style={{fontSize:10,color:$.L4,marginBottom:2}}>التأسيس</div>
+                      <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.setup_cost}</div>
+                    </div>
+                    <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
+                      <div style={{fontSize:10,color:$.L4,marginBottom:2}}>ربح شهري</div>
+                      <div style={{fontSize:12,fontWeight:700,color:$.green}}>{s.monthly_profit_estimate}</div>
+                    </div>
+                    <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
+                      <div style={{fontSize:10,color:$.L4,marginBottom:2}}>التعادل</div>
+                      <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.break_even}</div>
+                    </div>
+                  </div>
+                  {s.why_fits && (
+                    <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
+                      <CheckCircle size={14} color={$.green} style={{flexShrink:0,marginTop:2}}/>
+                      <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{s.why_fits}</span>
+                    </div>
+                  )}
+                  {s.main_challenge && (
+                    <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
+                      <AlertTriangle size={14} color={$.orange} style={{flexShrink:0,marginTop:2}}/>
+                      <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{s.main_challenge}</span>
+                    </div>
+                  )}
+                  {s.success_tip && (
+                    <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3]}}>
+                      <Lightbulb size={14} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
+                      <span style={{fontSize:12.5,color:$.L2,lineHeight:1.6}}>{s.success_tip}</span>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+            <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[5],lineHeight:1.7}}>الأرقام تقديرية مبنية على متوسطات السوق. ننصح بدراسة جدوى تفصيلية قبل أي قرار استثماري.</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const NAV = [
   {id:"home", name:"الرئيسية", Icon:Home},
-  {id:"analysis", name:"التحليل", Icon:BarChart2},
+  {id:"suggestions", name:"اقتراحات", Icon:Lightbulb},
   {id:"saved", name:"تحليلاتي", Icon:Archive},
   {id:"sectors", name:"القطاعات", Icon:Grid},
   {id:"learning", name:"التعلم", Icon:BookOpen},
@@ -1739,8 +1918,9 @@ export default function HamourApp() {
       `}</style>
 
       <div style={{paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} user={user} analyses={analyses} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
+        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
