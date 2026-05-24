@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -9,7 +9,7 @@ import {
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
   ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
-  LogOut, Mail, Lock, User
+  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound
 } from "lucide-react";
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
@@ -40,6 +40,10 @@ const SH = {
   blue:"0 2px 8px rgba(0,122,255,0.22),0 8px 32px rgba(0,122,255,0.28)",
 };
 const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
+
+const FREE_ANALYSES = 2;
+const FREE_ARTICLES = 5;
+const PREMIUM_ANALYSES = 10;
 
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
@@ -297,7 +301,95 @@ function AuthScreen({onSuccess}) {
   );
 }
 
-function AnalyzeForm({onAnalyze, onClose, user}) {
+function UpgradeSheet({open, onClose, user, onActivated}) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [done, setDone] = useState(false);
+
+  async function activate() {
+    if (!code.trim() || busy) return;
+    setBusy(true); setErr(null);
+    try {
+      await activateWithCode(user.id, code);
+      setDone(true);
+      setTimeout(() => { onActivated(); onClose(); }, 1400);
+    } catch(e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Sheet open={open} onClose={onClose}>
+      <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
+        <div style={{textAlign:"center",marginBottom:sp[5]}}>
+          <div style={{width:72,height:72,borderRadius:22,background:"linear-gradient(145deg,#FFB800,#FF9500)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[4]}}>
+            <Crown size={34} color="#fff" strokeWidth={2.2}/>
+          </div>
+          <h2 style={{fontSize:22,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>اشترك في هامور</h2>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.7}}>افتح كل مزايا التطبيق واحصل على تحليلات ومقالات أكثر</p>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[5]}}>
+          <Card style={{padding:sp[4],border:`1.5px solid ${$.sepL}`}}>
+            <div style={{fontSize:13,fontWeight:700,color:$.L3,marginBottom:sp[3]}}>المجاني</div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
+              <BarChart2 size={14} color={$.L4}/>
+              <span style={{fontSize:13,color:$.L2}}>{FREE_ANALYSES} تحليلات مشاريع</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <BookOpen size={14} color={$.L4}/>
+              <span style={{fontSize:13,color:$.L2}}>{FREE_ARTICLES} مقالات</span>
+            </div>
+          </Card>
+          <Card style={{padding:sp[4],border:`1.5px solid ${$.orange}`,background:`${$.orange}08`}}>
+            <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:sp[3]}}>
+              <Crown size={14} color={$.orange}/>
+              <span style={{fontSize:13,fontWeight:700,color:$.orange}}>المشترك</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
+              <Check size={14} color={$.orange}/>
+              <span style={{fontSize:13,color:$.L1,fontWeight:600}}>{PREMIUM_ANALYSES} تحليلات مشاريع</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <Check size={14} color={$.orange}/>
+              <span style={{fontSize:13,color:$.L1,fontWeight:600}}>كل المقالات مفتوحة</span>
+            </div>
+          </Card>
+        </div>
+
+        <button disabled style={{width:"100%",background:$.F3,color:$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,fontFamily:"inherit",marginBottom:sp[3],display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+          <Crown size={16}/>الدفع الإلكتروني — قريباً
+        </button>
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[5],lineHeight:1.6}}>الدفع بالبطاقة و Apple Pay سيتوفّر قريباً</p>
+
+        <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[5]}}>
+          {done ? (
+            <div style={{textAlign:"center",padding:`${sp[4]}px`}}>
+              <div style={{width:56,height:56,borderRadius:"50%",background:`${$.green}18`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[3]}}>
+                <Check size={28} color={$.green}/>
+              </div>
+              <div style={{fontSize:16,fontWeight:800,color:$.green}}>تم تفعيل اشتراكك!</div>
+            </div>
+          ) : (
+            <>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[3]}}>
+                <KeyRound size={15} color={$.blue}/>
+                <span style={{fontSize:13,fontWeight:700,color:$.L1}}>عندك كود تفعيل؟</span>
+              </div>
+              <input value={code} onChange={e=>setCode(e.target.value)} placeholder="أدخل كود التفعيل" autoCapitalize="characters" style={{...iStyle(),direction:"ltr",textAlign:"center",letterSpacing:"1px",fontWeight:700,marginBottom:sp[3]}}/>
+              {err && <div style={{marginBottom:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red}}>{err}</div>}
+              <button onClick={activate} disabled={!code.trim()||busy} style={{width:"100%",background:code.trim()&&!busy?$.blue:$.F3,color:code.trim()&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:code.trim()&&!busy?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+                {busy?<><Spinner sz={16}/>جاري التفعيل…</>:<>تفعيل الاشتراك</>}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeedUpgrade}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
   const [city,setCity]=useState("الرياض");
@@ -305,7 +397,10 @@ function AnalyzeForm({onAnalyze, onClose, user}) {
   const [budget,setBudget]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
-  const canGo = idea.trim()&&budget.trim()&&!busy;
+
+  const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
+  const reachedLimit = analysesCount >= limit;
+  const canGo = idea.trim()&&budget.trim()&&!busy&&!reachedLimit;
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -314,6 +409,7 @@ function AnalyzeForm({onAnalyze, onClose, user}) {
   }
 
   async function go() {
+    if (reachedLimit) { if (onClose) onClose(); onNeedUpgrade(); return; }
     if (!canGo) return;
     setBusy(true); setErr(null);
     try {
@@ -341,6 +437,23 @@ function AnalyzeForm({onAnalyze, onClose, user}) {
           <div style={{fontSize:12,color:$.L3,marginTop:2}}>تحليل عميق ومفصّل بالذكاء الاصطناعي</div>
         </div>
       </div>
+
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:reachedLimit?`${$.orange}10`:$.F5,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[4]}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {isPremium ? <Crown size={14} color={$.orange}/> : <BarChart2 size={14} color={$.L3}/>}
+          <span style={{fontSize:12,fontWeight:600,color:$.L2}}>{isPremium?"اشتراك مفعّل":"الباقة المجانية"}</span>
+        </div>
+        <span style={{fontSize:12,fontWeight:700,color:reachedLimit?$.orange:$.L3}}>{analysesCount} / {limit} تحليلات</span>
+      </div>
+
+      {reachedLimit && (
+        <div style={{background:`${$.orange}10`,border:`1.5px solid ${$.orange}30`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[4],textAlign:"center"}}>
+          <Crown size={24} color={$.orange} style={{marginBottom:sp[2]}}/>
+          <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>وصلت للحد المسموح</div>
+          <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>اشترك للحصول على {PREMIUM_ANALYSES} تحليلات</p>
+        </div>
+      )}
+
       <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
         <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: كوفي مختص" style={iStyle()}/>
       </FormField>
@@ -365,14 +478,13 @@ function AnalyzeForm({onAnalyze, onClose, user}) {
         </div>
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-      <button onClick={go} disabled={!canGo} style={{marginTop:sp[5],width:"100%",background:canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3,color:canGo?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:canGo?"pointer":"not-allowed",fontFamily:"inherit",boxShadow:canGo?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-        {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
+      <button onClick={go} disabled={busy||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?"linear-gradient(150deg,#FFB800,#FF9500)":(canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3),color:(reachedLimit||canGo)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+        {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:reachedLimit?<><Crown size={16} strokeWidth={2.2}/>اشترك للمتابعة</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
       </button>
     </div>
   );
 }
-
-function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors, onGoLearning, user, analyses}) {
+function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, user, analyses, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
 
@@ -380,6 +492,7 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
   const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
   const successRate = totalAnalyses > 0 ? Math.round((positiveCount / totalAnalyses) * 100) : 0;
   const featuredArticles = ARTICLES.slice(0, 3);
+  const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
 
   function getCategoryInfo(catId) {
     return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
@@ -393,9 +506,15 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
         <div style={{...containerStyle,position:"relative"}}>
           <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
           <div style={{position:"relative"}}>
-            <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:$.green,boxShadow:`0 0 12px ${$.green}`}}/>
-              <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.85)"}}>جاهز للتحليل</span>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[3]}}>
+              <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:$.green,boxShadow:`0 0 12px ${$.green}`}}/>
+                <span style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.85)"}}>جاهز للتحليل</span>
+              </div>
+              {isPremium && <div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,184,0,0.22)",borderRadius:99,padding:"4px 10px"}}>
+                <Crown size={12} color="#FFD60A"/>
+                <span style={{fontSize:11,fontWeight:700,color:"#FFD60A"}}>مشترك</span>
+              </div>}
             </div>
             <h1 style={{fontSize:screen.isDesktop?52:screen.isTablet?44:38,fontWeight:800,color:"#fff",letterSpacing:"-1.4px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
             <p style={{fontSize:screen.isDesktop?17:14,color:"rgba(255,255,255,0.75)",lineHeight:1.6,maxWidth:screen.isDesktop?480:280,marginBottom:sp[5]}}>دراسة جدوى ذكية ومفصّلة للسوق السعودي مدعومة بالذكاء الاصطناعي</p>
@@ -454,6 +573,21 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
                 <div style={{fontSize:11,color:$.L3,marginTop:2,fontWeight:600}}>آخر تحليل</div>
               </Card>
             </div>
+          )}
+
+          {!isPremium && (
+            <Card onClick={onNeedUpgrade} style={{cursor:"pointer",marginBottom:sp[6],background:"linear-gradient(135deg,#FFB800,#FF9500)",border:"none"}}>
+              <div style={{padding:`${sp[4]}px ${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3]}}>
+                <div style={{width:44,height:44,borderRadius:14,background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Crown size={22} color="#fff"/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:15,fontWeight:800,color:"#fff",marginBottom:2}}>اشترك في هامور</div>
+                  <p style={{fontSize:12,color:"rgba(255,255,255,0.9)"}}>{PREMIUM_ANALYSES} تحليلات + كل المقالات مفتوحة</p>
+                </div>
+                <ChevronRight size={20} color="#fff" style={{transform:"scaleX(-1)"}}/>
+              </div>
+            </Card>
           )}
 
           {analyses.length > 0 && (
@@ -525,11 +659,12 @@ function HomeScreen({onAnalyze, lastResult, onViewLast, onViewSaved, onGoSectors
       </div>
 
       <Sheet open={showForm} onClose={()=>setShowForm(false)}>
-        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user}/>
+        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={analyses.length} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
       </Sheet>
     </div>
   );
 }
+
 const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات"];
 
 function AnalysisScreen({result}) {
@@ -814,7 +949,6 @@ function AnalysisScreen({result}) {
     </div>
   );
 }
-
 function SavedAnalysesScreen({onViewAnalysis, analyses, onRefresh}) {
   const screen = useScreenSize();
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -924,6 +1058,7 @@ function SavedAnalysesScreen({onViewAnalysis, analyses, onRefresh}) {
     </div>
   );
 }
+
 const CATEGORIES = [
   {id:"all", name:"الكل", color:$.blue},
   {id:"food", name:"أطعمة", color:$.orange},
@@ -933,162 +1068,18 @@ const CATEGORIES = [
 ];
 
 const SECTORS_DATA = [
-  {
-    id:1, category:"food", name:"مقاهي ومشروبات", Icon:Coffee, color:$.orange,
-    score:68, growth:"+12%", failure_rate:"60%", investment:"150,000 - 400,000", investment_avg:250000,
-    payback:"18-24 شهر", margin:"15-25%", competition:"عالية جداً",
-    audience:"شباب 18-35، طلاب جامعات، عمال شركات، عائلات في عطلات نهاية الأسبوع",
-    top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"],
-    success_tips:["موقع استراتيجي قرب الجامعات أو المكاتب أو الأحياء السكنية الحديثة","تميّز في القهوة - استورد حبوب مختصة وقدّم تجربة فريدة","تصميم داخلي جذاب للسوشيال ميديا وتجربة تصوير ممتازة","خدمة توصيل سريعة عبر التطبيقات (هنقرستيشن، جاهز، توصيل)","برامج ولاء وعروض ذكية للزبائن المنتظمين","تركيز على جودة الباريستا وتدريبه باستمرار"],
-    failure_reasons:["إشباع السوق - منافسة شرسة من ستاربكس ودنكن والمحلات المحلية","موقع ضعيف أو في حي ميت بدون حركة كافية","ضعف التمييز - كل المقاهي صارت متشابهة","تكاليف عالية للإيجار والديكور أكلت رأس المال قبل البدء","عدم الاستمرارية في الجودة بسبب دوران الباريستا"],
-    competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد","حلواني"],
-    sub_ideas:["كوفي متخصص في القهوة الكورية","عربة قهوة متنقلة","كوفي بطابع تراثي سعودي"],
-    city_notes:{"الباحة":"السياحة الجبلية والمصيف فرصة ممتازة - تشهد المنطقة إقبال سياحي عالي صيفاً","الرياض":"منافسة عالية جداً، تحتاج تميّز قوي وموقع استثنائي","جدة":"سوق متشبع لكن السياح والكورنيش يفتحون فرصاً موسمية","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية للمستقبل القريب","أبها":"المصيف السياحي + الطلاب يخلون السوق نشط","جازان":"إقبال جيد لكن المنافسة محدودة - فرصة"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:2, category:"food", name:"مطاعم وأكل", Icon:Utensils, color:$.red,
-    score:65, growth:"+8%", failure_rate:"70%", investment:"200,000 - 800,000", investment_avg:400000,
-    payback:"24-36 شهر", margin:"10-18%", competition:"عالية",
-    audience:"عائلات، عمال، موظفون، شباب في الخروجات الأسبوعية",
-    top_cities:["الرياض","جدة","الدمام","الخبر","مكة المكرمة"],
-    success_tips:["تخصص واضح - مطعم لمأكولات محددة أفضل من قائمة طويلة","اتساق في الجودة - الزبون يجي عشان طعم معين","خدمة توصيل قوية عبر كل المنصات","تسعير منافس وعروض موسمية","موقع في مجمعات تجارية أو شوارع رئيسية مزدحمة","نظافة المطبخ والخدمة - أهم من أي شي ثاني"],
-    failure_reasons:["قائمة طعام كبيرة جدا تسبب هدر في المواد","ضعف الإدارة المالية والمخزون","منافسة شرسة من السلاسل الكبيرة (البيك، كودو، هرفي)","موسمية صعبة في رمضان والإجازات","صعوبة إيجاد طباخين ماهرين والاحتفاظ بهم"],
-    competitors:["البيك","كودو","هرفي","ماكدونالدز","ماجستيك","الطازج","البرج"],
-    sub_ideas:["مطعم متخصص في الكبسة","مطعم آسيوي شعبي","فطور صباحي راقي"],
-    city_notes:{"الباحة":"المطاعم العائلية والشعبية الأنجح - الزبائن يحبون الأكل التراثي","مكة المكرمة":"موسم الحج والعمرة يضاعف الطلب - استعد للذروة","المدينة المنورة":"السياحة الدينية تخلق طلب مستمر للأكل العائلي","الطائف":"المصيف يفتح فرصة موسمية ممتازة"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:3, category:"food", name:"حلويات ومخبوزات", Icon:Cake, color:$.pink,
-    score:72, growth:"+18%", failure_rate:"45%", investment:"120,000 - 500,000", investment_avg:200000,
-    payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
-    audience:"نساء، عائلات، مناسبات (أعراس، تخرج، مواليد)، مكاتب",
-    top_cities:["الرياض","جدة","الدمام","القصيم","المدينة المنورة"],
-    success_tips:["تصوير احترافي للمنتجات للسوشيال ميديا","تغليف فاخر يصلح للهدايا والمناسبات","توصيل سريع مع المحافظة على جودة المنتج","تخصص في نوع معين (كنافة، بقلاوة، كيكات مناسبات)","ابتكار طعمات جديدة باستمرار","حسابات قوية في إنستقرام وتيك توك"],
-    failure_reasons:["تقليد المنافسين بدل الابتكار","ضعف التغليف يضر التجربة","عدم اتساق الجودة بين الوجبات","تسعير غير صحيح","إهمال الموسمية (رمضان، أعياد)"],
-    competitors:["صابا","عبدالصمد القرشي","ميلانو","لافيت","الإمبراطور","تشيز كيك فاكتوري"],
-    sub_ideas:["حلويات صحية بدون سكر","تخصص في الكنافة الفاخرة","كيكات تخرج وأعراس"],
-    city_notes:{"القصيم":"معروفة بالحلويات التقليدية - فرصة للابتكار العصري","الباحة":"السوق المحلي صغير لكن أقل منافسة - فرصة جيدة"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:4, category:"food", name:"وجبات سريعة", Icon:Pizza, color:$.yellow,
-    score:64, growth:"+10%", failure_rate:"55%", investment:"100,000 - 350,000", investment_avg:180000,
-    payback:"15-24 شهر", margin:"20-30%", competition:"عالية",
-    audience:"شباب، طلاب، عمال، موظفون في استراحة الغداء",
-    top_cities:["الرياض","جدة","الدمام","تبوك","الخبر"],
-    success_tips:["سرعة التحضير - أقل من 5 دقائق","تسعير منافس - أقل من السلاسل العالمية","موقع قريب من الجامعات أو المناطق الصناعية","توصيل عبر كل تطبيقات التوصيل بفعالية","بساطة القائمة - تركيز على 3-5 منتجات","نظافة عالية ومستمرة"],
-    failure_reasons:["منافسة شرسة من السلاسل العالمية","ضعف الجودة في المواد الخام","ارتفاع تكاليف اللحوم والدجاج","صعوبة المحافظة على الجودة في الذروة","اعتماد كامل على التوصيل"],
-    competitors:["ماكدونالدز","برجر كنق","KFC","البيك","شوكسي","صب واي"],
-    sub_ideas:["برجر سعودي بنكهات محلية","شاورما مختصة فاخرة","ساندوتشات صحية"],
-    city_notes:{"تبوك":"نمو نيوم يجلب آلاف العمال - طلب عالي على الوجبات السريعة"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:5, category:"retail", name:"تجزئة عامة", Icon:ShoppingBag, color:$.purple,
-    score:55, growth:"+5%", failure_rate:"55%", investment:"100,000 - 500,000", investment_avg:200000,
-    payback:"24-36 شهر", margin:"15-30%", competition:"عالية جداً",
-    audience:"عام - حسب نوع البضاعة (أطفال، نساء، رجال، عائلات)",
-    top_cities:["الرياض","جدة","الدمام","مكة المكرمة","الخبر"],
-    success_tips:["تخصص واضح - متجر بدل سوبر ماركت عام","موقع في مجمع تجاري أو شارع تجاري مزدحم","إدارة مخزون ذكية - تجنب البضاعة الراكدة","حضور أونلاين قوي (متجر إلكتروني + سوشيال)","خدمة عملاء مميزة وسياسة استرجاع واضحة","عروض موسمية ومناسبات"],
-    failure_reasons:["منافسة قوية من التجارة الإلكترونية (نون، أمازون)","بضاعة راكدة تأكل رأس المال","موقع ضعيف بدون حركة","تسعير مرتفع مقارنة بالسلاسل الكبيرة","إهمال التسويق الرقمي"],
-    competitors:["نون","أمازون","إكسترا","ساكو","جرير","سنتربوينت","المنيع"],
-    sub_ideas:["متجر منتجات أطفال متخصص","متجر مستلزمات حيوانات","متجر هدايا فاخرة"],
-    city_notes:{"الباحة":"السوق المحلي محدود - ركّز على ما يحتاجه السكان فعلاً"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:6, category:"retail", name:"أزياء وعبايات", Icon:Shirt, color:$.indigo,
-    score:75, growth:"+15%", failure_rate:"40%", investment:"80,000 - 300,000", investment_avg:150000,
-    payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة",
-    audience:"نساء 20-60 سنة، مناسبات (أعراس، تخرج، عيد، رمضان)",
-    top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"],
-    success_tips:["تصاميم حصرية وفريدة - لا تقلد","خياطة عالية الجودة بأقمشة فاخرة","إنستقرام احترافي مع مودلز وتصوير ممتاز","خدمة VIP لكبار العملاء","موقع راقي في حي راقي أو مول","تنوع المقاسات والألوان"],
-    failure_reasons:["تشابه التصاميم مع المنافسين","تسعير ضعيف لا يغطي التكاليف","موقع غير ملائم للجمهور المستهدف","ضعف التسويق الرقمي","عدم متابعة الموضة الحالية"],
-    competitors:["مزون","نهى","أنوار","حلا الترك","نسك","عبايات الرياض"],
-    sub_ideas:["عبايات شبابية عصرية","فساتين سهرة مستوردة","عبايات صلاة فاخرة"],
-    city_notes:{"الباحة":"الأعراس الموسمية والسياحة تخلق طلب جيد","القصيم":"السوق المحافظ يفضل العبايات التقليدية والمستورة"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:7, category:"retail", name:"إلكترونيات", Icon:Smartphone, color:$.teal,
-    score:60, growth:"+7%", failure_rate:"50%", investment:"200,000 - 1,000,000", investment_avg:400000,
-    payback:"30-48 شهر", margin:"8-18%", competition:"عالية جداً",
-    audience:"شباب، موظفون، طلاب، عائلات",
-    top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
-    success_tips:["أسعار منافسة (الهامش قليل، الكمية تفرق)","ضمان موثوق وخدمة ما بعد البيع","تشكيلة متنوعة من الماركات","صيانة في المحل لتمييز عن المنافسين","حسابات سوشيال قوية مع مراجعات","تعاون مع شركات الأقساط (تابي، تمارا)"],
-    failure_reasons:["هامش ربح ضعيف يصعب الاستمرار","منافسة قاتلة من المتاجر الإلكترونية","تزييف المنتجات وفقدان الثقة","تخزين بضاعة قديمة تنخفض قيمتها","صعوبة الحصول على وكالات حصرية"],
-    competitors:["إكسترا","جرير","نون","أمازون","السيف غاليري","لولو هايبر","ماكس"],
-    sub_ideas:["إكسسوارات الجوالات","صيانة وإصلاح متخصصة","قطع غيار كمبيوترات"],
-    city_notes:{"تبوك":"العمال الأجانب في نيوم يحتاجون إلكترونيات وإكسسوارات"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:8, category:"services", name:"صالونات وتجميل", Icon:Sparkle, color:$.pink,
-    score:70, growth:"+14%", failure_rate:"50%", investment:"100,000 - 400,000", investment_avg:200000,
-    payback:"18-24 شهر", margin:"25-40%", competition:"متوسطة",
-    audience:"نساء 18-55 سنة، رجال 18-50 (للحلاقة)، مناسبات",
-    top_cities:["الرياض","جدة","الخبر","الدمام","أبها"],
-    success_tips:["مصففين موهوبين من بلاد متخصصة","تجربة فاخرة - استقبال، قهوة، خصوصية","نظام حجز إلكتروني (واتساب، تطبيق)","تخصص في خدمات معينة (أعراس، علاج بشرة)","نظافة وتعقيم على أعلى مستوى","تنظيم الوقت - عدم تأخير الزبائن"],
-    failure_reasons:["دوران الموظفين السريع","عدم النظافة والتعقيم الكافي","تسعير غير واضح يفاجئ الزبون","ضعف التسويق الرقمي","إهمال خدمة الزبون والمتابعة"],
-    competitors:["روزا","إكسير","توني آند جاي","رويال","حلا للتجميل","ميرنا"],
-    sub_ideas:["صالون رجالي راقي","صالون متخصص في الأعراس","عيادة جلدية تجميلية"],
-    city_notes:{"الباحة":"السياحة الصيفية تفتح فرصة موسمية ممتازة","أبها":"الجو الجميل يجذب سياحة العرائس"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:9, category:"services", name:"خياطة وتفصيل", Icon:Scissors, color:$.purple,
-    score:62, growth:"+6%", failure_rate:"30%", investment:"40,000 - 150,000", investment_avg:70000,
-    payback:"12-18 شهر", margin:"30-50%", competition:"متوسطة",
-    audience:"رجال (ثياب، بشوت)، نساء (فساتين، عبايات)، مناسبات",
-    top_cities:["الرياض","القصيم","المدينة المنورة","جدة","الدمام"],
-    success_tips:["خياطين ماهرين بخبرة طويلة","الالتزام بالمواعيد - السمعة كل شي","تخصص في نوع معين (رجالي، نسائي، عبايات)","أقمشة فاخرة ومستوردة","موقع قريب من الأحياء التي تخدمها","خدمة قياس بالمنزل للعملاء الكبار"],
-    failure_reasons:["تأخر التسليم وفقدان ثقة الزبائن","ضعف جودة الخياطة","نقص في الخياطين المهرة","تسعير غير منافس","عدم مواكبة موضة الموسم"],
-    competitors:["محلات خياطة محلية في كل حي","الطلال","الفيصلية","عابد"],
-    sub_ideas:["خياطة فساتين سهرة","خياطة بشوت ملوكية","تفصيل عبايات تصاميم خاصة"],
-    city_notes:{"القصيم":"السوق التقليدي يحب الخياطة الفاخرة - فرصة قوية","الباحة":"الأعراس الموسمية تفتح طلب كبير"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:10, category:"professional", name:"تعليم وتدريب", Icon:GraduationCap, color:$.blue,
-    score:82, growth:"+22%", failure_rate:"35%", investment:"80,000 - 350,000", investment_avg:150000,
-    payback:"12-20 شهر", margin:"35-55%", competition:"متوسطة",
-    audience:"طلاب مدارس، طلاب جامعات، موظفون يبغون تطوير ذواتهم",
-    top_cities:["الرياض","جدة","الدمام","الخبر","المدينة المنورة"],
-    success_tips:["مدرّبين ذوي خبرة وشهادات","محتوى مميز وأسلوب تقديم جذاب","شهادات معتمدة من جهات معروفة","تسويق رقمي قوي عبر السوشيال","دورات مكثفة وقصيرة الأمد","أسعار تنافسية مع برامج أقساط"],
-    failure_reasons:["ضعف جودة المدربين والمحتوى","تسعير مرتفع جداً","موقع غير ملائم أو وصول صعب","عدم وجود تخصص واضح","إهمال متابعة الطلاب بعد الدورة"],
-    competitors:["دروب","رواق","عبر مدرسة","تمكين","مهارة"],
-    sub_ideas:["تعليم البرمجة للأطفال","تطوير الذات والقيادة","دورات لغات متخصصة"],
-    city_notes:{"الباحة":"الطلاب يحتاجون مراكز قوية - فرصة قليلة المنافسة"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:11, category:"professional", name:"لياقة ورياضة", Icon:Dumbbell, color:$.green,
-    score:78, growth:"+20%", failure_rate:"40%", investment:"150,000 - 600,000", investment_avg:300000,
-    payback:"18-30 شهر", margin:"30-45%", competition:"متوسطة",
-    audience:"شباب وشابات 18-45، موظفون، رياضيون، مهتمون بالصحة",
-    top_cities:["الرياض","جدة","الخبر","الدمام","تبوك"],
-    success_tips:["أجهزة حديثة وعالية الجودة","مدربين معتمدين دولياً","تنوع البرامج (يوغا، كروسفت، حديد، كارديو)","نظافة وتعقيم مستمر","اشتراكات مرنة وعروض موسمية","تطبيق لحجز الجلسات والمتابعة"],
-    failure_reasons:["أجهزة قديمة أو معطلة","اشتراكات مرتفعة جداً","صعوبة الاحتفاظ بالعملاء بعد أول شهر","موقع غير ملائم بدون مواقف","ضعف خدمة العملاء"],
-    competitors:["فتنس تايم","بادي ماستر","بود فيتنس","نقاء","فيتنس فيرست"],
-    sub_ideas:["نادي نسائي متخصص","مركز كروسفت متخصص","ستوديو يوغا وبيلاتس"],
-    city_notes:{"تبوك":"نيوم تجلب آلاف الموظفين الشباب - طلب عالي"},
-    last_updated:"يناير 2026"
-  },
-  {
-    id:12, category:"professional", name:"خدمات تقنية", Icon:Wifi, color:$.indigo,
-    score:85, growth:"+25%", failure_rate:"30%", investment:"50,000 - 300,000", investment_avg:100000,
-    payback:"12-18 شهر", margin:"40-60%", competition:"منخفضة",
-    audience:"شركات، رواد أعمال، متاجر، أفراد",
-    top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"],
-    success_tips:["تخصص في خدمة محددة (تطبيقات، مواقع، تسويق رقمي)","محفظة أعمال قوية وشهادات عملاء","أسعار باقات واضحة ومحددة","دعم فني سريع ومستمر","حضور قوي على لينكدإن وموقع احترافي","شراكات مع شركات كبرى"],
-    failure_reasons:["عدم وجود تخصص واضح","ضعف التسعير وعدم تقدير الجهد","صعوبة إيجاد عملاء مستمرين","ضعف خدمة الدعم بعد التسليم","تقادم التقنيات بسرعة"],
-    competitors:["شركات تقنية محلية متنوعة","stc Pay","موضوع","حسوب"],
-    sub_ideas:["تسويق رقمي للمحلات","تصميم تطبيقات للشركات","إدارة سوشيال ميديا"],
-    city_notes:{"الرياض":"السوق الأكبر للخدمات التقنية في المملكة","تبوك":"نيوم تحتاج خدمات تقنية متخصصة - فرصة ذهبية"},
-    last_updated:"يناير 2026"
-  }
+  {id:1, category:"food", name:"مقاهي ومشروبات", Icon:Coffee, color:$.orange, score:68, growth:"+12%", failure_rate:"60%", investment:"150,000 - 400,000", payback:"18-24 شهر", margin:"15-25%", competition:"عالية جداً", audience:"شباب 18-35، طلاب جامعات، عمال شركات، عائلات في عطلات نهاية الأسبوع", top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"], success_tips:["موقع استراتيجي قرب الجامعات أو المكاتب","تميّز في القهوة - حبوب مختصة وتجربة فريدة","تصميم داخلي جذاب للسوشيال ميديا","خدمة توصيل سريعة عبر التطبيقات","برامج ولاء وعروض ذكية","تدريب الباريستا باستمرار"], failure_reasons:["إشباع السوق ومنافسة شرسة","موقع ضعيف بدون حركة","ضعف التمييز","تكاليف إيجار وديكور عالية","عدم الاستمرارية في الجودة"], competitors:["ستاربكس","% عربيكا","دنكن","كوفي بين","مذاق","بريد"], sub_ideas:["كوفي قهوة كورية","عربة قهوة متنقلة","كوفي بطابع تراثي"], city_notes:{"الباحة":"السياحة الجبلية فرصة ممتازة صيفاً","الرياض":"منافسة عالية، تحتاج تميّز قوي","تبوك":"نمو سياحي مع نيوم - فرصة ذهبية","أبها":"المصيف والطلاب يخلون السوق نشط"}, last_updated:"يناير 2026"},
+  {id:2, category:"food", name:"مطاعم وأكل", Icon:Utensils, color:$.red, score:65, growth:"+8%", failure_rate:"70%", investment:"200,000 - 800,000", payback:"24-36 شهر", margin:"10-18%", competition:"عالية", audience:"عائلات، عمال، موظفون، شباب في الخروجات الأسبوعية", top_cities:["الرياض","جدة","الدمام","الخبر","مكة المكرمة"], success_tips:["تخصص واضح في مأكولات محددة","اتساق في الجودة","خدمة توصيل قوية","تسعير منافس وعروض موسمية","موقع في مجمعات أو شوارع مزدحمة","نظافة المطبخ والخدمة"], failure_reasons:["قائمة طعام كبيرة جداً","ضعف الإدارة المالية والمخزون","منافسة السلاسل الكبيرة","موسمية صعبة","صعوبة إيجاد طباخين ماهرين"], competitors:["البيك","كودو","هرفي","ماكدونالدز","ماجستيك","الطازج"], sub_ideas:["مطعم متخصص في الكبسة","مطعم آسيوي شعبي","فطور صباحي راقي"], city_notes:{"الباحة":"المطاعم العائلية والشعبية الأنجح","مكة المكرمة":"موسم الحج يضاعف الطلب","المدينة المنورة":"السياحة الدينية تخلق طلب مستمر","الطائف":"المصيف يفتح فرصة موسمية"}, last_updated:"يناير 2026"},
+  {id:3, category:"food", name:"حلويات ومخبوزات", Icon:Cake, color:$.pink, score:72, growth:"+18%", failure_rate:"45%", investment:"120,000 - 500,000", payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة", audience:"نساء، عائلات، مناسبات، مكاتب", top_cities:["الرياض","جدة","الدمام","القصيم","المدينة المنورة"], success_tips:["تصوير احترافي للمنتجات","تغليف فاخر للهدايا","توصيل سريع مع جودة محفوظة","تخصص في نوع معين","ابتكار طعمات جديدة","حسابات قوية في إنستقرام"], failure_reasons:["تقليد المنافسين بدل الابتكار","ضعف التغليف","عدم اتساق الجودة","تسعير غير صحيح","إهمال الموسمية"], competitors:["صابا","عبدالصمد القرشي","ميلانو","لافيت","تشيز كيك فاكتوري"], sub_ideas:["حلويات صحية بدون سكر","تخصص في الكنافة الفاخرة","كيكات تخرج وأعراس"], city_notes:{"القصيم":"معروفة بالحلويات - فرصة للابتكار العصري","الباحة":"سوق صغير لكن أقل منافسة"}, last_updated:"يناير 2026"},
+  {id:4, category:"food", name:"وجبات سريعة", Icon:Pizza, color:$.yellow, score:64, growth:"+10%", failure_rate:"55%", investment:"100,000 - 350,000", payback:"15-24 شهر", margin:"20-30%", competition:"عالية", audience:"شباب، طلاب، عمال، موظفون", top_cities:["الرياض","جدة","الدمام","تبوك","الخبر"], success_tips:["سرعة التحضير أقل من 5 دقائق","تسعير منافس","موقع قريب من الجامعات","توصيل فعّال","بساطة القائمة","نظافة عالية"], failure_reasons:["منافسة السلاسل العالمية","ضعف جودة المواد الخام","ارتفاع تكاليف اللحوم","صعوبة الجودة في الذروة","اعتماد كامل على التوصيل"], competitors:["ماكدونالدز","برجر كنق","KFC","البيك","شوكسي"], sub_ideas:["برجر سعودي بنكهات محلية","شاورما مختصة","ساندوتشات صحية"], city_notes:{"تبوك":"نمو نيوم يجلب طلب عالي"}, last_updated:"يناير 2026"},
+  {id:5, category:"retail", name:"تجزئة عامة", Icon:ShoppingBag, color:$.purple, score:55, growth:"+5%", failure_rate:"55%", investment:"100,000 - 500,000", payback:"24-36 شهر", margin:"15-30%", competition:"عالية جداً", audience:"عام حسب نوع البضاعة", top_cities:["الرياض","جدة","الدمام","مكة المكرمة","الخبر"], success_tips:["تخصص واضح","موقع في مجمع تجاري","إدارة مخزون ذكية","حضور أونلاين قوي","خدمة عملاء مميزة","عروض موسمية"], failure_reasons:["منافسة التجارة الإلكترونية","بضاعة راكدة","موقع ضعيف","تسعير مرتفع","إهمال التسويق الرقمي"], competitors:["نون","أمازون","إكسترا","ساكو","جرير"], sub_ideas:["متجر منتجات أطفال","متجر مستلزمات حيوانات","متجر هدايا فاخرة"], city_notes:{"الباحة":"ركّز على ما يحتاجه السكان فعلاً"}, last_updated:"يناير 2026"},
+  {id:6, category:"retail", name:"أزياء وعبايات", Icon:Shirt, color:$.indigo, score:75, growth:"+15%", failure_rate:"40%", investment:"80,000 - 300,000", payback:"12-18 شهر", margin:"25-40%", competition:"متوسطة", audience:"نساء 20-60 سنة، مناسبات", top_cities:["الرياض","جدة","الخبر","الدمام","المدينة المنورة"], success_tips:["تصاميم حصرية وفريدة","خياطة عالية الجودة","إنستقرام احترافي","خدمة VIP للعملاء","موقع راقي","تنوع المقاسات"], failure_reasons:["تشابه التصاميم","تسعير ضعيف","موقع غير ملائم","ضعف التسويق الرقمي","عدم متابعة الموضة"], competitors:["مزون","نهى","أنوار","نسك"], sub_ideas:["عبايات شبابية عصرية","فساتين سهرة مستوردة","عبايات صلاة فاخرة"], city_notes:{"الباحة":"الأعراس الموسمية تخلق طلب","القصيم":"السوق يفضّل العبايات التقليدية"}, last_updated:"يناير 2026"},
+  {id:7, category:"retail", name:"إلكترونيات", Icon:Smartphone, color:$.teal, score:60, growth:"+7%", failure_rate:"50%", investment:"200,000 - 1,000,000", payback:"30-48 شهر", margin:"8-18%", competition:"عالية جداً", audience:"شباب، موظفون، طلاب، عائلات", top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"], success_tips:["أسعار منافسة","ضمان موثوق","تشكيلة متنوعة","صيانة في المحل","حسابات سوشيال قوية","تعاون مع شركات الأقساط"], failure_reasons:["هامش ربح ضعيف","منافسة المتاجر الإلكترونية","تزييف المنتجات","تخزين بضاعة قديمة","صعوبة الوكالات الحصرية"], competitors:["إكسترا","جرير","نون","أمازون","السيف غاليري"], sub_ideas:["إكسسوارات الجوالات","صيانة متخصصة","قطع غيار كمبيوترات"], city_notes:{"تبوك":"العمال في نيوم يحتاجون إلكترونيات"}, last_updated:"يناير 2026"},
+  {id:8, category:"services", name:"صالونات وتجميل", Icon:Sparkle, color:$.pink, score:70, growth:"+14%", failure_rate:"50%", investment:"100,000 - 400,000", payback:"18-24 شهر", margin:"25-40%", competition:"متوسطة", audience:"نساء 18-55، رجال 18-50، مناسبات", top_cities:["الرياض","جدة","الخبر","الدمام","أبها"], success_tips:["مصففين موهوبين","تجربة فاخرة","نظام حجز إلكتروني","تخصص في خدمات معينة","نظافة وتعقيم عالي","تنظيم الوقت"], failure_reasons:["دوران الموظفين السريع","عدم النظافة الكافية","تسعير غير واضح","ضعف التسويق","إهمال خدمة الزبون"], competitors:["روزا","إكسير","توني آند جاي","رويال"], sub_ideas:["صالون رجالي راقي","صالون أعراس متخصص","عيادة جلدية تجميلية"], city_notes:{"الباحة":"السياحة الصيفية فرصة موسمية","أبها":"الجو الجميل يجذب سياحة العرائس"}, last_updated:"يناير 2026"},
+  {id:9, category:"services", name:"خياطة وتفصيل", Icon:Scissors, color:$.purple, score:62, growth:"+6%", failure_rate:"30%", investment:"40,000 - 150,000", payback:"12-18 شهر", margin:"30-50%", competition:"متوسطة", audience:"رجال، نساء، مناسبات", top_cities:["الرياض","القصيم","المدينة المنورة","جدة","الدمام"], success_tips:["خياطين ماهرين","الالتزام بالمواعيد","تخصص في نوع معين","أقمشة فاخرة","موقع قريب من الأحياء","خدمة قياس بالمنزل"], failure_reasons:["تأخر التسليم","ضعف جودة الخياطة","نقص الخياطين المهرة","تسعير غير منافس","عدم مواكبة الموضة"], competitors:["محلات خياطة محلية","الطلال","الفيصلية"], sub_ideas:["خياطة فساتين سهرة","خياطة بشوت ملوكية","تفصيل عبايات خاصة"], city_notes:{"القصيم":"السوق يحب الخياطة الفاخرة","الباحة":"الأعراس الموسمية تفتح طلب كبير"}, last_updated:"يناير 2026"},
+  {id:10, category:"professional", name:"تعليم وتدريب", Icon:GraduationCap, color:$.blue, score:82, growth:"+22%", failure_rate:"35%", investment:"80,000 - 350,000", payback:"12-20 شهر", margin:"35-55%", competition:"متوسطة", audience:"طلاب مدارس وجامعات، موظفون", top_cities:["الرياض","جدة","الدمام","الخبر","المدينة المنورة"], success_tips:["مدرّبين ذوي خبرة","محتوى مميز","شهادات معتمدة","تسويق رقمي قوي","دورات مكثفة","أسعار تنافسية"], failure_reasons:["ضعف جودة المدربين","تسعير مرتفع","موقع غير ملائم","عدم وجود تخصص","إهمال متابعة الطلاب"], competitors:["دروب","رواق","عبر مدرسة","تمكين"], sub_ideas:["تعليم البرمجة للأطفال","تطوير الذات والقيادة","دورات لغات متخصصة"], city_notes:{"الباحة":"فرصة قليلة المنافسة"}, last_updated:"يناير 2026"},
+  {id:11, category:"professional", name:"لياقة ورياضة", Icon:Dumbbell, color:$.green, score:78, growth:"+20%", failure_rate:"40%", investment:"150,000 - 600,000", payback:"18-30 شهر", margin:"30-45%", competition:"متوسطة", audience:"شباب وشابات 18-45، رياضيون", top_cities:["الرياض","جدة","الخبر","الدمام","تبوك"], success_tips:["أجهزة حديثة","مدربين معتمدين","تنوع البرامج","نظافة وتعقيم","اشتراكات مرنة","تطبيق للحجز"], failure_reasons:["أجهزة قديمة","اشتراكات مرتفعة","صعوبة الاحتفاظ بالعملاء","موقع غير ملائم","ضعف الخدمة"], competitors:["فتنس تايم","بادي ماستر","بود فيتنس","نقاء"], sub_ideas:["نادي نسائي متخصص","مركز كروسفت","ستوديو يوغا وبيلاتس"], city_notes:{"تبوك":"نيوم تجلب طلب عالي"}, last_updated:"يناير 2026"},
+  {id:12, category:"professional", name:"خدمات تقنية", Icon:Wifi, color:$.indigo, score:85, growth:"+25%", failure_rate:"30%", investment:"50,000 - 300,000", payback:"12-18 شهر", margin:"40-60%", competition:"منخفضة", audience:"شركات، رواد أعمال، متاجر، أفراد", top_cities:["الرياض","جدة","الدمام","الخبر","تبوك"], success_tips:["تخصص في خدمة محددة","محفظة أعمال قوية","أسعار باقات واضحة","دعم فني سريع","حضور قوي على لينكدإن","شراكات مع شركات كبرى"], failure_reasons:["عدم وجود تخصص","ضعف التسعير","صعوبة إيجاد عملاء مستمرين","ضعف الدعم","تقادم التقنيات"], competitors:["شركات تقنية محلية","stc Pay","موضوع","حسوب"], sub_ideas:["تسويق رقمي للمحلات","تصميم تطبيقات","إدارة سوشيال ميديا"], city_notes:{"الرياض":"السوق الأكبر للخدمات التقنية","تبوك":"نيوم تحتاج خدمات تقنية - فرصة ذهبية"}, last_updated:"يناير 2026"}
 ];
 
 function SectorsScreen() {
@@ -1275,7 +1266,7 @@ function SectorsScreen() {
   );
 }
 
-function LearningScreen() {
+function LearningScreen({isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [q,setQ]=useState("");
   const [activeCat,setActiveCat]=useState("all");
@@ -1299,13 +1290,18 @@ function LearningScreen() {
     return ARTICLE_CATEGORIES.find(c => c.id === catId) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
   }
 
+  function handleArticleClick(article, index) {
+    if (!isPremium && index >= FREE_ARTICLES) { onNeedUpgrade(); return; }
+    setActiveArticle(article);
+  }
+
   const containerStyle = screen.isDesktop ? {maxWidth:1200, margin:"0 auto"} : screen.isTablet ? {maxWidth:900, margin:"0 auto"} : {};
 
   return (
     <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
       <div style={containerStyle}>
         <h1 style={{fontSize:screen.isDesktop?42:30,fontWeight:800,color:$.L1,letterSpacing:"-0.8px",marginBottom:4}}>مكتبة التعلم</h1>
-        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{ARTICLES.length} مقالة احترافية</p>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>{ARTICLES.length} مقالة احترافية{!isPremium && ` · ${FREE_ARTICLES} مجانية`}</p>
 
         <div style={{position:"relative",marginBottom:sp[5]}}>
           <Search size={15} color={$.L4} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)"}}/>
@@ -1325,12 +1321,18 @@ function LearningScreen() {
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr 1fr":screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
-          {filteredArticles.map(article => {
+          {filteredArticles.map((article, idx) => {
             const catInfo = getCategoryInfo(article.category);
             const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
+            const locked = !isPremium && idx >= FREE_ARTICLES;
             return (
-              <Card key={article.id} onClick={()=>setActiveArticle(article)} style={{padding:sp[4],cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"flex-start",gap:sp[4]}}>
+              <Card key={article.id} onClick={()=>handleArticleClick(article, idx)} style={{padding:sp[4],cursor:"pointer",position:"relative"}}>
+                {locked && (
+                  <div style={{position:"absolute",top:sp[3],left:sp[3],width:26,height:26,borderRadius:8,background:`${$.orange}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <Lock size={13} color={$.orange}/>
+                  </div>
+                )}
+                <div style={{display:"flex",alignItems:"flex-start",gap:sp[4],opacity:locked?0.6:1}}>
                   <div style={{width:60,height:60,borderRadius:16,background:catInfo.gradient,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 4px 12px ${catInfo.color}33`}}>
                     <CatIcon size={30} color="#ffffff" strokeWidth={2.4} absoluteStrokeWidth/>
                   </div>
@@ -1340,6 +1342,7 @@ function LearningScreen() {
                     <div style={{display:"flex",alignItems:"center",gap:sp[2],flexWrap:"wrap"}}>
                       <Chip text={catInfo.name} color={catInfo.color} bg={`${catInfo.color}15`} size={11}/>
                       <Chip text={article.level} color={getLevelColor(article.level)} bg={`${getLevelColor(article.level)}15`} size={11}/>
+                      {locked && <Chip text="للمشتركين" color={$.orange} bg={`${$.orange}15`} size={11}/>}
                     </div>
                   </div>
                 </div>
@@ -1386,155 +1389,314 @@ function LearningScreen() {
     </div>
   );
 }
-
 const NAV = [
-  {id:"home",label:"الرئيسية",Icon:Home},
-  {id:"analysis",label:"التحليل",Icon:BarChart2},
-  {id:"saved",label:"تحليلاتي",Icon:Archive},
-  {id:"sectors",label:"القطاعات",Icon:Grid},
-  {id:"learning",label:"التعلم",Icon:BookOpen}
+  {id:"home", name:"الرئيسية", Icon:Home},
+  {id:"analysis", name:"التحليل", Icon:BarChart2},
+  {id:"saved", name:"تحليلاتي", Icon:Archive},
+  {id:"sectors", name:"القطاعات", Icon:Grid},
+  {id:"learning", name:"التعلم", Icon:BookOpen},
+  {id:"settings", name:"حسابي", Icon:Settings}
 ];
 
-function BottomNav({tab,setTab,dark,toggleDark}) {
+function BottomNav({active, onChange, dark, onToggleDark}) {
   return (
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:999,display:"flex",justifyContent:"space-around",background:dark?"rgba(23,32,51,0.94)":"rgba(246,246,248,0.88)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderTop:`0.5px solid ${$.sepL}`,padding:`${sp[3]}px ${sp[2]}px ${sp[7]}px`}}>
-      {NAV.map(({id,label,Icon})=>{const on=tab===id;return(<button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}><div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:on?`${$.blue}18`:"transparent"}}><Icon size={20} color={on?$.blue:$.L4} strokeWidth={on?2.1:1.6}/></div><span style={{fontSize:9,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{label}</span></button>);})}
-      <button onClick={toggleDark} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:sp[1],background:"none",border:"none",cursor:"pointer",padding:`${sp[1]}px ${sp[3]}px`,borderRadius:14}}>
-        <div style={{padding:`${sp[1]+2}px ${sp[2]+2}px`,borderRadius:12,background:"transparent"}}>{dark?<Sun size={20} color={$.yellow} strokeWidth={1.8}/>:<Moon size={20} color={$.L4} strokeWidth={1.8}/>}</div>
-        <span style={{fontSize:9,fontWeight:500,color:$.L4}}>{dark?"نهاري":"ليلي"}</span>
-      </button>
-    </nav>
+    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:$.surface,borderTop:`0.5px solid ${$.sep}`,display:"flex",padding:`8px 4px max(8px,env(safe-area-inset-bottom))`,boxShadow:"0 -2px 16px rgba(0,0,0,0.06)"}}>
+      {NAV.map(n => {
+        const on = active === n.id;
+        return (
+          <button key={n.id} onClick={()=>onChange(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit"}}>
+            <n.Icon size={21} color={on?$.blue:$.L4} strokeWidth={on?2.4:2}/>
+            <span style={{fontSize:9.5,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{n.name}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-function SideNav({tab,setTab,dark,toggleDark,user,onLogout}) {
+function SideNav({active, onChange, user, dark, onToggleDark, isPremium}) {
   return (
-    <nav style={{position:"fixed",top:0,right:0,bottom:0,width:240,zIndex:999,display:"flex",flexDirection:"column",background:$.surface,borderLeft:`0.5px solid ${$.sepL}`,padding:`${sp[6]}px ${sp[4]}px`}}>
-      <div style={{padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[6]}}>
-        <h2 style={{fontSize:24,fontWeight:800,color:$.blue}}>هامور</h2>
-        <p style={{fontSize:11,color:$.L4,marginTop:2}}>دراسة جدوى ذكية</p>
+    <div style={{position:"fixed",top:0,right:0,bottom:0,width:260,zIndex:100,background:$.surface,borderLeft:`0.5px solid ${$.sep}`,display:"flex",flexDirection:"column",padding:`${sp[6]}px ${sp[4]}px`}}>
+      <div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`0 ${sp[3]}px`,marginBottom:sp[8]}}>
+        <div style={{width:44,height:44,borderRadius:14,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <BarChart2 size={22} color="#fff" strokeWidth={2.2}/>
+        </div>
+        <div>
+          <div style={{fontSize:20,fontWeight:800,color:$.L1}}>هامور</div>
+          <div style={{fontSize:11,color:$.L3}}>دراسة جدوى ذكية</div>
+        </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:sp[1],flex:1}}>
-        {NAV.map(({id,label,Icon})=>{
-          const on=tab===id;
+        {NAV.map(n => {
+          const on = active === n.id;
           return (
-            <button key={id} onClick={()=>setTab(id)} style={{display:"flex",alignItems:"center",gap:sp[3],background:on?`${$.blue}12`:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit"}}>
-              <Icon size={20} color={on?$.blue:$.L3} strokeWidth={on?2.1:1.8}/>
-              <span style={{fontSize:14,fontWeight:on?700:500,color:on?$.blue:$.L2}}>{label}</span>
+            <button key={n.id} onClick={()=>onChange(n.id)} style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[3]}px`,borderRadius:12,border:"none",cursor:"pointer",fontFamily:"inherit",background:on?$.blue:"transparent",width:"100%"}}>
+              <n.Icon size={20} color={on?"#fff":$.L3} strokeWidth={on?2.4:2}/>
+              <span style={{fontSize:14,fontWeight:on?700:500,color:on?"#fff":$.L2}}>{n.name}</span>
             </button>
           );
         })}
-        <button onClick={toggleDark} style={{display:"flex",alignItems:"center",gap:sp[3],background:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit",marginTop:sp[2]}}>
-          {dark?<Sun size={20} color={$.yellow} strokeWidth={1.8}/>:<Moon size={20} color={$.L3} strokeWidth={1.8}/>}
-          <span style={{fontSize:14,fontWeight:500,color:$.L2}}>{dark?"الوضع النهاري":"الوضع الليلي"}</span>
-        </button>
       </div>
-      <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[3]}}>
-        {user && <div style={{display:"flex",alignItems:"center",gap:sp[2],padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[1]}}>
-          <div style={{width:32,height:32,borderRadius:"50%",background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><User size={16} color={$.blue}/></div>
-          <span style={{fontSize:11,color:$.L3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</span>
-        </div>}
-        <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:sp[3],background:"transparent",border:"none",cursor:"pointer",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:12,fontFamily:"inherit",width:"100%"}}>
-          <LogOut size={20} color={$.red} strokeWidth={1.8}/>
-          <span style={{fontSize:14,fontWeight:500,color:$.red}}>تسجيل الخروج</span>
+      <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[3],marginTop:sp[3]}}>
+        {isPremium && (
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[2]}}>
+            <Crown size={14} color={$.orange}/>
+            <span style={{fontSize:12,fontWeight:700,color:$.orange}}>اشتراك مفعّل</span>
+          </div>
+        )}
+        <button onClick={onToggleDark} style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px`,borderRadius:12,border:"none",cursor:"pointer",fontFamily:"inherit",background:"transparent",width:"100%"}}>
+          {dark ? <Sun size={18} color={$.L3}/> : <Moon size={18} color={$.L3}/>}
+          <span style={{fontSize:13,fontWeight:500,color:$.L2}}>{dark?"الوضع النهاري":"الوضع الليلي"}</span>
         </button>
+        {user && (
+          <div style={{padding:`${sp[3]}px`,fontSize:11,color:$.L4,overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</div>
+        )}
       </div>
-    </nav>
+    </div>
   );
 }
 
-function ProfileScreen({user, onLogout, analyses}) {
-  const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
+function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpgrade, onLogout, onNameUpdated}) {
+  const screen = useScreenSize();
+  const [name, setName] = useState(profile?.name || "");
+  const [savingName, setSavingName] = useState(false);
+  const [nameMsg, setNameMsg] = useState(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  async function saveName() {
+    if (savingName) return;
+    setSavingName(true); setNameMsg(null);
+    try {
+      await updateName(user.id, name);
+      setNameMsg({type:"ok", text:"تم حفظ الاسم"});
+      onNameUpdated(name.trim());
+    } catch(e) {
+      setNameMsg({type:"err", text:e.message});
+    }
+    setSavingName(false);
+  }
+
+  const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString("ar-SA") : "-";
+  const containerStyle = screen.isDesktop ? {maxWidth:680, margin:"0 auto"} : {};
+
   return (
-    <Card style={{marginTop:sp[5],overflow:"hidden"}}>
-      <div style={{padding:`${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[3],borderBottom:`0.5px solid ${$.sepL}`}}>
-        <div style={{width:48,height:48,borderRadius:"50%",background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><User size={24} color={$.blue}/></div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:12,color:$.L3,marginBottom:2}}>مسجّل دخول باسم</div>
-          <div style={{fontSize:14,fontWeight:700,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",direction:"ltr",textAlign:"right"}}>{user?.email}</div>
-        </div>
+    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={containerStyle}>
+        <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:4}}>حسابي</h1>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6]}}>إدارة حسابك وإعدادات التطبيق</p>
+
+        <Card style={{marginBottom:sp[4]}}>
+          <div style={{padding:`${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4],borderBottom:`0.5px solid ${$.sepL}`}}>
+            <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <User size={30} color="#fff" strokeWidth={2}/>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:17,fontWeight:800,color:$.L1,marginBottom:2}}>{profile?.name || "مستخدم هامور"}</div>
+              <div style={{fontSize:12,color:$.L3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email}</div>
+            </div>
+            {isPremium && (
+              <div style={{display:"flex",alignItems:"center",gap:5,background:`${$.orange}15`,borderRadius:99,padding:"5px 12px",flexShrink:0}}>
+                <Crown size={13} color={$.orange}/>
+                <span style={{fontSize:11,fontWeight:700,color:$.orange}}>مشترك</span>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card style={{marginBottom:sp[4],padding:`${sp[5]}px`}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[4]}}>
+            <User size={16} color={$.blue}/>
+            <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الاسم</span>
+          </div>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="أدخل اسمك" style={{...iStyle(),marginBottom:sp[3]}}/>
+          {nameMsg && (
+            <div style={{marginBottom:sp[3],fontSize:13,fontWeight:600,color:nameMsg.type==="ok"?$.green:$.red}}>{nameMsg.text}</div>
+          )}
+          <button onClick={saveName} disabled={savingName||!name.trim()} style={{width:"100%",background:name.trim()&&!savingName?$.blue:$.F3,color:name.trim()&&!savingName?"#fff":$.L4,border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:name.trim()&&!savingName?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            {savingName?<><Spinner sz={15}/>جاري الحفظ…</>:<>حفظ الاسم</>}
+          </button>
+        </Card>
+
+        <Card style={{marginBottom:sp[4],padding:`${sp[5]}px`}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[4]}}>
+            <Crown size={16} color={$.orange}/>
+            <span style={{fontSize:15,fontWeight:700,color:$.L1}}>الاشتراك</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:`${sp[3]}px ${sp[4]}px`,background:isPremium?`${$.orange}10`:$.F5,borderRadius:12,marginBottom:isPremium?0:sp[3]}}>
+            <span style={{fontSize:13,color:$.L2,fontWeight:600}}>الحالة الحالية</span>
+            <span style={{fontSize:13,fontWeight:800,color:isPremium?$.orange:$.L3}}>{isPremium?"مشترك":"مجاني"}</span>
+          </div>
+          {!isPremium && (
+            <button onClick={onNeedUpgrade} style={{width:"100%",background:"linear-gradient(150deg,#FFB800,#FF9500)",color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              <Crown size={15}/>اشترك الآن
+            </button>
+          )}
+          {isPremium && (
+            <p style={{fontSize:12,color:$.L3,marginTop:sp[3],lineHeight:1.6}}>اشتراكك مفعّل — كل المزايا مفتوحة لك</p>
+          )}
+        </Card>
+
+        <Card style={{marginBottom:sp[4],padding:`${sp[5]}px`}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[4]}}>
+            {dark ? <Moon size={16} color={$.indigo}/> : <Sun size={16} color={$.orange}/>}
+            <span style={{fontSize:15,fontWeight:700,color:$.L1}}>وضع التطبيق</span>
+          </div>
+          <button onClick={onToggleDark} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:$.F5,border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,cursor:"pointer",fontFamily:"inherit"}}>
+            <span style={{fontSize:14,fontWeight:600,color:$.L1}}>{dark?"الوضع الليلي":"الوضع النهاري"}</span>
+            <div style={{width:48,height:28,borderRadius:99,background:dark?$.indigo:$.F3,position:"relative",transition:"background .2s"}}>
+              <div style={{position:"absolute",top:3,right:dark?3:23,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"right .2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/>
+            </div>
+          </button>
+        </Card>
+
+        <Card style={{marginBottom:sp[4],padding:`${sp[5]}px`}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[4]}}>
+            <Info size={16} color={$.teal}/>
+            <span style={{fontSize:15,fontWeight:700,color:$.L1}}>معلومات الحساب</span>
+          </div>
+          <Row label="البريد الإلكتروني" value={user?.email||"-"}/>
+          <Row label="تاريخ الانضمام" value={joinDate}/>
+          <div style={{padding:`${sp[2]}px 0`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:13,color:$.L2}}>نوع الباقة</span>
+              <span style={{fontSize:14,fontWeight:700,color:isPremium?$.orange:$.L1}}>{isPremium?"مشترك":"مجاني"}</span>
+            </div>
+          </div>
+        </Card>
+
+        <button onClick={()=>setConfirmLogout(true)} style={{width:"100%",background:$.surface,color:$.red,border:`1.5px solid ${$.red}25`,borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:SH.card}}>
+          <LogOut size={17}/>تسجيل الخروج
+        </button>
+
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[6]}}>هامور · الإصدار 1.0</p>
       </div>
-      <button onClick={onLogout} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],background:"transparent",border:"none",cursor:"pointer",padding:`${sp[4]}px`,fontFamily:"inherit",fontSize:14,fontWeight:600,color:$.red}}>
-        <LogOut size={16}/><span>تسجيل الخروج</span>
-      </button>
-    </Card>
+
+      <Sheet open={confirmLogout} onClose={()=>setConfirmLogout(false)}>
+        <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
+          <div style={{width:64,height:64,borderRadius:20,background:`${$.red}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
+            <LogOut size={28} color={$.red}/>
+          </div>
+          <h3 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>تسجيل الخروج؟</h3>
+          <p style={{fontSize:14,color:$.L3,marginBottom:sp[6]}}>ستحتاج لتسجيل الدخول مرة أخرى للوصول لحسابك</p>
+          <div style={{display:"flex",gap:sp[3]}}>
+            <button onClick={()=>setConfirmLogout(false)} style={{flex:1,background:$.F3,color:$.L1,border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
+            <button onClick={onLogout} style={{flex:1,background:$.red,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>خروج</button>
+          </div>
+        </div>
+      </Sheet>
+    </div>
   );
 }
 
 export default function HamourApp() {
   const screen = useScreenSize();
-  const [tab,setTab]=useState("home");
-  const [result,setResult]=useState(null);
-  const [dark,setDark]=useState(false);
-  const [user,setUser]=useState(null);
-  const [analyses,setAnalyses]=useState([]);
-  const [loading,setLoading]=useState(true);
-
-  const refreshAnalyses = useCallback(async (u) => {
-    const target = u || user;
-    if (!target) { setAnalyses([]); return; }
-    try {
-      const data = await getAnalysesCloud(target.id);
-      setAnalyses(data);
-    } catch(e) { setAnalyses([]); }
-  }, [user]);
+  const [tab, setTab] = useState("home");
+  const [result, setResult] = useState(null);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [analyses, setAnalyses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dark, setDark] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(THEME_KEY);
-      if (saved === "dark") { $ = DARK; setDark(true); }
+      if (saved === "dark") { setDark(true); $ = DARK; }
     } catch(e) {}
-
-    let mounted = true;
-    getCurrentUser().then(async (u) => {
-      if (!mounted) return;
-      setUser(u);
-      if (u) await refreshAnalyses(u);
-      setLoading(false);
-    }).catch(() => { if (mounted) setLoading(false); });
-
-    const sub = onAuthChange((u) => {
-      setUser(u);
-      if (u) refreshAnalyses(u);
-      else setAnalyses([]);
-    });
-
-    return () => { mounted = false; if (sub) sub.unsubscribe(); };
   }, []);
 
   function toggleDark() {
-    const next = !dark;
-    setDark(next);
-    $ = next ? DARK : LIGHT;
-    try { localStorage.setItem(THEME_KEY, next ? "dark" : "light"); } catch(e) {}
+    setDark(d => {
+      const next = !d;
+      $ = next ? DARK : LIGHT;
+      try { localStorage.setItem(THEME_KEY, next?"dark":"light"); } catch(e) {}
+      return next;
+    });
+  }
+
+  const loadProfile = useCallback(async (uid) => {
+    const p = await getProfile(uid);
+    setProfile(p);
+    setIsPremium(!!p.is_premium);
+  }, []);
+
+  const refreshAnalyses = useCallback(async () => {
+    const u = await getCurrentUser();
+    if (!u) return;
+    const list = await getAnalysesCloud(u.id);
+    setAnalyses(list);
+  }, []);
+
+  useEffect(() => {
+    let sub;
+    (async () => {
+      const u = await getCurrentUser();
+      setUser(u);
+      if (u) {
+        await loadProfile(u.id);
+        const list = await getAnalysesCloud(u.id);
+        setAnalyses(list);
+      }
+      setLoading(false);
+      sub = onAuthChange(async (newUser) => {
+        setUser(newUser);
+        if (newUser) {
+          await loadProfile(newUser.id);
+          const list = await getAnalysesCloud(newUser.id);
+          setAnalyses(list);
+        } else {
+          setAnalyses([]);
+          setProfile(null);
+          setIsPremium(false);
+          setResult(null);
+        }
+      });
+    })();
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [loadProfile]);
+
+  async function handleLogin(u) {
+    setUser(u);
+    await loadProfile(u.id);
+    const list = await getAnalysesCloud(u.id);
+    setAnalyses(list);
   }
 
   async function handleLogout() {
     await signOut();
     setUser(null);
     setAnalyses([]);
+    setProfile(null);
+    setIsPremium(false);
     setResult(null);
     setTab("home");
   }
 
-  async function handleAuthSuccess(u) {
-    setUser(u);
-    await refreshAnalyses(u);
+  function handleAnalyze(analysis) {
+    const normalized = analysis.data ? {...analysis.data, id:analysis.id, savedAt:analysis.created_at} : analysis;
+    setResult(normalized);
+    setAnalyses(prev => [normalized, ...prev.filter(a => a.id !== normalized.id)]);
+    setTab("analysis");
   }
 
-  const handleAnalyze=useCallback(async (data)=>{
-    setResult(data);
+  function handleViewAnalysis(analysis) {
+    setResult(analysis);
     setTab("analysis");
-    await refreshAnalyses();
-  },[refreshAnalyses]);
+  }
 
-  const handleViewSaved=useCallback((analysis)=>{setResult(analysis);setTab("analysis");},[]);
+  async function handleActivated() {
+    if (user) await loadProfile(user.id);
+  }
 
-  const useSideNav = screen.isDesktop;
+  function handleNameUpdated(newName) {
+    setProfile(p => ({...(p||{}), name:newName}));
+  }
 
   if (loading) {
     return (
-      <div style={{minHeight:"100vh",background:$.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <Spinner sz={32} clr={$.blue}/>
       </div>
     );
@@ -1542,45 +1704,37 @@ export default function HamourApp() {
 
   if (!user) {
     return (
-      <>
-        <style>{`
-          *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-          html,body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;direction:rtl;background:${$.bg};color:${$.L1};-webkit-font-smoothing:antialiased;}
-          button,input,select,textarea{font-family:inherit;}
-          *{-webkit-tap-highlight-color:transparent;}
-          @keyframes _spin{to{transform:rotate(360deg);}}
-        `}</style>
-        <div key={dark?"d":"l"}>
-          <AuthScreen onSuccess={handleAuthSuccess}/>
-        </div>
-      </>
+      <div key={dark?"d":"l"}>
+        <style>{`@keyframes _spin{to{transform:rotate(360deg)}}*{-webkit-tap-highlight-color:transparent}body{margin:0}`}</style>
+        <AuthScreen onSuccess={handleLogin}/>
+      </div>
     );
   }
 
   return (
-    <>
+    <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,fontFamily:"'IBM Plex Sans Arabic',sans-serif",direction:"rtl"}}>
       <style>{`
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        html,body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;direction:rtl;background:${$.bg};color:${$.L1};-webkit-font-smoothing:antialiased;}
-        button,input,select,textarea{font-family:inherit;}
-        select option{background:${$.surface};color:${$.L1};}
-        ::-webkit-scrollbar{width:0;height:0;}
-        *{-webkit-tap-highlight-color:transparent;}
-        @keyframes _spin{to{transform:rotate(360deg);}}
+        @keyframes _spin{to{transform:rotate(360deg)}}
+        *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+        body{margin:0}
+        ::-webkit-scrollbar{width:0;height:0}
+        select option{background:${$.surface};color:${$.L1}}
       `}</style>
-      <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,position:"relative",paddingBottom:useSideNav?0:90,marginRight:useSideNav?240:0}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} lastResult={result} onViewLast={handleViewSaved} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} user={user} analyses={analyses}/>}
+
+      <div style={{paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} user={user} analyses={analyses} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
-        {tab==="saved" && (
-          <div>
-            <SavedAnalysesScreen onViewAnalysis={handleViewSaved} analyses={analyses} onRefresh={refreshAnalyses}/>
-            {!useSideNav && <div style={{padding:`0 ${sp[5]}px`}}><div style={{maxWidth:1100,margin:"0 auto"}}><ProfileScreen user={user} onLogout={handleLogout} analyses={analyses}/></div></div>}
-          </div>
-        )}
+        {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
-        {tab==="learning" && <LearningScreen/>}
-        {useSideNav ? <SideNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark} user={user} onLogout={handleLogout}/> : <BottomNav tab={tab} setTab={setTab} dark={dark} toggleDark={toggleDark}/>}
+        {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="settings" && <SettingsScreen user={user} profile={profile} isPremium={isPremium} dark={dark} onToggleDark={toggleDark} onNeedUpgrade={()=>setShowUpgrade(true)} onLogout={handleLogout} onNameUpdated={handleNameUpdated}/>}
       </div>
-    </>
+
+      {screen.isDesktop
+        ? <SideNav active={tab} onChange={setTab} user={user} dark={dark} onToggleDark={toggleDark} isPremium={isPremium}/>
+        : <BottomNav active={tab} onChange={setTab} dark={dark} onToggleDark={toggleDark}/>}
+
+      <UpgradeSheet open={showUpgrade} onClose={()=>setShowUpgrade(false)} user={user} onActivated={handleActivated}/>
+    </div>
   );
 }
