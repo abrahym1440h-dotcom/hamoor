@@ -713,7 +713,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
   );
 }
 
-const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات"];
+const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير"];
 
 function AnalysisScreen({result}) {
   const screen = useScreenSize();
@@ -949,6 +949,57 @@ function AnalysisScreen({result}) {
                 </Section>
               </div>
             )}
+
+            {tab===4 && (<>
+              {result.action_plan?.length>0 && (
+                <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+                  <Section title="الخطة التنفيذية - أول 90 يوم" Icon={Calendar} color={$.blue} subtitle="خطوات عملية مرتبة من التأسيس حتى الانطلاق">
+                    {result.action_plan.map((ph,i)=>(
+                      <div key={i} style={{marginBottom:i<result.action_plan.length-1?sp[4]:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+                          <div style={{background:$.blue,color:"#fff",fontSize:11,fontWeight:800,padding:"4px 10px",borderRadius:8}}>{ph.phase}</div>
+                          <span style={{fontSize:14,fontWeight:700,color:$.L1}}>{ph.title}</span>
+                        </div>
+                        {(ph.tasks||[]).map((t,j)=>(
+                          <div key={j} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2],padding:`${sp[2]}px ${sp[3]}px`,background:`${$.blue}06`,borderRadius:8}}>
+                            <div style={{width:18,height:18,borderRadius:"50%",background:`${$.blue}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                              <span style={{fontSize:10,fontWeight:800,color:$.blue}}>{j+1}</span>
+                            </div>
+                            <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{t}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </Section>
+                </div>
+              )}
+              {result.pricing?.items?.length>0 && (
+                <Section title="تحليل التسعير" Icon={Briefcase} color={$.green} subtitle="أسعار مقترحة وهوامش الربح">
+                  {result.pricing.items.map((it,i)=>(
+                    <div key={i} style={{padding:`${sp[3]}px`,background:`${$.green}05`,borderRadius:10,marginBottom:sp[2]}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
+                        <span style={{fontSize:14,fontWeight:700,color:$.L1}}>{it.name}</span>
+                        <span style={{fontSize:15,fontWeight:800,color:$.green}}>{it.price}</span>
+                      </div>
+                      <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+                        <Chip text={`التكلفة: ${it.cost}`} color={$.L3} bg={$.F4} size={11}/>
+                        <Chip text={`هامش: ${it.margin}`} color={$.green} bg={`${$.green}15`} size={11}/>
+                      </div>
+                    </div>
+                  ))}
+                  {result.pricing.note && <p style={{fontSize:13,color:$.L2,lineHeight:1.7,marginTop:sp[3],padding:`${sp[3]}px`,background:$.F5,borderRadius:10}}>{result.pricing.note}</p>}
+                </Section>
+              )}
+              {result.break_even_detail && (
+                <Section title="نقطة التعادل" Icon={TrendingUp} color={$.purple} subtitle="متى يبدأ مشروعك يربح">
+                  <div style={{textAlign:"center",padding:`${sp[4]}px`,background:`${$.purple}06`,borderRadius:14,marginBottom:sp[3]}}>
+                    <div style={{fontSize:36,fontWeight:800,color:$.purple}}>{result.break_even_detail.months}</div>
+                    <div style={{fontSize:13,color:$.L3,fontWeight:600}}>شهر حتى تغطية التكاليف</div>
+                  </div>
+                  {result.break_even_detail.explanation && <p style={{fontSize:13,color:$.L2,lineHeight:1.8}}>{result.break_even_detail.explanation}</p>}
+                </Section>
+              )}
+            </>)}
           </div>
         </div>
       </div>
