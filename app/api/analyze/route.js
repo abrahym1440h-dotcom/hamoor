@@ -33,7 +33,16 @@ export async function POST(req) {
 
 شخصيتك: صارم، صادق تماماً، لا تجامل أبداً. تتكلم بلغة عربية واضحة ومهنية يفهمها صاحب المشروع ويثق فيها. أنت لست متفائلاً ولست متشائماً - أنت واقعي.
 
-مبدؤك الأساسي: الأرقام المالية المعطاة لك مستخرجة من دراسات جدوى حقيقية - استخدمها كأساس إلزامي ولا تخترع أرقاماً من خيالك. كل رقم تكتبه يجب أن يكون قابلاً للتبرير.
+منهجيتك في التحليل (اتبعها بالترتيب قبل كتابة النتيجة):
+1. حدّد التكاليف الفعلية بناءً على الأرقام المرجعية المعطاة، وعدّلها حسب المدينة والحي.
+2. احسب مجموع بنود التأسيس، وتأكد أنه يساوي الإجمالي تماماً.
+3. احسب مجموع البنود الشهرية، وتأكد أنه يساوي الإجمالي تماماً.
+4. قدّر الإيرادات بتحفّظ (الأغلب يبدأ ضعيفاً).
+5. احسب نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية).
+6. احسب العائد على الاستثمار = (الربح السنوي ÷ رأس المال) × 100.
+7. راجع: هل كل الأرقام متسقة منطقياً مع بعضها؟ صحّح أي تناقض قبل الإخراج.
+
+مبدؤك الأساسي: الأرقام المالية المعطاة لك مستخرجة من دراسات جدوى حقيقية - استخدمها كأساس إلزامي ولا تخترع أرقاماً من خيالك. كل رقم تكتبه يجب أن يكون قابلاً للتبرير وناتجاً عن حساب واضح.
 
 ترجع JSON صحيح فقط، بدون أي نص قبله أو بعده.`;
 
@@ -158,13 +167,14 @@ ${financialBrief}
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.4,
-        max_tokens: 6000,
+        temperature: 0.3,
+        max_completion_tokens: 8000,
+        reasoning_effort: "high",
         response_format: { type: "json_object" }
       })
     });
@@ -188,7 +198,8 @@ ${financialBrief}
 
     try {
       const result = JSON.parse(text);
-      return Response.json(result);
+      const validated = validateFinancials(result);
+      return Response.json(validated);
     } catch (parseErr) {
       console.error("Parse Error:", parseErr.message);
       return Response.json({ error: "خطأ في معالجة النتيجة" }, { status: 500 });
@@ -197,5 +208,86 @@ ${financialBrief}
   } catch (error) {
     console.error("Server Error:", error.message);
     return Response.json({ error: "خطأ في الخادم: " + error.message }, { status: 500 });
+  }
+}
+
+// ═══ طبقة التحقق الرياضي ═══
+// تفحص أرقام التحليل وتصحّح أي تناقض حسابي تلقائياً
+function validateFinancials(result) {
+  try {
+    const fa = result.financial_analysis;
+    if (!fa) return result;
+
+    // 1. تصحيح مجموع تكاليف التأسيس
+    if (fa.setup_costs) {
+      const sc = fa.setup_costs;
+      const sum = (sc.rent_deposit||0) + (sc.renovation||0) + (sc.equipment||0) +
+                  (sc.licenses||0) + (sc.initial_inventory||0) + (sc.marketing_launch||0) +
+                  (sc.working_capital||0);
+      // إذا الإجمالي مختلف عن المجموع الفعلي بأكثر من 1%، نصحّحه
+      if (sum > 0 && Math.abs((sc.total||0) - sum) / sum > 0.01) {
+        sc.total = sum;
+      }
+    }
+
+    // 2. تصحيح مجموع التكاليف الشهرية
+    if (fa.monthly_costs) {
+      const mc = fa.monthly_costs;
+      const sum = (mc.rent||0) + (mc.salaries||0) + (mc.utilities||0) +
+                  (mc.materials||0) + (mc.marketing||0) + (mc.maintenance||0) +
+                  (mc.other||0);
+      if (sum > 0 && Math.abs((mc.total||0) - sum) / sum > 0.01) {
+        mc.total = sum;
+      }
+    }
+
+    // 3. التحقق من نقطة التعادل والربح السنوي
+    const setupTotal = fa.setup_costs?.total || 0;
+    const monthlyTotal = fa.monthly_costs?.total || 0;
+    const rev12 = fa.revenue_projection?.month_12 || 0;
+
+    if (rev12 > 0 && monthlyTotal > 0) {
+      const monthlyProfit = rev12 - monthlyTotal;
+      // الربح السنوي للسنة الأولى (تقدير متحفظ: متوسط نمو تدريجي)
+      const rev1 = fa.revenue_projection?.month_1 || 0;
+      const rev3 = fa.revenue_projection?.month_3 || 0;
+      const rev6 = fa.revenue_projection?.month_6 || 0;
+      const avgMonthlyRev = (rev1 + rev3*2 + rev6*3 + rev12*6) / 12;
+      const estAnnualProfit = Math.round((avgMonthlyRev - monthlyTotal) * 12);
+
+      // إذا الربح السنوي المذكور بعيد جداً عن المحسوب، نصحّحه
+      if (fa.annual_profit_year1 != null) {
+        const stated = fa.annual_profit_year1;
+        if (estAnnualProfit !== 0 && Math.abs(stated - estAnnualProfit) / Math.abs(estAnnualProfit) > 0.25) {
+          fa.annual_profit_year1 = estAnnualProfit;
+        }
+      }
+
+      // تصحيح نقطة التعادل إذا كانت غير منطقية
+      if (monthlyProfit > 0 && setupTotal > 0) {
+        const estBreakEven = Math.ceil(setupTotal / monthlyProfit);
+        if (fa.break_even_months != null && estBreakEven > 0 && estBreakEven <= 120) {
+          const stated = fa.break_even_months;
+          if (Math.abs(stated - estBreakEven) / estBreakEven > 0.4) {
+            fa.break_even_months = estBreakEven;
+          }
+        }
+      }
+
+      // تصحيح ROI إذا كان غير متسق (ROI = ربح سنوي / رأس المال × 100)
+      if (setupTotal > 0 && fa.annual_profit_year1 != null) {
+        const estROI = Math.round((fa.annual_profit_year1 / setupTotal) * 100);
+        if (fa.roi_percentage != null) {
+          if (Math.abs(fa.roi_percentage - estROI) > 15) {
+            fa.roi_percentage = estROI;
+          }
+        }
+      }
+    }
+
+    return result;
+  } catch (e) {
+    console.error("Validation error:", e.message);
+    return result; // عند أي خطأ، نرجّع النتيجة الأصلية بدون تعديل
   }
 }
