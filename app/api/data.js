@@ -417,18 +417,18 @@ export const SUCCESS_RATES = {
 export function detectSector(idea) {
   const text = idea.toLowerCase();
   
-  if (text.includes("كوفي") || text.includes("قهوة") || text.includes("مقهى") || text.includes("كافيه")) return "مقاهي";
-  if (text.includes("مطعم") || text.includes("أكل") || text.includes("طعام") || text.includes("كبسة") || text.includes("مأكولات")) return "مطاعم";
-  if (text.includes("حلويات") || text.includes("كيك") || text.includes("بقلاوة") || text.includes("كنافة") || text.includes("شوكولاتة")) return "حلويات";
-  if (text.includes("برجر") || text.includes("شاورما") || text.includes("بيتزا") || text.includes("ساندوتش") || text.includes("سريع")) return "وجبات سريعة";
-  if (text.includes("متجر") || text.includes("سوبر") || text.includes("بقالة") || text.includes("بيع")) return "تجزئة";
-  if (text.includes("ملابس") || text.includes("أزياء") || text.includes("عبا") || text.includes("فستان") || text.includes("ثياب")) return "أزياء";
-  if (text.includes("إلكترون") || text.includes("جوال") || text.includes("كمبيوتر") || text.includes("أجهزة")) return "إلكترونيات";
-  if (text.includes("صالون") || text.includes("تجميل") || text.includes("مكياج") || text.includes("شعر") || text.includes("حلاق")) return "صالونات";
-  if (text.includes("جيم") || text.includes("لياقة") || text.includes("نادي") || text.includes("رياض")) return "لياقة";
-  if (text.includes("تعليم") || text.includes("تدريب") || text.includes("دورة") || text.includes("معهد") || text.includes("أكاديمية")) return "تعليم";
-  if (text.includes("برمج") || text.includes("موقع") || text.includes("تطبيق") || text.includes("تسويق رقمي") || text.includes("تقني")) return "تقنية";
-  if (text.includes("خياط") || text.includes("تفصيل") || text.includes("ثوب")) return "خياطة";
+  if (text.includes("كوفي") || text.includes("قهوة") || text.includes("مقهى") || text.includes("كافيه") || text.includes("كافي") || text.includes("باريستا") || text.includes("مشروبات") || text.includes("عصير") || text.includes("شاي")) return "مقاهي";
+  if (text.includes("برجر") || text.includes("شاورما") || text.includes("بيتزا") || text.includes("ساندوتش") || text.includes("سندوتش") || text.includes("سريع") || text.includes("بطاطس") || text.includes("دجاج مقلي") || text.includes("فطائر") || text.includes("شطائر")) return "وجبات سريعة";
+  if (text.includes("مطعم") || text.includes("أكل") || text.includes("طعام") || text.includes("كبسة") || text.includes("مأكولات") || text.includes("بوفيه") || text.includes("مشاوي") || text.includes("مطبخ") || text.includes("وجبات")) return "مطاعم";
+  if (text.includes("حلويات") || text.includes("كيك") || text.includes("بقلاوة") || text.includes("كنافة") || text.includes("شوكولاتة") || text.includes("شوكولا") || text.includes("آيس كريم") || text.includes("ايس كريم") || text.includes("مخبوزات") || text.includes("معجنات") || text.includes("دونات") || text.includes("بسكويت")) return "حلويات";
+  if (text.includes("ملابس") || text.includes("أزياء") || text.includes("عبا") || text.includes("فستان") || text.includes("ثياب") || text.includes("بوتيك") || text.includes("موضة") || text.includes("اكسسوار") || text.includes("حقائب") || text.includes("أحذية")) return "أزياء";
+  if (text.includes("إلكترون") || text.includes("الكترون") || text.includes("جوال") || text.includes("كمبيوتر") || text.includes("حاسب") || text.includes("أجهزة") || text.includes("لابتوب") || text.includes("شاشات") || text.includes("ألعاب فيديو")) return "إلكترونيات";
+  if (text.includes("صالون") || text.includes("تجميل") || text.includes("مكياج") || text.includes("شعر") || text.includes("حلاق") || text.includes("سبا") || text.includes("بشرة") || text.includes("مشغل") || text.includes("عناية") || text.includes("ليزر") || text.includes("أظافر")) return "صالونات";
+  if (text.includes("جيم") || text.includes("لياقة") || text.includes("نادي") || text.includes("رياض") || text.includes("يوغا") || text.includes("بيلاتس") || text.includes("كروس فت") || text.includes("ملاكمة") || text.includes("تمارين")) return "لياقة";
+  if (text.includes("تعليم") || text.includes("تدريب") || text.includes("دورة") || text.includes("دورات") || text.includes("معهد") || text.includes("أكاديمية") || text.includes("روضة") || text.includes("حضانة") || text.includes("تحفيظ") || text.includes("مدرسة") || text.includes("مركز تعليمي")) return "تعليم";
+  if (text.includes("برمج") || text.includes("موقع") || text.includes("تطبيق") || text.includes("تسويق رقمي") || text.includes("تقني") || text.includes("سوفتوير") || text.includes("منصة") || text.includes("ذكاء اصطناعي") || text.includes("تصميم") || text.includes("متجر إلكتروني")) return "تقنية";
+  if (text.includes("خياط") || text.includes("تفصيل") || text.includes("ثوب") || text.includes("تطريز") || text.includes("مفروشات") || text.includes("ستائر")) return "خياطة";
+  if (text.includes("متجر") || text.includes("سوبر") || text.includes("بقالة") || text.includes("بيع") || text.includes("تموينات") || text.includes("هايبر") || text.includes("محل") || text.includes("معرض") || text.includes("تجزئة")) return "تجزئة";
   
   return "تجزئة"; // افتراضي
 }
@@ -482,100 +482,124 @@ export function getSectorBrief(sectorName) {
 
 export const SECTOR_FINANCIALS = {
   "مقاهي": {
-    setup_total: { min: 70000, mid: 130000, max: 200000 },
-    monthly_costs: { min: 15000, mid: 24000, max: 35000 },
-    revenue: { weak: 35000, medium: 65000, strong: 100000 },
+    setup_total: { min: 90000, mid: 170000, max: 280000 },
+    setup_breakdown: "ديكور وتجهيزات 30-100 ألف، آلات قهوة 10-50 ألف، أثاث وأدوات 10-25 ألف، تأمين إيجار ودفعة مقدمة، تراخيص ~5 آلاف، مخزون أولي ~5-10 آلاف",
+    monthly_costs: { min: 16000, mid: 26000, max: 38000 },
+    monthly_breakdown: "إيجار 5-12 ألف، رواتب 12-18 ألف، مواد خام 5-8 آلاف، كهرباء وماء وإنترنت ~3 آلاف، تسويق وصيانة",
+    revenue: { weak: 35000, medium: 65000, strong: 105000 },
     profit_margin: "15-25%",
-    break_even_months: "9-14 شهر",
-    note: "القهوة المختصة أعلى هامش. الموقع وجودة الباريستا عاملان حاسمان. عربة القهوة المتنقلة بديل بتكلفة 60-90 ألف."
+    break_even_months: "9-15 شهر",
+    note: "القهوة المختصة أعلى هامش. الموقع وجودة الباريستا عاملان حاسمان. عربة القهوة المتنقلة بديل بتكلفة 60-90 ألف. المقهى الصغير في موقع جيد أقل مخاطرة من الكبير في موقع متوسط."
   },
   "مطاعم": {
-    setup_total: { min: 150000, mid: 320000, max: 500000 },
-    monthly_costs: { min: 30000, mid: 40000, max: 55000 },
-    revenue: { weak: 55000, medium: 95000, strong: 150000 },
+    setup_total: { min: 180000, mid: 400000, max: 800000 },
+    setup_breakdown: "تجهيز مطبخ ومعدات 60-200 ألف، ديكور وأثاث 50-150 ألف، تأمين إيجار، تراخيص 15-50 ألف، مخزون أولي. المطعم الفاخر قد يتجاوز مليون ريال",
+    monthly_costs: { min: 32000, mid: 48000, max: 75000 },
+    monthly_breakdown: "إيجار 8-20 ألف، رواتب 18-35 ألف، مواد غذائية 25-35% من المبيعات، كهرباء وغاز، تسويق",
+    revenue: { weak: 60000, medium: 110000, strong: 200000 },
     profit_margin: "10-20%",
-    break_even_months: "12-20 شهر",
-    note: "85% من المطاعم تفشل في أول 18 شهر. المطاعم الشعبية والمتخصصة الصغيرة أقل مخاطرة من الفاخرة."
+    break_even_months: "12-22 شهر",
+    note: "نسبة فشل عالية في أول 18 شهر. المطاعم الشعبية والمتخصصة الصغيرة أقل مخاطرة من الفاخرة. البدء رقمياً (مطبخ سحابي) يخفض التكلفة الرأسمالية بشكل كبير."
   },
   "وجبات سريعة": {
-    setup_total: { min: 100000, mid: 145000, max: 200000 },
-    monthly_costs: { min: 15000, mid: 20000, max: 28000 },
-    revenue: { weak: 40000, medium: 55000, strong: 80000 },
-    profit_margin: "15-22%",
-    break_even_months: "8-14 شهر",
-    note: "دوران سريع للأرباح. منافسة شرسة من السلاسل العالمية. مطعم مضغوط/كبسات صغير نموذج ناجح."
+    setup_total: { min: 120000, mid: 220000, max: 400000 },
+    setup_breakdown: "معدات طبخ سريع 40-90 ألف، ديكور وكاونتر 30-80 ألف، تأمين إيجار، تراخيص 3-4 آلاف، مخزون أولي",
+    monthly_costs: { min: 18000, mid: 26000, max: 38000 },
+    monthly_breakdown: "إيجار 6-14 ألف، رواتب 10-18 ألف، مواد خام، كهرباء، عمولات تطبيقات التوصيل 15-25%",
+    revenue: { weak: 45000, medium: 70000, strong: 120000 },
+    profit_margin: "12-22%",
+    break_even_months: "9-16 شهر",
+    note: "دوران سريع للأرباح. منافسة شرسة من السلاسل العالمية. عمولات تطبيقات التوصيل تأكل من الهامش. النموذج الصغير المتخصص (كبسات، شاورما) ناجح."
   },
   "حلويات": {
-    setup_total: { min: 80000, mid: 160000, max: 280000 },
-    monthly_costs: { min: 18000, mid: 28000, max: 42000 },
-    revenue: { weak: 40000, medium: 75000, strong: 130000 },
+    setup_total: { min: 90000, mid: 180000, max: 320000 },
+    setup_breakdown: "أفران ومعدات 30-90 ألف، ثلاجات عرض 15-40 ألف، ديكور، تأمين إيجار، تراخيص، مخزون أولي",
+    monthly_costs: { min: 18000, mid: 30000, max: 45000 },
+    monthly_breakdown: "إيجار، رواتب 12-20 ألف، مواد خام عالية الجودة، كهرباء وتبريد، تغليف",
+    revenue: { weak: 40000, medium: 80000, strong: 140000 },
     profit_margin: "25-40%",
     break_even_months: "10-16 شهر",
-    note: "هامش ربح ممتاز. الطلب يرتفع في المواسم والمناسبات. التميز في المنتج أساس النجاح."
+    note: "هامش ربح ممتاز. الطلب يرتفع بقوة في المواسم والمناسبات. التميز في المنتج والتغليف أساس النجاح."
   },
   "تجزئة": {
-    setup_total: { min: 80000, mid: 180000, max: 350000 },
-    monthly_costs: { min: 15000, mid: 28000, max: 50000 },
-    revenue: { weak: 45000, medium: 90000, strong: 170000 },
-    profit_margin: "10-20%",
-    break_even_months: "12-20 شهر",
-    note: "متأثر بالتجارة الإلكترونية. المخزون يبتلع رأس المال. التخصص في فئة محددة أفضل."
+    setup_total: { min: 100000, mid: 220000, max: 450000 },
+    setup_breakdown: "مخزون أولي 40-200 ألف (الأكبر)، رفوف وعرض، نظام كاشير، ديكور، تأمين إيجار، تراخيص",
+    monthly_costs: { min: 16000, mid: 30000, max: 55000 },
+    monthly_breakdown: "إيجار، رواتب، تجديد مخزون، كهرباء، تسويق",
+    revenue: { weak: 50000, medium: 95000, strong: 180000 },
+    profit_margin: "8-18%",
+    break_even_months: "12-22 شهر",
+    note: "متأثر بالتجارة الإلكترونية. المخزون يبتلع رأس المال. التخصص في فئة محددة أفضل من العمومية. البقالة تبدأ من 100 ألف."
   },
   "أزياء": {
-    setup_total: { min: 100000, mid: 220000, max: 400000 },
-    monthly_costs: { min: 20000, mid: 35000, max: 60000 },
+    setup_total: { min: 110000, mid: 240000, max: 420000 },
+    setup_breakdown: "مخزون أولي 50-200 ألف، ديكور ومعارض، أنظمة عرض وإضاءة، تأمين إيجار، تراخيص",
+    monthly_costs: { min: 20000, mid: 36000, max: 60000 },
+    monthly_breakdown: "إيجار (غالباً في مولات = أعلى)، رواتب، تجديد مخزون موسمي، تسويق",
     revenue: { weak: 50000, medium: 110000, strong: 200000 },
     profit_margin: "20-35%",
-    break_even_months: "12-18 شهر",
-    note: "هامش جيد. الموضة سريعة التغير = مخاطرة مخزون. التصاميم الحصرية ميزة تنافسية."
+    break_even_months: "12-20 شهر",
+    note: "هامش جيد. الموضة سريعة التغير = مخاطرة مخزون عالية. التصاميم الحصرية وخدمة العملاء ميزة تنافسية. محل العبايات نموذج مستقر."
   },
   "إلكترونيات": {
-    setup_total: { min: 120000, mid: 280000, max: 500000 },
-    monthly_costs: { min: 20000, mid: 35000, max: 60000 },
-    revenue: { weak: 70000, medium: 140000, strong: 280000 },
-    profit_margin: "8-15%",
-    break_even_months: "14-24 شهر",
-    note: "هامش ضعيف يحتاج حجم مبيعات كبير. منافسة قوية من نون وإكسترا وجرير. الإكسسوارات أعلى ربحاً."
+    setup_total: { min: 130000, mid: 300000, max: 550000 },
+    setup_breakdown: "مخزون أولي 70-300 ألف (الأكبر)، رفوف عرض آمنة، نظام كاشير وكاميرات، تأمين إيجار، تراخيص",
+    monthly_costs: { min: 20000, mid: 38000, max: 65000 },
+    monthly_breakdown: "إيجار، رواتب، تجديد مخزون، كهرباء، ضمانات",
+    revenue: { weak: 70000, medium: 145000, strong: 290000 },
+    profit_margin: "6-14%",
+    break_even_months: "15-26 شهر",
+    note: "هامش ضعيف يحتاج حجم مبيعات كبير. منافسة قوية جداً من نون وإكسترا وجرير. الإكسسوارات والصيانة أعلى ربحاً من الأجهزة."
   },
   "صالونات": {
-    setup_total: { min: 60000, mid: 200000, max: 500000 },
-    monthly_costs: { min: 15000, mid: 22000, max: 35000 },
-    revenue: { weak: 20000, medium: 35000, strong: 60000 },
+    setup_total: { min: 100000, mid: 220000, max: 400000 },
+    setup_breakdown: "تجهيزات وكراسي ومرايا 30-80 ألف، ديكور فاخر 40-120 ألف، أجهزة (ليزر/سبا اختياري) 30-150 ألف، تأمين إيجار، تراخيص، مواد أولية ~10 آلاف",
+    monthly_costs: { min: 16000, mid: 26000, max: 42000 },
+    monthly_breakdown: "إيجار، رواتب الكوادر النسائية + عمولات، مواد تجميل، كهرباء، تسويق",
+    revenue: { weak: 25000, medium: 45000, strong: 80000 },
     profit_margin: "25-45%",
     break_even_months: "10-18 شهر",
-    note: "هامش ممتاز. مهارة الكوادر والسمعة أساس النجاح. خدمات الليزر والسبا ترفع الدخل."
+    note: "هامش ممتاز. مهارة الكوادر والسمعة أساس النجاح. خدمات الليزر والسبا والعناية ترفع الدخل. الاشتراكات الشهرية وبطاقات الولاء تثبّت الإيراد."
   },
   "لياقة": {
-    setup_total: { min: 150000, mid: 350000, max: 700000 },
-    monthly_costs: { min: 25000, mid: 45000, max: 80000 },
-    revenue: { weak: 40000, medium: 90000, strong: 180000 },
+    setup_total: { min: 200000, mid: 450000, max: 800000 },
+    setup_breakdown: "أجهزة رياضية 100-400 ألف (الأكبر)، أرضيات ومرايا، تكييف قوي، ديكور، تأمين إيجار، تراخيص وشهادات تدريب",
+    monthly_costs: { min: 28000, mid: 48000, max: 85000 },
+    monthly_breakdown: "إيجار مساحة كبيرة، رواتب مدربين، كهرباء وتكييف عالية، صيانة أجهزة، تسويق",
+    revenue: { weak: 45000, medium: 95000, strong: 190000 },
     profit_margin: "20-35%",
-    break_even_months: "14-24 شهر",
-    note: "الاشتراكات الشهرية دخل ثابت. الأجهزة استثمار كبير. النوادي النسائية طلب مرتفع."
+    break_even_months: "15-26 شهر",
+    note: "الاشتراكات الشهرية والسنوية دخل ثابت. الأجهزة استثمار كبير. النوادي النسائية طلب مرتفع. الستوديو المتخصص الصغير (يوغا/كروس فت) بديل أقل تكلفة."
   },
   "تعليم": {
-    setup_total: { min: 50000, mid: 150000, max: 350000 },
-    monthly_costs: { min: 15000, mid: 30000, max: 60000 },
-    revenue: { weak: 35000, medium: 75000, strong: 150000 },
+    setup_total: { min: 60000, mid: 170000, max: 380000 },
+    setup_breakdown: "تجهيز قاعات وأثاث 20-100 ألف، أجهزة عرض وحاسبات، ديكور، تأمين إيجار، تراخيص تعليمية، منصة إلكترونية اختيارية",
+    monthly_costs: { min: 16000, mid: 32000, max: 62000 },
+    monthly_breakdown: "إيجار، رواتب مدربين ومعلمين، تسويق، اشتراكات منصات، كهرباء",
+    revenue: { weak: 35000, medium: 78000, strong: 155000 },
     profit_margin: "30-50%",
-    break_even_months: "8-15 شهر",
-    note: "أعلى هامش ربح. الطلب متزايد. التدريب الأونلاين يقلل التكاليف بشكل كبير."
+    break_even_months: "8-16 شهر",
+    note: "أعلى هامش ربح. الطلب متزايد بقوة. التدريب الأونلاين يقلل التكاليف بشكل كبير. الاعتماد والترخيص يرفعان الثقة والسعر."
   },
   "تقنية": {
-    setup_total: { min: 30000, mid: 100000, max: 250000 },
-    monthly_costs: { min: 10000, mid: 25000, max: 50000 },
-    revenue: { weak: 30000, medium: 80000, strong: 200000 },
+    setup_total: { min: 35000, mid: 110000, max: 270000 },
+    setup_breakdown: "أجهزة وحاسبات، اشتراكات برمجيات وخوادم، مكتب (اختياري - يمكن البدء عن بُعد)، تسويق، تراخيص",
+    monthly_costs: { min: 12000, mid: 26000, max: 52000 },
+    monthly_breakdown: "رواتب مطورين/مصممين (الأكبر)، اشتراكات سحابية وأدوات، إيجار مكتب اختياري، تسويق",
+    revenue: { weak: 30000, medium: 85000, strong: 210000 },
     profit_margin: "35-60%",
-    break_even_months: "6-14 شهر",
-    note: "أفضل قطاع: هامش عالي، تكلفة تأسيس منخفضة، نمو سريع. التحدي الأكبر هو الكفاءات."
+    break_even_months: "6-15 شهر",
+    note: "أفضل قطاع: هامش عالي، تكلفة تأسيس منخفضة نسبياً، نمو سريع. التحدي الأكبر هو الكفاءات والاستحواذ على العملاء. يمكن البدء بدون مكتب."
   },
   "خياطة": {
-    setup_total: { min: 40000, mid: 90000, max: 180000 },
-    monthly_costs: { min: 10000, mid: 18000, max: 30000 },
-    revenue: { weak: 25000, medium: 45000, strong: 80000 },
+    setup_total: { min: 45000, mid: 100000, max: 190000 },
+    setup_breakdown: "مكائن خياطة وتطريز 15-60 ألف، طاولات وأدوات، ديكور بسيط، تأمين إيجار، تراخيص، أقمشة أولية",
+    monthly_costs: { min: 10000, mid: 18000, max: 32000 },
+    monthly_breakdown: "إيجار، رواتب خياطين مهرة، أقمشة وخامات، كهرباء، تسويق",
+    revenue: { weak: 25000, medium: 48000, strong: 85000 },
     profit_margin: "30-45%",
-    break_even_months: "8-14 شهر",
-    note: "مستقر، مخاطرة منخفضة. السمعة والمهارة أساس العمل. الطلب يرتفع في المواسم."
+    break_even_months: "8-15 شهر",
+    note: "مستقر، مخاطرة منخفضة. السمعة والمهارة أساس العمل. الطلب يرتفع بقوة في المواسم (الأعياد، رمضان، المناسبات). التفصيل الراقي أعلى هامش."
   }
 };
 
@@ -588,7 +612,11 @@ export function getFinancialBrief(sectorName) {
 💰 الأرقام المالية الواقعية لقطاع "${sectorName}" (من دراسات جدوى سعودية 2025-2026):
 
 تكلفة التأسيس الإجمالية: ${f.setup_total.min.toLocaleString()} - ${f.setup_total.max.toLocaleString()} ريال (متوسط: ${f.setup_total.mid.toLocaleString()})
+  بنود التأسيس: ${f.setup_breakdown}
+
 التكاليف الشهرية: ${f.monthly_costs.min.toLocaleString()} - ${f.monthly_costs.max.toLocaleString()} ريال (متوسط: ${f.monthly_costs.mid.toLocaleString()})
+  بنود التكاليف الشهرية: ${f.monthly_breakdown}
+
 الإيرادات الشهرية المتوقعة:
   - أداء ضعيف (بداية/موقع سيئ): ${f.revenue.weak.toLocaleString()} ريال
   - أداء متوسط (واقعي): ${f.revenue.medium.toLocaleString()} ريال
@@ -597,7 +625,7 @@ export function getFinancialBrief(sectorName) {
 نقطة التعادل النموذجية: ${f.break_even_months}
 ملاحظة الخبراء: ${f.note}
 
-⚠️ استخدم هذه الأرقام كمرجع أساسي. عدّلها حسب المدينة (مدن كبيرة = أعلى، مدن صغيرة = أقل) وحسب الحي.`.trim();
+⚠️ استخدم هذه الأرقام كمرجع أساسي إلزامي. عدّلها حسب المدينة (مدن كبيرة = الحد الأعلى، صغيرة = الحد الأدنى) وحسب الحي. استخدم بنود التأسيس والتكاليف الشهرية لتفصيل الأرقام بدقة، واجعل المجاميع متطابقة.`.trim();
 }
 
 // ═══════════════════════════════════════════════════════════
