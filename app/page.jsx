@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -464,7 +464,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
           {isPremium ? <Crown size={14} color={$.orange}/> : <BarChart2 size={14} color={$.L3}/>}
           <span style={{fontSize:12,fontWeight:600,color:$.L2}}>{isPremium?"اشتراك مفعّل":"الباقة المجانية"}</span>
         </div>
-        <span style={{fontSize:12,fontWeight:700,color:reachedLimit?$.orange:$.L3}}>{analysesCount} / {limit} تحليلات</span>
+        {isPremium && <span style={{fontSize:12,fontWeight:700,color:$.orange}}>كل المزايا مفتوحة</span>}
       </div>
 
       {reachedLimit && (
@@ -514,7 +514,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
     </div>
   );
 }
-function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, isPremium, onNeedUpgrade}) {
+function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, usageCount, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
 
@@ -707,7 +707,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
       </div>
 
       <Sheet open={showForm} onClose={()=>setShowForm(false)}>
-        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={analyses.length} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
+        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={isPremium?0:usageCount} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
       </Sheet>
     </div>
   );
@@ -1916,6 +1916,7 @@ export default function HamourApp() {
   const [profile, setProfile] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [analyses, setAnalyses] = useState([]);
+  const [usageCount, setUsageCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dark, setDark] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -1940,6 +1941,8 @@ export default function HamourApp() {
     const p = await getProfile(uid);
     setProfile(p);
     setIsPremium(!!p.is_premium);
+    const used = await getUsage(uid);
+    setUsageCount(used);
   }, []);
 
   const refreshAnalyses = useCallback(async () => {
@@ -1999,6 +2002,11 @@ export default function HamourApp() {
     setResult(normalized);
     setAnalyses(prev => [normalized, ...prev.filter(a => a.id !== normalized.id)]);
     setTab("analysis");
+    // زيادة العدّاد المخفي (لا ينقص عند الحذف)
+    if (user && !isPremium) {
+      setUsageCount(c => c + 1);
+      incrementUsage(user.id);
+    }
   }
 
   function handleViewAnalysis(analysis) {
@@ -2042,7 +2050,7 @@ export default function HamourApp() {
       `}</style>
 
       <div style={{paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
