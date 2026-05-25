@@ -510,12 +510,13 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
       {busy && (
-        <div style={{marginTop:sp[5],borderRadius:16,padding:`${sp[10]}px ${sp[5]}px`,textAlign:"center",position:"relative",overflow:"hidden",background:$.F5,border:`1px solid ${$.sepL}`}}>
-          <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(circle, ${$.blue} 1.5px, transparent 1.5px)`,backgroundSize:"24px 24px",opacity:0.16,WebkitMaskImage:"radial-gradient(ellipse at center, #000 20%, transparent 70%)",maskImage:"radial-gradient(ellipse at center, #000 20%, transparent 70%)"}}/>
+        <div style={{marginTop:sp[5],borderRadius:18,padding:`${sp[12]}px ${sp[5]}px`,textAlign:"center",position:"relative",overflow:"hidden",background:`linear-gradient(150deg, ${$.blue}14, ${$.blue}06)`,border:`1.5px solid ${$.blue}40`,boxShadow:SH.card}}>
+          <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(circle, ${$.blue} 1.5px, transparent 1.5px)`,backgroundSize:"22px 22px",opacity:0.22,WebkitMaskImage:"radial-gradient(ellipse at center, #000 25%, transparent 72%)",maskImage:"radial-gradient(ellipse at center, #000 25%, transparent 72%)"}}/>
           <div style={{position:"relative",zIndex:2}}>
-            <Spinner sz={40} clr={$.blue}/>
-            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginTop:sp[4]}}>جاري تحليل مشروعك…</div>
-            <div style={{fontSize:12,color:$.L3,marginTop:sp[2]}}>نحلل السوق والتكاليف والمنافسة والمخاطر</div>
+            <Spinner sz={46} clr={$.blue}/>
+            <div style={{fontSize:17,fontWeight:800,color:$.L1,marginTop:sp[4]}}>جاري تحليل مشروعك…</div>
+            <div style={{fontSize:13,color:$.L3,marginTop:sp[2]}}>نحلل السوق والتكاليف والمنافسة والمخاطر</div>
+            <div style={{fontSize:12,color:$.L4,marginTop:sp[3]}}>قد تستغرق العملية حتى دقيقة</div>
           </div>
         </div>
       )}
@@ -750,6 +751,7 @@ function AnalysisScreen({result}) {
   return (
     <div>
       <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle, rgba(255,255,255,0.6) 1.3px, transparent 1.3px)",backgroundSize:"26px 26px",opacity:0.18,pointerEvents:"none"}}/>
         <div style={{...containerStyle,position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
           <div style={{flex:1}}>
             <Chip text="نتيجة التحليل" color="rgba(255,255,255,0.88)" bg="rgba(255,255,255,0.20)"/>
