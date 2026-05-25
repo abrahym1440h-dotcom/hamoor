@@ -229,6 +229,29 @@ function Sheet({open, onClose, children}) {
   );
 }
 
+// نمط الشباك - خلفية زخرفية
+const MESH_PATHS = [{d:"M-30,-35.0 Q-30,-35.0 -14,-32.5 Q3,-30.1 19,-31.4 Q36,-32.7 52,-36.7 Q69,-40.6 85,-43.7 Q101,-46.7 118,-48.8 Q134,-50.9 151,-55.3 Q167,-59.6 184,-67.3 Q200,-75.0 216,-82.2 Q233,-89.4 249,-92.5 Q266,-95.6 282,-95.8 Q299,-96.0 315,-97.1 Q331,-98.2 348,-100.6 Q364,-103.0 381,-103.5 Q397,-104.0 414,-101.7",o:0.62},{d:"M-30,7.8 Q-30,7.8 -14,7.5 Q3,7.1 19,3.0 Q36,-1.1 52,-5.4 Q69,-9.8 85,-12.5 Q101,-15.1 118,-18.7 Q134,-22.3 151,-29.1 Q167,-35.9 184,-43.5 Q200,-51.1 216,-55.1 Q233,-59.1 249,-59.1 Q266,-59.1 282,-59.0 Q299,-58.9 315,-60.7 Q331,-62.5 348,-63.9 Q364,-65.2 381,-63.8 Q397,-62.5 414,-60.7",o:0.59},{d:"M-30,46.3 Q-30,46.3 -14,42.5 Q3,38.7 19,33.3 Q36,27.9 52,24.3 Q69,20.6 85,17.4 Q101,14.3 118,8.5 Q134,2.8 151,-4.7 Q167,-12.1 184,-17.0 Q200,-21.9 216,-22.2 Q233,-22.6 249,-21.5 Q266,-20.3 282,-21.2 Q299,-22.1 315,-23.9 Q331,-25.7 348,-25.5 Q364,-25.2 381,-23.6 Q397,-22.0 414,-23.2",o:0.56},{d:"M-30,78.4 Q-30,78.4 -14,72.4 Q3,66.4 19,61.5 Q36,56.6 52,53.4 Q69,50.2 85,45.6 Q101,41.0 118,34.1 Q134,27.2 151,21.6 Q167,16.0 184,15.0 Q200,14.0 216,15.8 Q233,17.5 249,17.8 Q266,18.1 282,16.3 Q299,14.4 315,13.5 Q331,12.6 348,13.5 Q364,14.5 381,14.0 Q397,13.5 414,8.4",o:0.53},{d:"M-30,105.4 Q-30,105.4 -14,99.3 Q3,93.2 19,89.5 Q36,85.8 52,82.1 Q69,78.4 85,72.5 Q101,66.6 118,60.7 Q134,54.8 151,52.9 Q167,51.0 184,52.9 Q200,54.8 216,56.2 Q233,57.7 249,56.3 Q266,54.9 282,53.0 Q299,51.1 315,51.1 Q331,51.0 348,50.8 Q364,50.6 381,46.4 Q397,42.3 414,34.6",o:0.5},{d:"M-30,130.6 Q-30,130.6 -14,126.0 Q3,121.4 19,118.3 Q36,115.1 52,110.4 Q69,105.7 85,99.9 Q101,94.2 118,91.4 Q134,88.6 151,90.1 Q167,91.7 184,94.1 Q200,96.4 216,95.9 Q233,95.4 249,92.9 Q266,90.4 282,89.1 Q299,87.8 315,87.5 Q331,87.1 348,83.8 Q364,80.6 381,73.3 Q397,65.9 414,58.3",o:0.47},{d:"M-30,157.3 Q-30,157.3 -14,154.3 Q3,151.2 19,147.7 Q36,144.2 52,139.1 Q69,134.0 85,130.5 Q101,127.0 118,127.8 Q134,128.7 151,131.6 Q167,134.5 184,135.0 Q200,135.5 216,132.8 Q233,130.2 249,127.7 Q266,125.2 282,124.2 Q299,123.1 315,120.6 Q331,118.1 348,111.6 Q364,105.0 381,96.8 Q397,88.7 414,83.4",o:0.45},{d:"M-30,187.0 Q-30,187.0 -14,184.5 Q3,182.0 19,177.9 Q36,173.9 52,170.0 Q69,166.2 85,166.1 Q101,166.0 118,168.9 Q134,171.9 151,173.4 Q167,175.0 184,172.7 Q200,170.4 216,166.8 Q233,163.3 249,161.2 Q266,159.2 282,157.0 Q299,154.8 315,149.3 Q331,143.7 348,135.6 Q364,127.4 381,121.2 Q397,114.9 414,112.9",o:0.42},{d:"M-30,219.1 Q-30,219.1 -14,216.2 Q3,213.4 19,209.7 Q36,206.0 52,205.0 Q69,203.9 85,206.4 Q101,209.0 118,211.3 Q134,213.7 151,212.1 Q167,210.5 184,206.3 Q200,202.1 216,198.8 Q233,195.5 249,193.2 Q266,190.9 282,186.4 Q299,181.9 315,174.2 Q331,166.5 348,159.5 Q364,152.5 381,149.7 Q397,147.0 414,147.0",o:0.39},{d:"M-30,252.4 Q-30,252.4 -14,249.4 Q3,246.3 19,244.4 Q36,242.6 52,244.3 Q69,246.0 85,248.8 Q101,251.6 118,250.9 Q134,250.3 151,245.9 Q167,241.5 184,236.9 Q200,232.4 216,229.5 Q233,226.6 249,222.9 Q266,219.2 282,212.4 Q299,205.6 315,198.2 Q331,190.8 348,187.2 Q364,183.5 381,183.8 Q397,184.0 414,184.3",o:0.36},{d:"M-30,286.6 Q-30,286.6 -14,284.3 Q3,282.1 19,282.7 Q36,283.4 52,286.1 Q69,288.8 85,289.2 Q101,289.5 118,285.3 Q134,281.2 151,275.6 Q167,270.0 184,266.2 Q200,262.3 216,259.1 Q233,255.8 249,250.1 Q266,244.4 282,237.1 Q299,229.8 315,225.2 Q331,220.7 348,220.7 Q364,220.6 381,222.0 Q397,223.3 414,222.5",o:0.33},];
+function MeshBg({mode="color", opacity=0.5, animated=true}) {
+  const palette = ["#7C3AED","#1D4ED8","#00C27A","#5B8DEF"];
+  return (
+    <div style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",pointerEvents:"none"}}>
+      <svg viewBox="0 0 400 220" preserveAspectRatio="none" style={{width:"100%",height:"100%",opacity}}>
+        {MESH_PATHS.map((p,i)=>(
+          <path key={i} d={p.d} fill="none" strokeLinecap="round" strokeWidth={1.4}
+            stroke={mode==="white"?"#ffffff":palette[i%palette.length]} opacity={p.o}/>
+        ))}
+      </svg>
+      {animated && mode!=="white" && (<>
+        <div style={{position:"absolute",width:7,height:7,borderRadius:"50%",background:"#00C27A",boxShadow:"0 0 14px 4px #00C27A",animation:"_mesh1 7s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",width:6,height:6,borderRadius:"50%",background:"#7C3AED",boxShadow:"0 0 14px 4px #7C3AED",animation:"_mesh2 9s ease-in-out infinite"}}/>
+      </>)}
+      {animated && mode==="white" && (
+        <div style={{position:"absolute",width:6,height:6,borderRadius:"50%",background:"#fff",boxShadow:"0 0 14px 4px rgba(255,255,255,0.8)",animation:"_mesh1 7s ease-in-out infinite"}}/>
+      )}
+    </div>
+  );
+}
+
 const CITIES = [
   "الرياض","جدة","الدمام","مكة المكرمة","المدينة المنورة","الخبر","الطائف",
   "تبوك","أبها","الباحة","القصيم","حائل","نجران","جازان","ينبع","الجوف","عرعر"
@@ -545,6 +568,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
   return (
     <div>
       <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+        <MeshBg mode="white" opacity={0.42}/>
         <div style={{...containerStyle,position:"relative"}}>
           <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
           <div style={{position:"relative"}}>
@@ -751,7 +775,7 @@ function AnalysisScreen({result}) {
   return (
     <div>
       <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
-        <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle, rgba(255,255,255,0.6) 1.3px, transparent 1.3px)",backgroundSize:"26px 26px",opacity:0.18,pointerEvents:"none"}}/>
+        <MeshBg mode="white" opacity={0.4}/>
         <div style={{...containerStyle,position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
           <div style={{flex:1}}>
             <Chip text="نتيجة التحليل" color="rgba(255,255,255,0.88)" bg="rgba(255,255,255,0.20)"/>
@@ -1258,7 +1282,9 @@ function SectorsScreen() {
           {list.map(s => {
             const hasNote = cityFilter !== "all" && s.city_notes?.[cityFilter];
             return (
-              <Card key={s.id} onClick={()=>setActive(s)} style={{padding:sp[4],cursor:"pointer",border:hasNote?`1.5px solid ${$.blue}40`:"none"}}>
+              <Card key={s.id} onClick={()=>setActive(s)} style={{padding:sp[4],cursor:"pointer",border:hasNote?`1.5px solid ${$.blue}40`:"none",position:"relative"}}>
+                <MeshBg mode="color" opacity={0.13} animated={false}/>
+                <div style={{position:"relative",zIndex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
                   <IconBadge Icon={s.Icon} color={s.color} size={48}/>
                   <div style={{flex:1,minWidth:0}}>
@@ -1282,6 +1308,7 @@ function SectorsScreen() {
                     <p style={{fontSize:12,color:$.L2,lineHeight:1.5}}>{s.city_notes[cityFilter]}</p>
                   </div>
                 )}
+                </div>
               </Card>
             );
           })}
@@ -1835,7 +1862,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
     setSavingName(false);
   }
 
-  const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString("ar-SA") : "-";
+  const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString("ar-SA-u-ca-gregory", {year:"numeric",month:"long",day:"numeric"}) : "-";
   const containerStyle = screen.isDesktop ? {maxWidth:680, margin:"0 auto"} : {};
 
   return (
@@ -2112,6 +2139,8 @@ export default function HamourApp() {
         @keyframes _float1{0%,100%{transform:translate(0,0);opacity:.25}50%{transform:translate(18px,-22px);opacity:.75}}
         @keyframes _float2{0%,100%{transform:translate(0,0);opacity:.3}50%{transform:translate(-20px,16px);opacity:.65}}
         @keyframes _float3{0%,100%{transform:translate(0,0);opacity:.2}50%{transform:translate(14px,18px);opacity:.6}}
+        @keyframes _mesh1{0%,100%{transform:translate(12%,18%);opacity:0}50%{transform:translate(58%,62%);opacity:1}}
+        @keyframes _mesh2{0%,100%{transform:translate(78%,22%);opacity:0}50%{transform:translate(34%,72%);opacity:1}}
         *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
         body{margin:0}
         ::-webkit-scrollbar{width:0;height:0}
