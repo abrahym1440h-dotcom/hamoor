@@ -21,6 +21,9 @@ const LIGHT = {
   teal:"#32ADE6", indigo:"#5856D6", pink:"#FF2D92", yellow:"#FFCC00",
   F3:"rgba(120,120,128,0.12)", F4:"rgba(120,120,128,0.08)", F5:"rgba(120,120,128,0.04)",
   sep:"rgba(60,60,67,0.29)", sepL:"rgba(60,60,67,0.10)",
+  hdrBlue:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",
+  hdrGreen:"linear-gradient(160deg,#2DD36F,#34C759,#1E9E40)",
+  hdrRed:"linear-gradient(160deg,#FF4747,#FF3B30,#D42820)",
 };
 
 const DARK = {
@@ -30,6 +33,9 @@ const DARK = {
   teal:"#5BC8E8", indigo:"#6E7BE0", pink:"#E8628A", yellow:"#FFD60A",
   F3:"rgba(120,135,170,0.26)", F4:"rgba(120,135,170,0.18)", F5:"rgba(120,135,170,0.10)",
   sep:"rgba(120,135,170,0.45)", sepL:"rgba(120,135,170,0.22)",
+  hdrBlue:"linear-gradient(168deg,#0F1F4D,#0A1430)",
+  hdrGreen:"linear-gradient(160deg,#16432A,#0E2E1C)",
+  hdrRed:"linear-gradient(160deg,#5C1418,#3D0D10)",
 };
 
 let $ = LIGHT;
@@ -567,7 +573,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
 
   return (
     <div>
-      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(168deg,#1D6EF5 0%,#007AFF 55%,#0063DB 100%)",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+      <div style={{position:"relative",overflow:"hidden",background:$.hdrBlue,padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
         <MeshBg mode="white" opacity={0.42}/>
         <div style={{...containerStyle,position:"relative"}}>
           <div style={{position:"absolute",top:-120,left:-120,width:340,height:340,borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
@@ -762,7 +768,7 @@ function AnalysisScreen({result}) {
     </div>
   );
   const pos=result.decision_type==="positive";
-  const hGrad=pos?"linear-gradient(160deg,#2DD36F,#34C759,#1E9E40)":"linear-gradient(160deg,#FF4747,#FF3B30,#D42820)";
+  const hGrad=pos?$.hdrGreen:$.hdrRed;
   const m = result.market_analysis || {};
   const f = result.financial_analysis || {};
   const sc = f.setup_costs || {};
@@ -1317,13 +1323,18 @@ function SectorsScreen() {
         <Sheet open={!!active} onClose={()=>setActive(null)}>
           {active && (
             <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-              <div style={{display:"flex",alignItems:"center",gap:sp[4],marginBottom:sp[3]}}>
-                <IconBadge Icon={active.Icon} color={active.color} size={52}/>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:22,fontWeight:800,color:$.L1}}>{active.name}</div>
-                  <div style={{fontSize:11,color:$.L4,marginTop:2}}>{cityFilter==="all"?"تقييم عام":"تقييم خاص بـ "+cityFilter}</div>
+              <div style={{position:"relative",overflow:"hidden",borderRadius:18,background:$.hdrBlue,padding:`${sp[5]}px ${sp[4]}px`,marginBottom:sp[4]}}>
+                <MeshBg mode="white" opacity={0.4}/>
+                <div style={{position:"relative",zIndex:1,display:"flex",alignItems:"center",gap:sp[3]}}>
+                  <div style={{width:48,height:48,borderRadius:14,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <active.Icon size={26} color="#fff"/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:20,fontWeight:800,color:"#fff"}}>{active.name}</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>{cityFilter==="all"?"تقييم عام":"تقييم خاص بـ "+cityFilter}</div>
+                  </div>
+                  <div style={{fontSize:32,fontWeight:800,color:"#fff"}}>{activeDynScore}</div>
                 </div>
-                <div style={{fontSize:32,fontWeight:800,color:scoreColor(activeDynScore)}}>{activeDynScore}</div>
               </div>
 
               {cityNote && (
