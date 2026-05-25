@@ -9,7 +9,7 @@ import {
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
   ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
-  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound
+  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download
 } from "lucide-react";
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
@@ -761,6 +761,10 @@ function AnalysisScreen({result}) {
             ))}
           </div>
 
+          <button onClick={()=>{ if(typeof window!=="undefined") window.print(); }} style={{width:"100%",background:$.surface,color:$.L2,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[4]}}>
+            <Download size={15}/>تصدير التحليل PDF
+          </button>
+
           <div style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
             {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:"none",minWidth:screen.isMobile?"23%":"auto",padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none",whiteSpace:"nowrap"}}>{t}</button>))}
           </div>
@@ -1042,6 +1046,13 @@ function AnalysisScreen({result}) {
                 </div>
               )}
             </>)}
+          </div>
+
+          <div style={{marginTop:sp[5],padding:`${sp[4]}px`,background:$.F5,borderRadius:14,display:"flex",gap:sp[3],alignItems:"flex-start"}}>
+            <Info size={16} color={$.L4} style={{flexShrink:0,marginTop:2}}/>
+            <p style={{fontSize:12,color:$.L3,lineHeight:1.8}}>
+              هذا التحليل أداة استرشادية مبنية على متوسطات السوق والذكاء الاصطناعي، الغرض منه مساعدتك على التفكير واتخاذ قرار مبدئي. الأرقام تقديرية وقد تختلف عن الواقع، ولا يُغني هذا التحليل عن دراسة جدوى ميدانية متخصصة قبل أي قرار استثماري. هامور غير مسؤول عن أي قرارات تُتخذ بناءً عليه.
+            </p>
           </div>
         </div>
       </div>
@@ -1739,6 +1750,41 @@ function SideNav({active, onChange, user, dark, onToggleDark, isPremium}) {
   );
 }
 
+function LegalSheet({open, onClose}) {
+  return (
+    <Sheet open={open} onClose={onClose}>
+      <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`,maxHeight:"75vh",overflowY:"auto"}}>
+        <h2 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[4]}}>الخصوصية والشروط</h2>
+
+        <div style={{marginBottom:sp[5]}}>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>سياسة الخصوصية</h3>
+          <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
+            يجمع تطبيق هامور الحد الأدنى من البيانات اللازمة لتشغيل الخدمة: بريدك الإلكتروني واسمك لإنشاء حسابك، والتحليلات التي تنشئها لحفظها في حسابك. لا نبيع بياناتك ولا نشاركها مع أطراف خارجية لأغراض تسويقية. تُخزّن بياناتك بشكل آمن، ويمكنك حذف تحليلاتك أو طلب حذف حسابك في أي وقت. عند استخدامك ميزات التحليل، تُرسل تفاصيل مشروعك إلى مزوّد الذكاء الاصطناعي لمعالجتها وإرجاع النتيجة.
+          </p>
+        </div>
+
+        <div style={{marginBottom:sp[5]}}>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>شروط الاستخدام</h3>
+          <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
+            هامور أداة استرشادية لتحليل المشاريع تعتمد على الذكاء الاصطناعي ومتوسطات السوق. التحليلات والأرقام تقديرية بطبيعتها وقد تختلف عن الواقع، ولا تُعدّ دراسة جدوى رسمية ولا نصيحة استثمارية أو قانونية أو مالية. أنت وحدك مسؤول عن أي قرار تتخذه بناءً على المعلومات في التطبيق، ونوصي دائماً بالرجوع لمختص ودراسة جدوى ميدانية قبل أي استثمار. نحرص على دقة المحتوى قدر الإمكان لكننا لا نضمن خلوّه من الأخطاء.
+          </p>
+        </div>
+
+        <div>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>الاشتراك</h3>
+          <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
+            يوفّر هامور باقة مجانية محدودة وباقة اشتراك مدفوعة بمزايا موسّعة. عند توفّر الدفع الإلكتروني، تُوضّح تفاصيل الأسعار ومدة الاشتراك قبل الدفع. يمكنك إلغاء اشتراكك في أي وقت من صفحة حسابك.
+          </p>
+        </div>
+
+        <p style={{fontSize:11,color:$.L4,marginTop:sp[5],lineHeight:1.7}}>
+          باستخدامك تطبيق هامور فإنك توافق على هذه الشروط. قد نحدّث هذه السياسة من وقت لآخر.
+        </p>
+      </div>
+    </Sheet>
+  );
+}
+
 function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpgrade, onLogout, onNameUpdated, onSubscriptionChange}) {
   const screen = useScreenSize();
   const [name, setName] = useState(profile?.name || "");
@@ -1748,6 +1794,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelErr, setCancelErr] = useState(null);
+  const [showLegal, setShowLegal] = useState(false);
 
   async function doCancel() {
     if (cancelling) return;
@@ -1867,12 +1914,18 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
           </div>
         </Card>
 
+        <button onClick={()=>setShowLegal(true)} style={{width:"100%",background:$.surface,color:$.L2,border:`1px solid ${$.sepL}`,borderRadius:14,padding:`${sp[4]}px`,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:sp[3]}}>
+          <Shield size={16}/>الخصوصية والشروط
+        </button>
+
         <button onClick={()=>setConfirmLogout(true)} style={{width:"100%",background:$.surface,color:$.red,border:`1.5px solid ${$.red}25`,borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:SH.card}}>
           <LogOut size={17}/>تسجيل الخروج
         </button>
 
         <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[6]}}>هامور · الإصدار 1.0</p>
       </div>
+
+      <LegalSheet open={showLegal} onClose={()=>setShowLegal(false)}/>
 
       <Sheet open={confirmLogout} onClose={()=>setConfirmLogout(false)}>
         <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[8]}px`,textAlign:"center"}}>
