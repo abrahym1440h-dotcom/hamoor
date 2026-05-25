@@ -268,8 +268,8 @@ function AuthScreen({onSuccess}) {
     <div style={{minHeight:"100vh",background:$.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[6]}px ${sp[5]}px`}}>
       <div style={{width:"100%",maxWidth:400}}>
         <div style={{textAlign:"center",marginBottom:sp[8]}}>
-          <div style={{width:72,height:72,borderRadius:22,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[4],boxShadow:SH.blue}}>
-            <BarChart2 size={34} color="#fff" strokeWidth={2.2}/>
+          <div style={{width:72,height:72,borderRadius:22,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[4],boxShadow:SH.blue,overflow:"hidden"}}>
+            <img src="/logo.png" alt="هامور" style={{width:54,height:54,objectFit:"contain"}}/>
           </div>
           <h1 style={{fontSize:32,fontWeight:800,color:$.L1,letterSpacing:"-1px",marginBottom:6}}>هامور</h1>
           <p style={{fontSize:14,color:$.L3,lineHeight:1.6}}>دراسة جدوى ذكية للسوق السعودي</p>
@@ -1725,8 +1725,8 @@ function SideNav({active, onChange, user, dark, onToggleDark, isPremium}) {
   return (
     <div style={{position:"fixed",top:0,right:0,bottom:0,width:260,zIndex:100,background:$.surface,borderLeft:`0.5px solid ${$.sep}`,display:"flex",flexDirection:"column",padding:`${sp[6]}px ${sp[4]}px`}}>
       <div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`0 ${sp[3]}px`,marginBottom:sp[8]}}>
-        <div style={{width:44,height:44,borderRadius:14,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <BarChart2 size={22} color="#fff" strokeWidth={2.2}/>
+        <div style={{width:44,height:44,borderRadius:14,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+          <img src="/logo.png" alt="هامور" style={{width:32,height:32,objectFit:"contain"}}/>
         </div>
         <div>
           <div style={{fontSize:20,fontWeight:800,color:$.L1}}>هامور</div>
