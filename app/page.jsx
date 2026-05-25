@@ -215,9 +215,10 @@ function FormField({label, icon, children}) {
 }
 
 function Sheet({open, onClose, children}) {
+  const screen = useScreenSize();
   if (!open) return null;
   return (
-    <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+    <div style={{position:"fixed",top:0,bottom:0,left:0,right:screen.isDesktop?260:0,zIndex:2000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.40)",backdropFilter:"blur(4px)"}}/>
       <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"92vh",maxWidth:720,margin:"0 auto",width:"100%",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"center",padding:`${sp[3]}px 0`,position:"sticky",top:0,background:$.surface,zIndex:10}}><div style={{width:36,height:4,borderRadius:99,background:$.F3}}/></div>
@@ -2115,7 +2116,7 @@ export default function HamourApp() {
         select option{background:${$.surface};color:${$.L1}}
         ._dotsbg{position:fixed;inset:0;z-index:0;pointer-events:none;
           background-image:radial-gradient(circle,${$.blue} 1px,transparent 1px);
-          background-size:30px 30px;opacity:${dark?0.10:0.06}}
+          background-size:30px 30px;opacity:${dark?0.16:0.14}}
         ._spark{position:fixed;border-radius:50%;z-index:0;pointer-events:none;
           background:${$.blue};${dark?`box-shadow:0 0 10px 2px ${$.blue}`:"opacity:.25"}}
       `}</style>
