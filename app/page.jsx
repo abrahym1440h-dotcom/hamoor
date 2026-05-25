@@ -760,6 +760,7 @@ const TABS=["نظرة عامة","تحليل السوق","التحليل الما
 function AnalysisScreen({result}) {
   const screen = useScreenSize();
   const [tab,setTab]=useState(0);
+  const [printMode,setPrintMode]=useState(false);
   if (!result) return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:`${sp[16]}px ${sp[5]}px`,gap:sp[3],color:$.L3,minHeight:"60vh"}}>
       <BarChart2 size={48} strokeWidth={1.3}/>
@@ -779,8 +780,25 @@ function AnalysisScreen({result}) {
   const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : screen.isTablet ? {maxWidth:720, margin:"0 auto"} : {};
 
   return (
-    <div>
-      <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}}>
+    <div className="analysis-print">
+      <div className="print-only" style={{display:"none"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"2px solid #1D4ED8",paddingBottom:12,marginBottom:18}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <img src="/logo.png" alt="هامور" style={{width:44,height:44,objectFit:"contain"}}/>
+            <div>
+              <div style={{fontSize:20,fontWeight:800,color:"#0B1320"}}>هامور</div>
+              <div style={{fontSize:10,color:"#6B7280"}}>دراسة جدوى ذكية للسوق السعودي</div>
+            </div>
+          </div>
+          <div style={{textAlign:"left"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#0B1320"}}>تقرير تحليل مشروع</div>
+            <div style={{fontSize:10,color:"#6B7280"}}>{new Date().toLocaleDateString("ar-SA-u-ca-gregory",{year:"numeric",month:"long",day:"numeric"})}</div>
+          </div>
+        </div>
+        <div style={{fontSize:15,fontWeight:800,color:"#0B1320",marginBottom:4}}>القرار: {result.decision}</div>
+        <div style={{fontSize:12,color:"#374151",marginBottom:16,lineHeight:1.7}}>{result.summary}</div>
+      </div>
+      <div style={{background:hGrad,position:"relative",overflow:"hidden",padding:screen.isDesktop?`${sp[14]}px ${sp[10]}px ${sp[12]}px`:`${sp[14]}px ${sp[5]}px ${sp[10]}px`,borderRadius:"0 0 36px 36px"}} className="no-print">
         <MeshBg mode="white" opacity={0.4}/>
         <div style={{...containerStyle,position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[4]}}>
           <div style={{flex:1}}>
@@ -804,16 +822,20 @@ function AnalysisScreen({result}) {
             ))}
           </div>
 
-          <button onClick={()=>{ if(typeof window!=="undefined") window.print(); }} style={{width:"100%",background:$.surface,color:$.L2,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[4]}}>
+          <button onClick={()=>{
+            if(typeof window==="undefined") return;
+            setPrintMode(true);
+            setTimeout(()=>{ window.print(); setPrintMode(false); }, 300);
+          }} className="no-print" style={{width:"100%",background:$.surface,color:$.L2,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[4]}}>
             <Download size={15}/>تصدير التحليل PDF
           </button>
 
-          <div style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
+          <div className="no-print" style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
             {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:"none",minWidth:screen.isMobile?"23%":"auto",padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none",whiteSpace:"nowrap"}}>{t}</button>))}
           </div>
 
           <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[4]}}>
-            {tab===0 && (<>
+            {(tab===0||printMode) && (<>
               {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green} subtitle={`${sw.strengths.length} نقاط قوة تدعم المشروع`}>
                 {sw.strengths.map((s,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],padding:`${sp[3]}px`,background:`${$.green}06`,borderRadius:10,borderRight:`3px solid ${$.green}`}}>
@@ -869,7 +891,7 @@ function AnalysisScreen({result}) {
               </div>
             </>)}
 
-            {tab===1 && (<>
+            {(tab===1||printMode) && (<>
               <Section title="حجم السوق والجمهور" Icon={Users} color={$.blue}>
                 <Row label="حجم السوق الإجمالي" value={m.market_size||"-"} note="القيمة السوقية الكاملة للقطاع"/>
                 <Row label="الفئة المستهدفة" value={m.target_audience||"-"}/>
@@ -917,7 +939,7 @@ function AnalysisScreen({result}) {
               </div>}
             </>)}
 
-            {tab===2 && (<>
+            {(tab===2||printMode) && (<>
               <Section title="تكلفة التأسيس" Icon={Briefcase} color={$.purple} subtitle="استثمار لمرة واحدة - التكاليف الأولية">
                 <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit} note="عادة 3-6 أشهر إيجار"/>
                 <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
@@ -964,7 +986,7 @@ function AnalysisScreen({result}) {
               </Section>
             </>)}
 
-            {tab===3 && (
+            {(tab===3||printMode) && (
               <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
                 <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle={`${(result.risk_analysis||[]).length} مخاطر مصنّفة مع خطط التخفيف`}>
                   <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
@@ -997,7 +1019,7 @@ function AnalysisScreen({result}) {
               </div>
             )}
 
-            {tab===4 && (<>
+            {(tab===4||printMode) && (<>
               {result.action_plan?.length>0 && (
                 <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
                   <Section title="الخطة التنفيذية - أول 90 يوم" Icon={Calendar} color={$.blue} subtitle="خطوات عملية مرتبة من التأسيس حتى الانطلاق">
@@ -1745,7 +1767,7 @@ const NAV = [
 
 function BottomNav({active, onChange, dark, onToggleDark}) {
   return (
-    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:$.surface,borderTop:`0.5px solid ${$.sep}`,display:"flex",padding:`8px 4px max(8px,env(safe-area-inset-bottom))`,boxShadow:"0 -2px 16px rgba(0,0,0,0.06)"}}>
+    <div className="no-print" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:$.surface,borderTop:`0.5px solid ${$.sep}`,display:"flex",padding:`8px 4px max(8px,env(safe-area-inset-bottom))`,boxShadow:"0 -2px 16px rgba(0,0,0,0.06)"}}>
       {NAV.map(n => {
         const on = active === n.id;
         return (
@@ -1761,7 +1783,7 @@ function BottomNav({active, onChange, dark, onToggleDark}) {
 
 function SideNav({active, onChange, user, dark, onToggleDark, isPremium}) {
   return (
-    <div style={{position:"fixed",top:0,right:0,bottom:0,width:260,zIndex:100,background:$.surface,borderLeft:`0.5px solid ${$.sep}`,display:"flex",flexDirection:"column",padding:`${sp[6]}px ${sp[4]}px`}}>
+    <div className="no-print" style={{position:"fixed",top:0,right:0,bottom:0,width:260,zIndex:100,background:$.surface,borderLeft:`0.5px solid ${$.sep}`,display:"flex",flexDirection:"column",padding:`${sp[6]}px ${sp[4]}px`}}>
       <div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`0 ${sp[3]}px`,marginBottom:sp[8]}}>
         <div style={{width:44,height:44,borderRadius:14,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
           <img src="/logo.png" alt="هامور" style={{width:32,height:32,objectFit:"contain"}}/>
@@ -2152,6 +2174,17 @@ export default function HamourApp() {
         @keyframes _float3{0%,100%{transform:translate(0,0);opacity:.2}50%{transform:translate(14px,18px);opacity:.6}}
         @keyframes _mesh1{0%,100%{transform:translate(12%,18%);opacity:0}50%{transform:translate(58%,62%);opacity:1}}
         @keyframes _mesh2{0%,100%{transform:translate(78%,22%);opacity:0}50%{transform:translate(34%,72%);opacity:1}}
+        @media print {
+          @page { margin: 1.5cm; }
+          body { background: #fff !important; }
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          ._dotsbg, ._spark { display: none !important; }
+          .analysis-print { padding: 0 !important; }
+          .analysis-print * { color: #1a1a1a !important; box-shadow: none !important; }
+          .pdf-card { border: 1px solid #d1d5db !important; background: #fff !important; page-break-inside: avoid; margin-bottom: 10px !important; }
+          .print-only * { color: inherit !important; }
+        }
         *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
         body{margin:0}
         ::-webkit-scrollbar{width:0;height:0}
