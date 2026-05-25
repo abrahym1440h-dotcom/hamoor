@@ -508,6 +508,16 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
         </div>
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+      {busy && (
+        <div style={{marginTop:sp[5],borderRadius:16,padding:`${sp[10]}px ${sp[5]}px`,textAlign:"center",position:"relative",overflow:"hidden",background:$.F5,border:`1px solid ${$.sepL}`}}>
+          <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(circle, ${$.blue} 1.5px, transparent 1.5px)`,backgroundSize:"24px 24px",opacity:0.16,WebkitMaskImage:"radial-gradient(ellipse at center, #000 20%, transparent 70%)",maskImage:"radial-gradient(ellipse at center, #000 20%, transparent 70%)"}}/>
+          <div style={{position:"relative",zIndex:2}}>
+            <Spinner sz={40} clr={$.blue}/>
+            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginTop:sp[4]}}>جاري تحليل مشروعك…</div>
+            <div style={{fontSize:12,color:$.L3,marginTop:sp[2]}}>نحلل السوق والتكاليف والمنافسة والمخاطر</div>
+          </div>
+        </div>
+      )}
       <button onClick={go} disabled={busy||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?"linear-gradient(150deg,#FFB800,#FF9500)":(canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3),color:(reachedLimit||canGo)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
         {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:reachedLimit?<><Crown size={16} strokeWidth={2.2}/>اشترك للمتابعة</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
       </button>
@@ -2096,13 +2106,28 @@ export default function HamourApp() {
     <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,fontFamily:"'IBM Plex Sans Arabic',sans-serif",direction:"rtl"}}>
       <style>{`
         @keyframes _spin{to{transform:rotate(360deg)}}
+        @keyframes _float1{0%,100%{transform:translate(0,0);opacity:.25}50%{transform:translate(18px,-22px);opacity:.75}}
+        @keyframes _float2{0%,100%{transform:translate(0,0);opacity:.3}50%{transform:translate(-20px,16px);opacity:.65}}
+        @keyframes _float3{0%,100%{transform:translate(0,0);opacity:.2}50%{transform:translate(14px,18px);opacity:.6}}
         *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
         body{margin:0}
         ::-webkit-scrollbar{width:0;height:0}
         select option{background:${$.surface};color:${$.L1}}
+        ._dotsbg{position:fixed;inset:0;z-index:0;pointer-events:none;
+          background-image:radial-gradient(circle,${$.blue} 1px,transparent 1px);
+          background-size:30px 30px;opacity:${dark?0.10:0.06}}
+        ._spark{position:fixed;border-radius:50%;z-index:0;pointer-events:none;
+          background:${$.blue};${dark?`box-shadow:0 0 10px 2px ${$.blue}`:"opacity:.25"}}
       `}</style>
 
-      <div style={{paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
+      <div className="_dotsbg"/>
+      <div className="_spark" style={{width:5,height:5,top:"14%",left:"18%",animation:"_float1 8s infinite"}}/>
+      <div className="_spark" style={{width:4,height:4,top:"34%",left:"76%",animation:"_float2 10s infinite"}}/>
+      <div className="_spark" style={{width:6,height:6,top:"58%",left:"28%",animation:"_float3 9s infinite"}}/>
+      <div className="_spark" style={{width:4,height:4,top:"78%",left:"80%",animation:"_float1 11s infinite"}}/>
+      <div className="_spark" style={{width:5,height:5,top:"48%",left:"55%",animation:"_float2 8.5s infinite"}}/>
+
+      <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
