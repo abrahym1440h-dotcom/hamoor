@@ -12,7 +12,7 @@ export async function POST(req) {
       return Response.json({ error: "البيانات ناقصة" }, { status: 400 });
     }
 
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
     }
@@ -21,8 +21,7 @@ export async function POST(req) {
     const cityName = city.split(" - ")[0].trim();
     const neighborhood = city.includes(" - حي ") ? city.split(" - حي ")[1].trim() : null;
 
-    const isCustomSector = userSector === "أخرى / غير مدرج";
-    const sector = (userSector && !isCustomSector) ? userSector : detectSector(idea);
+    const sector = userSector ? userSector : detectSector(idea);
 
     const cityBrief = getCityBrief(cityName) || cityName;
     const sectorBrief = getSectorBrief(sector);
@@ -30,7 +29,7 @@ export async function POST(req) {
 
     // ═══ معطيات المشروع المشتركة ═══
     const projectContext = `المشروع: ${idea}
-القطاع: ${sector}${isCustomSector ? ' (المستخدم اختار "غير مدرج" - حلّل الفكرة حسب طبيعتها وأقرب قطاع شبيه)' : ''}
+القطاع: ${sector}
 المدينة: ${cityName}${neighborhood ? `\nالحي: ${neighborhood}` : ''}
 الميزانية: ${budgetNum.toLocaleString()} ريال
 
@@ -40,33 +39,44 @@ ${sectorBrief}
 
 ${financialBrief}
 
-الرواتب: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
+الرواتب التقريبية: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
 التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}`;
 
-    // ═══ تعليمات الأسلوب المشتركة ═══
-    const styleGuide = `أسلوب الكتابة: اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وتنصحه بصدق. لغة عربية طبيعية وإنسانية، خاطبه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب العبارات الآلية ("يُعتبر"، "تجدر الإشارة"، "بشكل عام"). اشرح "لماذا" وراء كل رقم. لا مجاملة - كن صادقاً وواقعياً.`;
+    // ═══ تعليمات الأسلوب ═══
+    const styleGuide = `أسلوب الكتابة: اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وتنصحه بصدق. لغة عربية طبيعية وإنسانية، خاطبه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب العبارات الآلية. اشرح "لماذا" وراء كل رقم. لا مجاملة - كن صادقاً وواقعياً.`;
 
-    const systemPrompt = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى الميدانية داخل السوق السعودي. صارم، صادق، لا تجامل. الأرقام المالية المعطاة لك من دراسات جدوى حقيقية - استخدمها كأساس إلزامي ولا تخترع أرقاماً. اجعل المجاميع متطابقة (مجموع البنود = الإجمالي).
+    // ═══ تعليمات البحث ═══
+    const searchInstructions = `مهم جداً - أنت متصل بالبحث الحي على الإنترنت:
+ابحث فعلياً عن معلومات حديثة ودقيقة قبل أن تحلل. ابحث عن:
+- متوسط أسعار إيجار المحلات التجارية في ${neighborhood ? `حي ${neighborhood} بـ` : ''}${cityName} حالياً
+- تكاliف تأسيس مشاريع مشابهة لـ "${idea}" في السوق السعودي
+- أسماء منافسين حقيقيين فعليين في ${cityName} لنفس نوع المشروع
+- أرقام السوق الحديثة: حجم الطلب، اتجاهات النمو، الموسمية
+- أي أنظمة أو تراخيص أو رسوم حكومية حديثة تخص هذا القطاع في السعودية
+استخدم الأرقام التي تجدها من البحث كأساس. اربط كل رقم مهم بمصدره.`;
 
-قاعدة لغة إلزامية: اكتب كل النصوص باللغة العربية الفصحى فقط. ممنوع منعاً تاماً استخدام أي كلمة أو حرف من لغة أخرى (صينية، إنجليزية، أو غيرها). الأرقام تُكتب بالأرقام العادية. أي حرف غير عربي يُعتبر خطأ فادحاً.
+    const baseRules = `قاعدة لغة إلزامية: اكتب كل النصوص باللغة العربية الفصحى فقط. ممنوع منعاً تاماً استخدام أي كلمة أو حرف من لغة أخرى. الأرقام تُكتب بالأرقام العادية.
 
-ترجع JSON صحيح فقط، بدون أي نص قبله أو بعده.`;
+قواعد الدقة:
+- استخدم أرقاماً واقعية مبنية على بحثك الفعلي، عدّلها حسب حجم المدينة والحي بدقة.
+- المجاميع يجب أن تتطابق (مجموع البنود = الإجمالي).
+- إذا الميزانية أقل من الحد الأدنى للتأسيس = score أقل من 35 + توضيح صريح كم ينقص.
+- المنافسون: اذكر منافسين حقيقيين بأسماء فعلية وجدتها في بحثك. ممنوع الأسماء الوهمية أو المرقّمة مثل "كوفي شوب 1". إذا لم تجد أسماء محددة، اكتب أوصافاً واقعية دقيقة.
+- نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية). الـ ROI = (الربح السنوي ÷ رأس المال) × 100.
+- الأحياء يجب أن تكون حقيقية من ${cityName}.`;
 
     // ═══ الاستدعاء الأول: التحليل الأساسي ═══
-    const promptCore = `حلّل هذا المشروع بصرامة وواقعية تامة كدراسة جدوى حقيقية:
+    const promptCore = `أنت خبير استثماري سعودي بخبرة 30 سنة في دراسات الجدوى الميدانية. حلّل هذا المشروع بصرامة وواقعية تامة كدراسة جدوى حقيقية مبنية على بحث فعلي.
 
 ${projectContext}
 
+${searchInstructions}
+
 ${styleGuide}
 
-قواعد مهمة:
-- الأرقام واقعية ودقيقة، المجاميع متطابقة، عدّلها حسب حجم المدينة والحي.
-- إذا الميزانية أقل من الحد الأدنى للتأسيس = score أقل من 35 + توضيح صريح كم ينقص.
-- المنافسون: اذكر 5 منافسين حقيقيين بأسماء فعلية من نفس نوع المشروع بالضبط (مطعم شاورما → مطاعم شاورما حقيقية، وليس ماكدونالدز). ممنوع منعاً تاماً الأسماء الوهمية أو المرقّمة مثل "كوفي شوب 1" أو "منافس 2" - هذا خطأ فادح. إذا كنت لا تعرف أسماء محلات محددة في المدينة، اكتب أوصافاً واقعية بدل الأسماء (مثل: "مقهى محلي في الحي يقدم أسعاراً منافسة"، "سلسلة قهوة معروفة"). كل منافس يجب أن يكون إما اسماً حقيقياً معروفاً أو وصفاً واقعياً، لا رقماً.
-- نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية). الـ ROI = (الربح السنوي ÷ رأس المال) × 100.
-- الأحياء حقيقية من ${cityName}.
+${baseRules}
 
-أرجع JSON صحيح فقط:
+بعد بحثك، أرجع النتيجة بصيغة JSON فقط (بدون أي نص قبله أو بعده، بدون علامات markdown):
 
 {
   "score": <0-100 واقعي>,
@@ -78,18 +88,18 @@ ${styleGuide}
   "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "risk_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "market_analysis": {
-    "market_size": "<حجم السوق لـ ${cityName}>",
+    "market_size": "<حجم السوق لـ ${cityName} بأرقام من بحثك>",
     "target_audience": "<الجمهور>",
     "buying_patterns": "<أنماط الشراء>",
     "seasonality": "<الموسمية>",
     "expected_market_share": "<النسبة الواقعية>",
     "growth_potential": "<النمو على 5 سنوات>",
     "competitors": [
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس>", "strength": "<قوة>", "weakness": "<ضعف>"}
+      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
+      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"}
     ]
   },
   "financial_analysis": {
@@ -123,24 +133,28 @@ ${styleGuide}
   "locations": {
     "best": {"name": "<حي حقيقي في ${cityName}>", "score": <0-100>, "reason": "<شرح>"},
     "worst": {"name": "<حي حقيقي>", "score": <0-100>, "reason": "<شرح>"}
-  }
+  },
+  "data_freshness": "<جملة قصيرة: على ماذا اعتمدت من بحثك - مثلاً: اعتمدت على أسعار إيجارات حديثة ومعطيات السوق لعام 2026>"
 }`;
 
     // ═══ الاستدعاء الثاني: الخطة والتفاصيل ═══
-    const promptPlan = `أنت تكمل دراسة جدوى لهذا المشروع. ركّز على الخطة التنفيذية والتفاصيل العملية:
+    const promptPlan = `أنت خبير استثماري سعودي تكمل دراسة جدوى لهذا المشروع. ركّز على الخطة التنفيذية والتفاصيل العملية، مبنية على بحث فعلي.
 
 ${projectContext}
+
+ابحث على الإنترنت عن: التراخيص والتصاريح الحديثة المطلوبة لهذا النوع من المشاريع في السعودية وجهات إصدارها، وأسعار السوق الحالية للمنتجات/الخدمات المشابهة.
 
 ${styleGuide}
 
 قواعد:
 - الخطة التنفيذية: 3 مراحل واقعية (1-30، 31-60، 61-90 يوم)، كل مرحلة مهام عملية ملموسة.
-- التسعير: 4 منتجات/خدمات رئيسية، لكل واحد سعر بيع وتكلفة وهامش ربح، أسعار واقعية للسوق السعودي.
+- التسعير: 4 منتجات/خدمات رئيسية، لكل واحد سعر بيع وتكلفة وهامش ربح، أسعار واقعية مبنية على بحثك.
 - العميل المثالي: صفه بدقة (العمر، الدخل، السلوك، أين تجده).
-- التراخيص: التصاريح الفعلية المطلوبة في السعودية مع جهة الإصدار.
-- التميّز: 3 طرق عملية ملموسة للتميّز عن المنافسين، ليست شعارات.
+- التراخيص: التصاريح الفعلية الحديثة المطلوبة في السعودية مع جهة الإصدار، من بحثك.
+- التميّز: 3 طرق عملية ملموسة للتميّز عن المنافسين.
+- اكتب بالعربية فقط.
 
-أرجع JSON صحيح فقط:
+أرجع النتيجة بصيغة JSON فقط (بدون أي نص قبله أو بعده، بدون علامات markdown):
 
 {
   "action_plan": [
@@ -179,75 +193,127 @@ ${styleGuide}
   ]
 }`;
 
-    // دالة استدعاء Groq
-    async function callGroq(userPrompt, attempt = 1) {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    // ═══ دالة استدعاء Gemini مع البحث الحي ═══
+    async function callGemini(userPrompt, attempt = 1) {
+      const model = "gemini-2.0-flash";
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 3500,
-          response_format: { type: "json_object" }
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 8000
+          }
         })
       });
 
       if (!response.ok) {
-        // خطأ 429 = تجاوز حد الطلبات: ننتظر ونعيد المحاولة (حتى 3 مرات)
-        if (response.status === 429 && attempt < 3) {
-          console.log(`Rate limited, retrying (attempt ${attempt + 1})...`);
-          await new Promise(r => setTimeout(r, 4000 * attempt));
-          return callGroq(userPrompt, attempt + 1);
-        }
         const errText = await response.text();
-        console.error("Groq Error:", response.status, errText.substring(0, 300));
+        console.error("Gemini Error:", response.status, errText.substring(0, 300));
+        if ((response.status === 429 || response.status === 503) && attempt < 3) {
+          console.log(`Retrying Gemini (attempt ${attempt + 1})...`);
+          await new Promise(r => setTimeout(r, 4000 * attempt));
+          return callGemini(userPrompt, attempt + 1);
+        }
         if (response.status === 429) {
           throw new Error("الخدمة مزدحمة حالياً، حاول بعد دقيقة");
         }
-        throw new Error("خطأ من Groq: " + response.status);
+        throw new Error("خطأ من المحلّل: " + response.status);
       }
 
       const data = await response.json();
-      const text = data.choices?.[0]?.message?.content;
-      if (!text) throw new Error("لا يوجد رد من Groq");
+      const cand = data.candidates?.[0];
+      const text = cand?.content?.parts?.map(p => p.text || "").join("") || "";
+      if (!text) throw new Error("لا يوجد رد من المحلّل");
 
-      // فحص: إذا الرد فيه حروف صينية/يابانية/كورية = النموذج هلوس، نعيد المحاولة
-      const hasCJK = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(text);
-      if (hasCJK && attempt < 3) {
-        console.log(`Foreign characters detected, retrying (attempt ${attempt + 1})...`);
-        await new Promise(r => setTimeout(r, 1000));
-        return callGroq(userPrompt, attempt + 1);
+      // استخراج المصادر من البحث
+      const sources = [];
+      const gm = cand?.groundingMetadata;
+      if (gm?.groundingChunks) {
+        for (const chunk of gm.groundingChunks) {
+          if (chunk.web?.title) {
+            sources.push({ title: chunk.web.title, uri: chunk.web.uri || "" });
+          }
+        }
       }
 
-      return JSON.parse(text);
+      // استخراج JSON من النص (قد يكون محاطاً بنص أو علامات markdown)
+      const parsed = extractJSON(text);
+      if (!parsed) {
+        if (attempt < 3) {
+          console.log(`JSON parse failed, retrying (attempt ${attempt + 1})...`);
+          await new Promise(r => setTimeout(r, 1500));
+          return callGemini(userPrompt, attempt + 1);
+        }
+        throw new Error("تعذّر تحليل رد المحلّل");
+      }
+
+      return { data: parsed, sources };
     }
 
-    console.log("Calling Groq (2 sequential requests)...");
+    console.log("Calling Gemini with search (2 sequential requests)...");
 
-    // ═══ الاستدعاءان بالتتابع (واحد بعد الثاني) ═══
-    const coreResult = await callGroq(promptCore);
-    // فاصل بسيط بين الاستدعاءين لتجنّب حد الطلبات
-    await new Promise(r => setTimeout(r, 1500));
-    const planResult = await callGroq(promptPlan);
+    const coreCall = await callGemini(promptCore);
+    await new Promise(r => setTimeout(r, 800));
+    const planCall = await callGemini(promptPlan);
 
-    // دمج النتيجتين
-    const merged = { ...coreResult, ...planResult };
+    // دمج النتيجتين + المصادر
+    const allSources = [...coreCall.sources, ...planCall.sources];
+    const uniqueSources = [];
+    const seen = new Set();
+    for (const s of allSources) {
+      const key = s.title;
+      if (!seen.has(key) && uniqueSources.length < 8) {
+        seen.add(key);
+        uniqueSources.push(s);
+      }
+    }
+
+    const merged = { ...coreCall.data, ...planCall.data, sources: uniqueSources };
     const validated = validateFinancials(merged);
 
-    console.log("Analysis complete");
+    console.log("Analysis complete, sources:", uniqueSources.length);
     return Response.json(validated);
 
   } catch (error) {
     console.error("Server Error:", error.message);
     return Response.json({ error: error.message || "خطأ في الخادم" }, { status: 500 });
   }
+}
+
+// ═══ استخراج JSON من نص قد يحتوي على زوائد ═══
+function extractJSON(text) {
+  // محاولة 1: تحليل مباشر
+  try { return JSON.parse(text); } catch (e) {}
+
+  // محاولة 2: إزالة علامات markdown
+  let cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  try { return JSON.parse(cleaned); } catch (e) {}
+
+  // محاولة 3: استخراج أول كتلة { ... } متوازنة
+  const start = cleaned.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') inStr = !inStr;
+    if (inStr) continue;
+    if (ch === "{") depth++;
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        const block = cleaned.substring(start, i + 1);
+        try { return JSON.parse(block); } catch (e) { return null; }
+      }
+    }
+  }
+  return null;
 }
 
 // ═══ طبقة التحقق الرياضي ═══
@@ -303,7 +369,6 @@ function validateFinancials(result) {
             fa.break_even_months = estBreakEven;
           }
         }
-        // مزامنة break_even_detail مع نقطة التعادل المحسوبة
         if (result.break_even_detail && estBreakEven > 0 && estBreakEven <= 120) {
           if (Math.abs((result.break_even_detail.months||0) - fa.break_even_months) > 3) {
             result.break_even_detail.months = fa.break_even_months;
