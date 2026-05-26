@@ -58,14 +58,7 @@ ${financialBrief}
     const styleGuide = `أسلوب الكتابة: اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وتنصحه بصدق. لغة عربية طبيعية وإنسانية، خاطبه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب العبارات الآلية. اشرح "لماذا" وراء كل رقم. لا مجاملة - كن صادقاً وواقعياً.`;
 
     // ═══ تعليمات البحث ═══
-    const searchInstructions = `مهم جداً - أنت متصل بالبحث الحي على الإنترنت:
-ابحث فعلياً عن معلومات حديثة ودقيقة قبل أن تحلل. ابحث عن:
-- متوسط أسعار إيجار المحلات التجارية في ${neighborhood ? `حي ${neighborhood} بـ` : ''}${cityName} حالياً
-- تكاliف تأسيس مشاريع مشابهة لـ "${idea}" في السوق السعودي
-- أسماء منافسين حقيقيين فعليين في ${cityName} لنفس نوع المشروع
-- أرقام السوق الحديثة: حجم الطلب، اتجاهات النمو، الموسمية
-- أي أنظمة أو تراخيص أو رسوم حكومية حديثة تخص هذا القطاع في السعودية
-استخدم الأرقام التي تجدها من البحث كأساس. اربط كل رقم مهم بمصدره.`;
+    const searchInstructions = `استخدم معرفتك العميقة بالسوق السعودي ومعطيات المشروع المعطاة لك. اعتمد على الأرقام في المعطيات كأساس، وعدّلها بدقة حسب المدينة والحي والمعلومات الإضافية التي قدّمها صاحب المشروع.`;
 
     const baseRules = `قاعدة لغة إلزامية: اكتب كل النصوص باللغة العربية الفصحى فقط. ممنوع منعاً تاماً استخدام أي كلمة أو حرف من لغة أخرى. الأرقام تُكتب بالأرقام العادية.
 
@@ -146,7 +139,6 @@ ${baseRules}
     "best": {"name": "<حي حقيقي في ${cityName}>", "score": <0-100>, "reason": "<شرح>"},
     "worst": {"name": "<حي حقيقي>", "score": <0-100>, "reason": "<شرح>"}
   },
-  "data_freshness": "<جملة قصيرة: على ماذا اعتمدت من بحثك - مثلاً: اعتمدت على أسعار إيجارات حديثة ومعطيات السوق لعام 2026>"
 }`;
 
     // ═══ الاستدعاء الثاني: الخطة والتفاصيل ═══
@@ -154,7 +146,7 @@ ${baseRules}
 
 ${projectContext}
 
-ابحث على الإنترنت عن: التراخيص والتصاريح الحديثة المطلوبة لهذا النوع من المشاريع في السعودية وجهات إصدارها، وأسعار السوق الحالية للمنتجات/الخدمات المشابهة.
+اعتمد على معرفتك بالتراخيص والتصاريح المطلوبة لهذا النوع من المشاريع في السعودية وجهات إصدارها، وأسعار السوق للمنتجات والخدمات المشابهة.
 
 ${styleGuide}
 
@@ -205,90 +197,82 @@ ${styleGuide}
   ]
 }`;
 
-    // ═══ دالة استدعاء Gemini مع البحث الحي ═══
-    async function callGemini(userPrompt, attempt = 1) {
-      const model = "gemini-2.0-flash";
+    // ═══ دالة استدعاء Gemini (النموذج الأساسي) ═══
+    async function callGemini(userPrompt) {
+      const model = "gemini-2.5-flash";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 8000
-          }
+          generationConfig: { temperature: 0.4, maxOutputTokens: 8000, responseMimeType: "application/json" }
         })
       });
-
       if (!response.ok) {
         const errText = await response.text();
-        console.error("Gemini Error:", response.status, errText.substring(0, 300));
-        if ((response.status === 429 || response.status === 503) && attempt < 3) {
-          console.log(`Retrying Gemini (attempt ${attempt + 1})...`);
-          await new Promise(r => setTimeout(r, 4000 * attempt));
-          return callGemini(userPrompt, attempt + 1);
-        }
-        if (response.status === 429) {
-          throw new Error("الخدمة مزدحمة حالياً، حاول بعد دقيقة");
-        }
-        throw new Error("خطأ من المحلّل: " + response.status);
+        console.error("Gemini Error:", response.status, errText.substring(0, 200));
+        throw new Error("GEMINI_FAIL_" + response.status);
       }
-
       const data = await response.json();
       const cand = data.candidates?.[0];
       const text = cand?.content?.parts?.map(p => p.text || "").join("") || "";
-      if (!text) throw new Error("لا يوجد رد من المحلّل");
-
-      // استخراج المصادر من البحث
-      const sources = [];
-      const gm = cand?.groundingMetadata;
-      if (gm?.groundingChunks) {
-        for (const chunk of gm.groundingChunks) {
-          if (chunk.web?.title) {
-            sources.push({ title: chunk.web.title, uri: chunk.web.uri || "" });
-          }
-        }
-      }
-
-      // استخراج JSON من النص (قد يكون محاطاً بنص أو علامات markdown)
+      if (!text) throw new Error("GEMINI_FAIL_EMPTY");
       const parsed = extractJSON(text);
-      if (!parsed) {
-        if (attempt < 3) {
-          console.log(`JSON parse failed, retrying (attempt ${attempt + 1})...`);
-          await new Promise(r => setTimeout(r, 1500));
-          return callGemini(userPrompt, attempt + 1);
+      if (!parsed) throw new Error("GEMINI_FAIL_PARSE");
+      return parsed;
+    }
+
+    // ═══ دالة استدعاء Groq (الاحتياطي) ═══
+    async function callGroq(userPrompt, attempt = 1) {
+      const groqKey = process.env.GROQ_API_KEY;
+      if (!groqKey) throw new Error("لا يوجد مفتاح احتياطي");
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: userPrompt }],
+          temperature: 0.35,
+          max_tokens: 3500,
+          response_format: { type: "json_object" }
+        })
+      });
+      if (!response.ok) {
+        if (response.status === 429 && attempt < 3) {
+          await new Promise(r => setTimeout(r, 4000 * attempt));
+          return callGroq(userPrompt, attempt + 1);
         }
-        throw new Error("تعذّر تحليل رد المحلّل");
+        throw new Error("الخدمة مزدحمة حالياً، حاول بعد دقيقة");
       }
-
-      return { data: parsed, sources };
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("لا يوجد رد من المحلّل");
+      const parsed = extractJSON(text);
+      if (!parsed) throw new Error("تعذّر تحليل الرد");
+      return parsed;
     }
 
-    console.log("Calling Gemini with search (2 sequential requests)...");
-
-    const coreCall = await callGemini(promptCore);
-    await new Promise(r => setTimeout(r, 800));
-    const planCall = await callGemini(promptPlan);
-
-    // دمج النتيجتين + المصادر
-    const allSources = [...coreCall.sources, ...planCall.sources];
-    const uniqueSources = [];
-    const seen = new Set();
-    for (const s of allSources) {
-      const key = s.title;
-      if (!seen.has(key) && uniqueSources.length < 8) {
-        seen.add(key);
-        uniqueSources.push(s);
+    // ═══ استدعاء ذكي: Gemini أولاً، وعند فشله Groq ═══
+    async function callAI(userPrompt) {
+      try {
+        return await callGemini(userPrompt);
+      } catch (e) {
+        console.log("Gemini failed (" + e.message + "), switching to Groq backup...");
+        return await callGroq(userPrompt);
       }
     }
 
-    const merged = { ...coreCall.data, ...planCall.data, sources: uniqueSources };
+    console.log("Analyzing (Gemini primary, Groq backup)...");
+
+    const coreData = await callAI(promptCore);
+    await new Promise(r => setTimeout(r, 600));
+    const planData = await callAI(promptPlan);
+
+    const merged = { ...coreData, ...planData };
     const validated = validateFinancials(merged);
 
-    console.log("Analysis complete, sources:", uniqueSources.length);
+    console.log("Analysis complete");
     return Response.json(validated);
 
   } catch (error) {
