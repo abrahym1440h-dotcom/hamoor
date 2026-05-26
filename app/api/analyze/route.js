@@ -206,14 +206,22 @@ ${styleGuide}
     async function callGemini(userPrompt) {
       const model = "gemini-2.5-flash";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 8000, responseMimeType: "application/json" }
-        })
-      });
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 22000);
+      let response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 6000, responseMimeType: "application/json" }
+          }),
+          signal: ctrl.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!response.ok) {
         const errText = await response.text();
         console.error("Gemini Error:", response.status, errText.substring(0, 200));
@@ -232,17 +240,25 @@ ${styleGuide}
     async function callGroq(userPrompt, attempt = 1) {
       const groqKey = process.env.GROQ_API_KEY;
       if (!groqKey) throw new Error("لا يوجد مفتاح احتياطي");
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: userPrompt }],
-          temperature: 0.35,
-          max_tokens: 3500,
-          response_format: { type: "json_object" }
-        })
-      });
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 24000);
+      let response;
+      try {
+        response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: userPrompt }],
+            temperature: 0.35,
+            max_tokens: 3200,
+            response_format: { type: "json_object" }
+          }),
+          signal: ctrl.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!response.ok) {
         if (response.status === 429 && attempt < 3) {
           await new Promise(r => setTimeout(r, 4000 * attempt));
@@ -258,20 +274,20 @@ ${styleGuide}
       return parsed;
     }
 
-    // ═══ استدعاء ذكي: Gemini أولاً، وعند فشله Groq ═══
+    // ═══ استدعاء ذكي: Groq أولاً (أسرع وأثبت)، وعند فشله Gemini ═══
     async function callAI(userPrompt) {
       try {
-        return await callGemini(userPrompt);
-      } catch (e) {
-        console.log("Gemini failed (" + e.message + "), switching to Groq backup...");
         return await callGroq(userPrompt);
+      } catch (e) {
+        console.log("Groq failed (" + e.message + "), switching to Gemini backup...");
+        return await callGemini(userPrompt);
       }
     }
 
-    console.log("Analyzing (Gemini primary, Groq backup)...");
+    console.log("Analyzing (Groq primary, Gemini backup)...");
 
     const coreData = await callAI(promptCore);
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 400));
     const planData = await callAI(promptPlan);
 
     const merged = { ...coreData, ...planData };
