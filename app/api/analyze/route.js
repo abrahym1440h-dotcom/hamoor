@@ -71,7 +71,7 @@ ${financialBrief}
 - استخدم أرقاماً واقعية مبنية على بحثك الفعلي، عدّلها حسب حجم المدينة والحي بدقة.
 - المجاميع يجب أن تتطابق (مجموع البنود = الإجمالي).
 - إذا الميزانية أقل من الحد الأدنى للتأسيس = score أقل من 35 + توضيح صريح كم ينقص.
-- المنافسون: اذكر منافسين حقيقيين بأسماء فعلية وجدتها في بحثك. ممنوع الأسماء الوهمية أو المرقّمة مثل "كوفي شوب 1". إذا لم تجد أسماء محددة، اكتب أوصافاً واقعية دقيقة.
+- المنافسون: اذكر 5 منافسين بأسماء شركات وسلاسل حقيقية معروفة فعلياً في السوق السعودي تنافس في نفس نوع المشروع. مثال: لمشروع برجر اذكر سلاسل مثل (هرفي، كودو، البيك، ماكدونالدز، شيك شاك) حسب ما يناسب. لمشروع قهوة اذكر (دانكن، ستاربكس، بارنز، دوز) وهكذا. استخدم أسماء سلاسل حقيقية معروفة فقط. ممنوع منعاً تاماً الأسماء الوهمية أو المرقّمة مثل "كوفي شوب 1" أو الأوصاف العامة مثل "مطاعم شاورما". يجب أن يكون كل منافس اسم شركة أو سلسلة حقيقية معروفة.
 - نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية). الـ ROI = (الربح السنوي ÷ رأس المال) × 100.
 - الأحياء يجب أن تكون حقيقية من ${cityName}.`;
 
@@ -98,28 +98,38 @@ ${baseRules}
   "cost_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "risk_level": "<منخفض/متوسط/عالي/عالي جداً>",
   "market_analysis": {
-    "market_size": "<حجم السوق لـ ${cityName} بأرقام من بحثك>",
-    "target_audience": "<الجمهور>",
-    "buying_patterns": "<أنماط الشراء>",
-    "seasonality": "<الموسمية>",
-    "expected_market_share": "<النسبة الواقعية>",
-    "growth_potential": "<النمو على 5 سنوات>",
+    "market_size": "<حجم السوق لـ ${cityName} بأرقام وتقدير قيمته>",
+    "target_audience": "<وصف تفصيلي للجمهور: من هم، أعمارهم، دخلهم، سلوكهم>",
+    "buying_patterns": "<أنماط الشراء: متى يشترون، كم مرة، كم ينفقون>",
+    "seasonality": "<الموسمية: أشهر الذروة وأشهر الركود ولماذا>",
+    "expected_market_share": "<النسبة الواقعية مع تبرير>",
+    "growth_potential": "<النمو على 5 سنوات مع تبرير>",
+    "demand_drivers": ["<عامل يرفع الطلب>", "<عامل آخر>", "<عامل ثالث>"],
+    "market_gaps": ["<فجوة في السوق تقدر تستغلها>", "<فجوة أخرى>"],
     "competitors": [
-      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"},
-      {"name": "<منافس حقيقي>", "strength": "<قوة>", "weakness": "<ضعف>"}
+      {"name": "<اسم سلسلة حقيقية معروفة>", "market_position": "<موقعها في السوق: رائدة/قوية/متوسطة>", "strength": "<أبرز قوة>", "weakness": "<ثغرة تقدر تستغلها>", "price_range": "<فئة أسعارها: اقتصادية/متوسطة/مرتفعة>"},
+      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"},
+      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"},
+      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"},
+      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"}
     ]
   },
   "financial_analysis": {
     "setup_costs": {"rent_deposit": 0, "renovation": 0, "equipment": 0, "licenses": 0, "initial_inventory": 0, "marketing_launch": 0, "working_capital": 0, "total": 0},
+    "setup_costs_notes": "<شرح من سطرين: ما أكبر بند ولماذا، وأين يمكن توفير التكاليف>",
     "monthly_costs": {"rent": 0, "salaries": 0, "utilities": 0, "materials": 0, "marketing": 0, "maintenance": 0, "other": 0, "total": 0},
+    "monthly_costs_notes": "<شرح من سطرين: أثقل بند شهري وكيف تتحكم فيه>",
+    "salary_breakdown": [
+      {"role": "<مسمى وظيفي>", "count": <عدد>, "monthly_each": <راتب الواحد>},
+      {"role": "<مسمى وظيفي>", "count": <عدد>, "monthly_each": <راتب الواحد>}
+    ],
     "revenue_projection": {"month_1": 0, "month_3": 0, "month_6": 0, "month_12": 0, "year_2_monthly": 0, "year_3_monthly": 0},
+    "revenue_notes": "<شرح من سطرين: كيف ينمو الدخل ولماذا، وما الافتراض الأساسي>",
     "break_even_months": 0,
     "roi_percentage": 0,
     "annual_profit_year1": 0,
-    "annual_profit_year3": 0
+    "annual_profit_year3": 0,
+    "daily_target": {"customers_per_day": <عدد العملاء المطلوب يومياً للربح>, "average_ticket": <متوسط فاتورة العميل>}
   },
   "swot": {
     "strengths": ["<قوة 1>", "<قوة 2>", "<قوة 3>", "<قوة 4>"],
@@ -127,7 +137,13 @@ ${baseRules}
     "opportunities": ["<فرصة 1>", "<فرصة 2>", "<فرصة 3>"],
     "threats": ["<تهديد 1>", "<تهديد 2>", "<تهديد 3>"]
   },
-  "recommendations": ["<توصية 1>", "<توصية 2>", "<توصية 3>", "<توصية 4>", "<توصية 5>"],
+  "recommendations": [
+    {"title": "<عنوان التوصية>", "detail": "<شرح عملي من سطرين كيف تنفّذها ولماذا مهمة>", "priority": "<عالية/متوسطة>"},
+    {"title": "<عنوان>", "detail": "<شرح عملي>", "priority": "<الأولوية>"},
+    {"title": "<عنوان>", "detail": "<شرح عملي>", "priority": "<الأولوية>"},
+    {"title": "<عنوان>", "detail": "<شرح عملي>", "priority": "<الأولوية>"},
+    {"title": "<عنوان>", "detail": "<شرح عملي>", "priority": "<الأولوية>"}
+  ],
   "kpis": [
     {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
     {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"},
@@ -135,10 +151,11 @@ ${baseRules}
     {"name": "<اسم>", "target": "<قيمة>", "description": "<شرح>"}
   ],
   "risk_analysis": [
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<منخفض/متوسط/عالي>", "impact": "<طفيف/متوسط/شديد>", "mitigation": "<خطة>"},
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"},
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"},
-    {"risk": "<مخاطرة>", "description": "<شرح>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة>"}
+    {"risk": "<مخاطرة>", "description": "<شرح تفصيلي للمخاطرة وكيف تظهر>", "probability": "<منخفض/متوسط/عالي>", "impact": "<طفيف/متوسط/شديد>", "mitigation": "<خطة عملية ملموسة لتفادي المخاطرة>", "warning_signs": "<علامات مبكرة تنذر بهذه المخاطرة>"},
+    {"risk": "<مخاطرة>", "description": "<شرح تفصيلي>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة عملية>", "warning_signs": "<علامات مبكرة>"},
+    {"risk": "<مخاطرة>", "description": "<شرح تفصيلي>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة عملية>", "warning_signs": "<علامات مبكرة>"},
+    {"risk": "<مخاطرة>", "description": "<شرح تفصيلي>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة عملية>", "warning_signs": "<علامات مبكرة>"},
+    {"risk": "<مخاطرة>", "description": "<شرح تفصيلي>", "probability": "<قيمة>", "impact": "<قيمة>", "mitigation": "<خطة عملية>", "warning_signs": "<علامات مبكرة>"}
   ],
   "locations": {
     "best": {"name": "<حي حقيقي في ${cityName}>", "score": <0-100>, "reason": "<شرح>"},
