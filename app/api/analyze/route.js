@@ -3,6 +3,11 @@ import { CITIES_DATA, SALARIES, LICENSES, detectSector, getCityBrief, getSectorB
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+function numWithCommas(n){
+  const s = String(Math.round(Number(n)||0));
+  return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 export async function POST(req) {
   try {
     const { idea, sector: userSector, city, budget, extras } = await req.json();
@@ -32,7 +37,7 @@ export async function POST(req) {
     if (extras) {
       const lines = [];
       if (extras.area) lines.push(`مساحة المحل: ${extras.area} متر مربع`);
-      if (extras.actual_rent) lines.push(`الإيجار السنوي الفعلي (أكّده المستخدم): ${parseInt(extras.actual_rent).toLocaleString()} ريال — استخدم هذا الرقم كما هو في التحليل المالي`);
+      if (extras.actual_rent) lines.push(`الإيجار السنوي الفعلي (أكّده المستخدم): ${numWithCommas(parseInt(extras.actual_rent))} ريال — استخدم هذا الرقم كما هو في التحليل المالي`);
       if (extras.staff_count) lines.push(`عدد الموظفين المتوقع: ${extras.staff_count}`);
       if (extras.shop_state) lines.push(`حالة المحل: ${extras.shop_state}`);
       if (extras.experience) lines.push(`خبرة صاحب المشروع في هذا المجال: ${extras.experience}`);
@@ -43,7 +48,7 @@ export async function POST(req) {
     const projectContext = `المشروع: ${idea}
 القطاع: ${sector}
 المدينة: ${cityName}${neighborhood ? `\nالحي: ${neighborhood}` : ''}
-الميزانية: ${budgetNum.toLocaleString()} ريال
+الميزانية: ${numWithCommas(budgetNum)} ريال
 
 ${cityBrief}
 
