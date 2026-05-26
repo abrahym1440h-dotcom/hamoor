@@ -88,7 +88,13 @@ async function apiCall(endpoint, body) {
   return data;
 }
 
-const fmt = n => (n||0).toLocaleString("en-US");
+const fmt = n => numWithCommas(n);
+function numWithCommas(n){
+  try{
+    const s = String(Math.round(n||0));
+    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }catch(e){ return String(n||0); }
+}
 const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 function gregorianDate(d){
   try{ return d.getDate()+" "+AR_MONTHS[d.getMonth()]+" "+d.getFullYear(); }
@@ -466,13 +472,13 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
     if (raw === "") { setBudget(""); return; }
-    setBudget(parseInt(raw).toLocaleString("en-US"));
+    setBudget(numWithCommas(parseInt(raw)));
   }
 
   function handleRentChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
     if (raw === "") { setActualRent(""); return; }
-    setActualRent(parseInt(raw).toLocaleString("en-US"));
+    setActualRent(numWithCommas(parseInt(raw)));
   }
 
   async function go() {
@@ -1682,7 +1688,7 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
     if (raw === "") { setBudget(""); return; }
-    setBudget(parseInt(raw).toLocaleString("en-US"));
+    setBudget(numWithCommas(parseInt(raw)));
   }
 
   async function go() {
