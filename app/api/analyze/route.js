@@ -5,8 +5,8 @@ export const maxDuration = 60;
 
 export async function POST(req) {
   try {
-    const { idea, sector: userSector, city, budget } = await req.json();
-    console.log("Request:", { idea, userSector, city, budget });
+    const { idea, sector: userSector, city, budget, extras } = await req.json();
+    console.log("Request:", { idea, userSector, city, budget, extras });
 
     if (!idea || !city || !budget) {
       return Response.json({ error: "البيانات ناقصة" }, { status: 400 });
@@ -27,6 +27,18 @@ export async function POST(req) {
     const sectorBrief = getSectorBrief(sector);
     const financialBrief = getFinancialBrief(sector);
 
+    // ═══ معلومات إضافية من المستخدم ═══
+    let extraInfo = "";
+    if (extras) {
+      const lines = [];
+      if (extras.area) lines.push(`مساحة المحل: ${extras.area} متر مربع`);
+      if (extras.actual_rent) lines.push(`الإيجار السنوي الفعلي (أكّده المستخدم): ${parseInt(extras.actual_rent).toLocaleString()} ريال — استخدم هذا الرقم كما هو في التحليل المالي`);
+      if (extras.staff_count) lines.push(`عدد الموظفين المتوقع: ${extras.staff_count}`);
+      if (extras.shop_state) lines.push(`حالة المحل: ${extras.shop_state}`);
+      if (extras.experience) lines.push(`خبرة صاحب المشروع في هذا المجال: ${extras.experience}`);
+      if (lines.length) extraInfo = "\n\nمعلومات إضافية مهمة قدّمها صاحب المشروع (استخدمها لرفع دقة التحليل):\n" + lines.join("\n");
+    }
+
     // ═══ معطيات المشروع المشتركة ═══
     const projectContext = `المشروع: ${idea}
 القطاع: ${sector}
@@ -40,7 +52,7 @@ ${sectorBrief}
 ${financialBrief}
 
 الرواتب التقريبية: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
-التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}`;
+التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}${extraInfo}`;
 
     // ═══ تعليمات الأسلوب ═══
     const styleGuide = `أسلوب الكتابة: اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وتنصحه بصدق. لغة عربية طبيعية وإنسانية، خاطبه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب العبارات الآلية. اشرح "لماذا" وراء كل رقم. لا مجاملة - كن صادقاً وواقعياً.`;
