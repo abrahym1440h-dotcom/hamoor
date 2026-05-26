@@ -89,6 +89,11 @@ async function apiCall(endpoint, body) {
 }
 
 const fmt = n => (n||0).toLocaleString("en-US");
+const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function gregorianDate(d){
+  try{ return d.getDate()+" "+AR_MONTHS[d.getMonth()]+" "+d.getFullYear(); }
+  catch(e){ return ""; }
+}
 
 const CITY_MARKET_SCORE = {
   "الرياض":100,"جدة":92,"الدمام":80,"الخبر":76,"مكة المكرمة":85,
@@ -862,7 +867,7 @@ function AnalysisScreen({result}) {
           </div>
           <div style={{textAlign:"left"}}>
             <div style={{fontSize:12,fontWeight:700,color:"#0B1320"}}>تقرير تحليل مشروع</div>
-            <div style={{fontSize:10,color:"#6B7280"}}>{new Date().toLocaleDateString("ar-SA-u-ca-gregory",{year:"numeric",month:"long",day:"numeric"})}</div>
+            <div style={{fontSize:10,color:"#6B7280"}}>{gregorianDate(new Date())}</div>
           </div>
         </div>
         <div style={{fontSize:15,fontWeight:800,color:"#0B1320",marginBottom:4}}>القرار: {result.decision}</div>
@@ -1965,7 +1970,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
     setSavingName(false);
   }
 
-  const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString("ar-SA-u-ca-gregory", {year:"numeric",month:"long",day:"numeric"}) : "-";
+  const joinDate = user?.created_at ? gregorianDate(new Date(user.created_at)) : "-";
   const containerStyle = screen.isDesktop ? {maxWidth:680, margin:"0 auto"} : {};
 
   return (
