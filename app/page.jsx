@@ -951,12 +951,24 @@ function AnalysisScreen({result}) {
               </Section>}
               <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
                 {result.recommendations?.length>0 && <Section title="التوصيات الاستراتيجية" Icon={Lightbulb} color={$.purple} subtitle="خطوات عملية للنجاح">
-                  {result.recommendations.map((s,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[4]}px`,borderRadius:12}}>
-                      <div style={{width:28,height:28,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,flexShrink:0}}>{i+1}</div>
-                      <span style={{fontSize:14,color:$.L2,lineHeight:1.7,flex:1}}>{s}</span>
-                    </div>
-                  ))}
+                  {result.recommendations.map((s,i)=>{
+                    const isObj = s && typeof s === "object";
+                    const title = isObj ? s.title : s;
+                    const detail = isObj ? s.detail : null;
+                    const priority = isObj ? s.priority : null;
+                    return (
+                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],background:`${$.purple}06`,padding:`${sp[4]}px`,borderRadius:12}}>
+                        <div style={{width:28,height:28,borderRadius:"50%",background:$.purple,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:detail?4:0,flexWrap:"wrap"}}>
+                            <span style={{fontSize:14,fontWeight:700,color:$.L1,lineHeight:1.6}}>{title}</span>
+                            {priority && <span style={{fontSize:10,fontWeight:700,color:priority==="عالية"?$.red:$.L4,background:priority==="عالية"?`${$.red}12`:$.F3,padding:"2px 8px",borderRadius:6}}>{priority}</span>}
+                          </div>
+                          {detail && <p style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{detail}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </Section>}
                 {result.kpis?.length>0 && <Section title="مؤشرات الأداء الرئيسية" Icon={Activity} color={$.teal} subtitle="KPIs لمتابعة نجاح المشروع">
                   {result.kpis.map((k,i)=>(
@@ -981,16 +993,45 @@ function AnalysisScreen({result}) {
                 <Row label="الحصة المتوقعة" value={m.expected_market_share||"-"} valueColor={$.blue} bold note="نسبة استحواذك من السوق"/>
                 <Row label="إمكانيات النمو" value={m.growth_potential||"-"}/>
               </Section>
+              {(m.demand_drivers?.length>0 || m.market_gaps?.length>0) && <Section title="عوامل الطلب وفرص السوق" Icon={TrendingUp} color={$.green}>
+                {m.demand_drivers?.length>0 && <div style={{marginBottom:m.market_gaps?.length>0?sp[4]:0}}>
+                  <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>عوامل ترفع الطلب</div>
+                  {m.demand_drivers.map((d,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2]}}>
+                      <TrendingUp size={14} color={$.green} style={{flexShrink:0,marginTop:3}}/>
+                      <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{d}</span>
+                    </div>
+                  ))}
+                </div>}
+                {m.market_gaps?.length>0 && <div>
+                  <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>فجوات تقدر تستغلها</div>
+                  {m.market_gaps.map((g,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[2],marginBottom:sp[2],background:`${$.green}06`,padding:`${sp[3]}px`,borderRadius:10}}>
+                      <Lightbulb size={14} color={$.green} style={{flexShrink:0,marginTop:3}}/>
+                      <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{g}</span>
+                    </div>
+                  ))}
+                </div>}
+              </Section>}
               {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين في السوق`}>
                 {m.competitors.map((c,i)=>(
                   <div key={i} style={{padding:`${sp[4]}px`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none",background:`${$.orange}04`,borderRadius:10,marginBottom:sp[2]}}>
-                    <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
-                      <Star size={15} color={$.orange} fill={$.orange}/>
-                      <span style={{fontSize:15,fontWeight:700,color:$.L1}}>{c.name}</span>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[2],flexWrap:"wrap",gap:sp[2]}}>
+                      <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                        <Star size={15} color={$.orange} fill={$.orange}/>
+                        <span style={{fontSize:15,fontWeight:700,color:$.L1}}>{c.name}</span>
+                      </div>
+                      <div style={{display:"flex",gap:sp[2]}}>
+                        {c.market_position && <span style={{fontSize:10,fontWeight:700,color:$.orange,background:`${$.orange}12`,padding:"2px 8px",borderRadius:6}}>{c.market_position}</span>}
+                        {c.price_range && <span style={{fontSize:10,fontWeight:700,color:$.L4,background:$.F3,padding:"2px 8px",borderRadius:6}}>{c.price_range}</span>}
+                      </div>
                     </div>
-                    <p style={{fontSize:13,color:$.L2,lineHeight:1.7,paddingRight:sp[5]}}>{c.strength}</p>
-                    {c.weakness && <div style={{marginTop:sp[2],padding:`${sp[2]}px ${sp[3]}px`,background:`${$.green}08`,borderRadius:8,borderRight:`2px solid ${$.green}`}}>
-                      <div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:2}}>الفرصة</div>
+                    {c.strength && <div style={{marginBottom:sp[2]}}>
+                      <div style={{fontSize:11,fontWeight:700,color:$.L3,marginBottom:2}}>قوّتهم</div>
+                      <p style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{c.strength}</p>
+                    </div>}
+                    {c.weakness && <div style={{padding:`${sp[2]}px ${sp[3]}px`,background:`${$.green}08`,borderRadius:8,borderRight:`2px solid ${$.green}`}}>
+                      <div style={{fontSize:11,fontWeight:700,color:$.green,marginBottom:2}}>الثغرة — فرصتك</div>
                       <p style={{fontSize:12,color:$.L2,lineHeight:1.5}}>{c.weakness}</p>
                     </div>}
                   </div>
@@ -1035,6 +1076,7 @@ function AnalysisScreen({result}) {
                     <span>{fmt(sc.total)}</span><span style={{fontWeight:700}}>﷼</span>
                   </span>
                 </div>
+                {f.setup_costs_notes && <div style={{marginTop:sp[3],background:`${$.purple}07`,borderRadius:10,padding:`${sp[3]}px`,fontSize:12,color:$.L2,lineHeight:1.7}}>{f.setup_costs_notes}</div>}
               </Section>
               <Section title="التكاليف الشهرية" Icon={Calendar} color={$.orange} subtitle="المصاريف الشهرية المتكررة">
                 <MoneyRow label="الإيجار الشهري" value={mc.rent}/>
@@ -1050,7 +1092,19 @@ function AnalysisScreen({result}) {
                     <span>{fmt(mc.total)}</span><span style={{fontWeight:700}}>﷼</span>
                   </span>
                 </div>
+                {f.monthly_costs_notes && <div style={{marginTop:sp[3],background:`${$.orange}07`,borderRadius:10,padding:`${sp[3]}px`,fontSize:12,color:$.L2,lineHeight:1.7}}>{f.monthly_costs_notes}</div>}
               </Section>
+              {f.salary_breakdown?.length>0 && <Section title="تفصيل الرواتب" Icon={Users} color={$.indigo} subtitle="توزيع الرواتب على الموظفين">
+                {f.salary_breakdown.map((s,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[3]}px 0`,borderBottom:i<f.salary_breakdown.length-1?`0.5px solid ${$.sepL}`:"none"}}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:600,color:$.L1}}>{s.role}</div>
+                      <div style={{fontSize:11,color:$.L4,marginTop:2}}>{s.count} موظف × {fmt(s.monthly_each)} ﷼</div>
+                    </div>
+                    <span style={{fontSize:15,fontWeight:800,color:$.indigo,direction:"ltr"}}>{fmt((s.count||0)*(s.monthly_each||0))} ﷼</span>
+                  </div>
+                ))}
+              </Section>}
               <Section title="توقع الإيرادات" Icon={TrendingUp} color={$.green} subtitle="نمو متوقع على 3 سنوات">
                 <MoneyRow label="الشهر الأول" value={rp.month_1} note="مرحلة الإطلاق"/>
                 <MoneyRow label="الشهر الثالث" value={rp.month_3} note="استقرار العمليات"/>
@@ -1058,7 +1112,20 @@ function AnalysisScreen({result}) {
                 <MoneyRow label="الشهر الـ12" value={rp.month_12} valueColor={$.green} bold note="نهاية السنة الأولى"/>
                 <MoneyRow label="السنة الثانية (شهرياً)" value={rp.year_2_monthly}/>
                 <MoneyRow label="السنة الثالثة (شهرياً)" value={rp.year_3_monthly} valueColor={$.green} bold note="مرحلة النضج"/>
+                {f.revenue_notes && <div style={{marginTop:sp[3],background:`${$.green}07`,borderRadius:10,padding:`${sp[3]}px`,fontSize:12,color:$.L2,lineHeight:1.7}}>{f.revenue_notes}</div>}
               </Section>
+              {f.daily_target && (f.daily_target.customers_per_day || f.daily_target.average_ticket) && <Section title="الهدف اليومي" Icon={Target} color={$.teal} subtitle="ما تحتاج تحققه يومياً للوصول للربح">
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+                  <div style={{background:`${$.teal}08`,borderRadius:14,padding:`${sp[4]}px`,textAlign:"center"}}>
+                    <div style={{fontSize:28,fontWeight:800,color:$.teal}}>{f.daily_target.customers_per_day||"-"}</div>
+                    <div style={{fontSize:12,color:$.L3,marginTop:4}}>عميل يومياً</div>
+                  </div>
+                  <div style={{background:`${$.teal}08`,borderRadius:14,padding:`${sp[4]}px`,textAlign:"center"}}>
+                    <div style={{fontSize:28,fontWeight:800,color:$.teal,direction:"ltr"}}>{fmt(f.daily_target.average_ticket)}</div>
+                    <div style={{fontSize:12,color:$.L3,marginTop:4}}>متوسط فاتورة العميل (﷼)</div>
+                  </div>
+                </div>
+              </Section>}
               <Section title="مؤشرات الربحية" Icon={PieChart} color={$.blue} subtitle="مقاييس النجاح المالي">
                 <Row label="نقطة التعادل" value={(f.break_even_months||"-")+" شهر"} valueColor={$.blue} bold note="الشهر الذي تغطي فيه التكاليف"/>
                 <Row label="العائد على الاستثمار (ROI)" value={(f.roi_percentage||"-")+"%"} valueColor={$.green} bold note="نسبة الربح من رأس المال"/>
@@ -1092,6 +1159,13 @@ function AnalysisScreen({result}) {
                             </div>
                             <p style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{r.mitigation}</p>
                           </div>
+                          {r.warning_signs && <div style={{background:`${$.orange}08`,borderRight:`3px solid ${$.orange}`,padding:`${sp[3]}px ${sp[4]}px`,borderRadius:8,marginTop:sp[2]}}>
+                            <div style={{fontSize:12,fontWeight:700,color:$.orange,marginBottom:6,display:"flex",alignItems:"center",gap:5}}>
+                              <AlertTriangle size={13}/>
+                              <span>علامات إنذار مبكرة</span>
+                            </div>
+                            <p style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{r.warning_signs}</p>
+                          </div>}
                         </div>
                       );
                     })}
