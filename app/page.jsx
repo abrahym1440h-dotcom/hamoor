@@ -446,17 +446,28 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
   const [city,setCity]=useState("الرياض");
   const [neighborhood,setNeighborhood]=useState("");
   const [budget,setBudget]=useState("");
+  const [area,setArea]=useState("");
+  const [actualRent,setActualRent]=useState("");
+  const [staffCount,setStaffCount]=useState("");
+  const [shopState,setShopState]=useState("");
+  const [experience,setExperience]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
 
   const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
   const reachedLimit = analysesCount >= limit;
-  const canGo = idea.trim()&&sector&&budget.trim()&&!busy&&!reachedLimit;
+  const canGo = idea.trim()&&sector&&budget.trim()&&staffCount&&shopState&&experience&&!busy&&!reachedLimit;
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
     if (raw === "") { setBudget(""); return; }
     setBudget(parseInt(raw).toLocaleString("en-US"));
+  }
+
+  function handleRentChange(e) {
+    const raw = e.target.value.replace(/\D/g, "");
+    if (raw === "") { setActualRent(""); return; }
+    setActualRent(parseInt(raw).toLocaleString("en-US"));
   }
 
   async function go() {
@@ -465,9 +476,17 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
     setBusy(true); setErr(null);
     try {
       const cleanBudget = budget.replace(/,/g, "");
+      const cleanRent = actualRent.replace(/,/g, "");
+      const extras = {
+        area: area.trim() || null,
+        actual_rent: cleanRent || null,
+        staff_count: staffCount,
+        shop_state: shopState,
+        experience: experience
+      };
       const fullIdea = details.trim() ? `${idea} - تفاصيل: ${details}` : idea;
       const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
-      const r = await apiCall("analyze", { idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget });
+      const r = await apiCall("analyze", { idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget, extras });
       const analysis = {...r, idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget};
       let saved = analysis;
       try {
@@ -535,6 +554,57 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
         <div style={{position:"relative"}}>
           <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
           <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
+        </div>
+      </FormField>
+
+      <div style={{height:1,background:$.sepL,margin:`${sp[4]}px 0`}}/>
+      <div style={{fontSize:12,fontWeight:700,color:$.L3,marginBottom:sp[3]}}>معلومات تزيد دقّة التحليل</div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+        <FormField label="مساحة المحل (م²) — اختياري" icon={<Layers size={14} color={$.L4}/>}>
+          <input value={area} onChange={e=>setArea(e.target.value.replace(/\D/g,""))} placeholder="مثال: 80" inputMode="numeric" style={iStyle()}/>
+        </FormField>
+        <FormField label="الإيجار السنوي الفعلي — اختياري" icon={<Briefcase size={14} color={$.L4}/>}>
+          <input value={actualRent} onChange={handleRentChange} placeholder="مثال: 90,000" inputMode="numeric" style={{...iStyle(),direction:"ltr",textAlign:"right"}}/>
+        </FormField>
+      </div>
+
+      <FormField label="عدد الموظفين المتوقع" icon={<Users size={14} color={$.L4}/>}>
+        <div style={{position:"relative"}}>
+          <select value={staffCount} onChange={e=>setStaffCount(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:staffCount?$.L1:$.L4}}>
+            <option value="" disabled>اختر العدد</option>
+            <option value="1-2">1-2 موظفين</option>
+            <option value="3-5">3-5 موظفين</option>
+            <option value="6-10">6-10 موظفين</option>
+            <option value="أكثر من 10">أكثر من 10</option>
+          </select>
+          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+        </div>
+      </FormField>
+
+      <FormField label="حالة المحل" icon={<Building2 size={14} color={$.L4}/>}>
+        <div style={{position:"relative"}}>
+          <select value={shopState} onChange={e=>setShopState(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:shopState?$.L1:$.L4}}>
+            <option value="" disabled>اختر حالة المحل</option>
+            <option value="جاهز ومجهّز بالكامل">جاهز ومجهّز بالكامل</option>
+            <option value="يحتاج تجهيز بسيط">يحتاج تجهيز بسيط</option>
+            <option value="يحتاج تشطيب وتجهيز كامل">يحتاج تشطيب وتجهيز كامل</option>
+            <option value="لم أحدد المحل بعد">لم أحدد المحل بعد</option>
+          </select>
+          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+        </div>
+      </FormField>
+
+      <FormField label="خبرتك في هذا المجال" icon={<Award size={14} color={$.L4}/>}>
+        <div style={{position:"relative"}}>
+          <select value={experience} onChange={e=>setExperience(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:experience?$.L1:$.L4}}>
+            <option value="" disabled>اختر مستوى خبرتك</option>
+            <option value="بدون خبرة سابقة">بدون خبرة سابقة</option>
+            <option value="خبرة بسيطة">خبرة بسيطة (أقل من سنتين)</option>
+            <option value="خبرة متوسطة">خبرة متوسطة (2-5 سنوات)</option>
+            <option value="خبرة كبيرة">خبرة كبيرة (أكثر من 5 سنوات)</option>
+          </select>
+          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
         </div>
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
