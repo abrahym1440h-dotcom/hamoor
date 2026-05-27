@@ -903,13 +903,14 @@ function AnalysisScreen({result}) {
             ))}
           </div>
 
-          <button onClick={()=>{
+          {/* زر تصدير PDF مخفي مؤقتاً - يُعاد تفعيله لاحقاً. لإعادة التفعيل: احذف التعليق وأرجع الزر */}
+          {false && <button onClick={()=>{
             if(typeof window==="undefined") return;
             setPrintMode(true);
             setTimeout(()=>{ window.print(); setPrintMode(false); }, 300);
           }} className="no-print" style={{width:"100%",background:$.surface,color:$.L2,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[4]}}>
             <Download size={15}/>تصدير التحليل PDF
-          </button>
+          </button>}
 
           <div className="no-print" style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
             {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:"none",minWidth:screen.isMobile?"23%":"auto",padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none",whiteSpace:"nowrap"}}>{t}</button>))}
@@ -1013,7 +1014,8 @@ function AnalysisScreen({result}) {
                   ))}
                 </div>}
               </Section>}
-              {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين في السوق`}>
+              {/* قسم المنافسين مخفي مؤقتاً - يُفعّل لاحقاً بعد تطوير القائمة. لإعادة التفعيل: غيّر false إلى m.competitors?.length>0 */}
+              {false && m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين في السوق`}>
                 {m.competitors.map((c,i)=>(
                   <div key={i} style={{padding:`${sp[4]}px`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none",background:`${$.orange}04`,borderRadius:10,marginBottom:sp[2]}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[2],flexWrap:"wrap",gap:sp[2]}}>
@@ -1037,7 +1039,7 @@ function AnalysisScreen({result}) {
                   </div>
                 ))}
               </Section>}
-              {(loc.best || loc.worst) && <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+              {result.is_physical_location !== false && (loc.best || loc.worst) && <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
                 <Section title="تحليل المواقع" Icon={MapPin} color={$.green} subtitle="الموقع الأفضل والأسوأ للمشروع">
                   <div style={{display:"grid",gridTemplateColumns:screen.isDesktop||screen.isTablet?"1fr 1fr":"1fr",gap:sp[3]}}>
                     {[{type:"الموقع الأفضل",color:$.green,d:loc.best,icon:CheckCircle},{type:"الموقع الأسوأ",color:$.red,d:loc.worst,icon:XCircle}].map(({type,color,d,icon:Icon})=>d && (
