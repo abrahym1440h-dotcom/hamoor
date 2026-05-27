@@ -431,35 +431,46 @@ function validateFinancials(result) {
       }
     }
 
-    // 7) فحص منطق "الميزانية كافية / غير كافية" — يمنع التناقض
+    // 7) فحص منطق "الميزانية كافية / غير كافية" — يعتمد على الأرقام فقط
     const budget = result._budget || 0;
     if (budget > 0 && setupTotal > 0) {
       const enough = budget >= setupTotal;
-      const dtype = result.decision_type;
-      // لو الميزانية تكفي فعلياً لكن القرار سلبي بسبب الميزانية
-      if (enough && dtype === "negative" && result.decision &&
-          (result.decision.includes("غير كافية") || result.decision.includes("لا تكفي"))) {
-        // الميزانية كافية — نصحّح القرار
+
+      // كلمات تدل على أن النص يزعم عدم كفاية الميزانية
+      const claimsInsufficient = (txt) => txt && (
+        txt.includes("لا تكفي") || txt.includes("غير كافية") ||
+        txt.includes("لا تغطي") || txt.includes("أقل من") ||
+        txt.includes("إضافية") || txt.includes("عجز") || txt.includes("ينقص")
+      );
+
+      if (enough) {
+        // الميزانية تكفي فعلياً — نصحّح أي زعم بعكس ذلك
         const surplus = budget - setupTotal;
-        result.decision = "ميزانيتك كافية لتأسيس المشروع";
-        result.decision_type = "positive";
-        if (result.summary) {
+        const wrongDecision = claimsInsufficient(result.decision);
+        const wrongSummary = claimsInsufficient(result.summary);
+
+        if (wrongDecision) {
+          result.decision = "ميزانيتك كافية لتأسيس المشروع";
+          if (result.decision_type === "negative") result.decision_type = "positive";
+        }
+        if (wrongSummary || wrongDecision) {
+          // نعيد كتابة بداية الملخص بالأرقام الصحيحة
           result.summary = "ميزانيتك البالغة " + numWithCommas(budget) +
             " ريال تكفي لتغطية تكلفة التأسيس المقدّرة بـ " + numWithCommas(setupTotal) +
             " ريال، مع فائض قدره " + numWithCommas(surplus) +
-            " ريال يمكن استخدامه كرأس مال احتياطي. " + (result.summary || "");
+            " ريال يمكن استخدامه كرأس مال احتياطي يقوّي وضع مشروعك.";
         }
-        if ((result.score || 0) < 50) result.score = 55;
-      }
-      // لو الميزانية فعلاً لا تكفي — نتأكد أن القرار يعكس ذلك
-      if (!enough) {
+        // الميزانية الكافية ما تكون سبب لخفض النقاط تحت 50
+        if ((result.score || 0) < 50 && (wrongDecision || wrongSummary)) {
+          result.score = 58;
+        }
+      } else {
+        // الميزانية فعلاً لا تكفي — نتأكد أن الملخص يوضّح العجز الصحيح
         const shortage = setupTotal - budget;
-        if (result.summary && !result.summary.includes("ينقص")) {
-          result.summary = "ميزانيتك " + numWithCommas(budget) +
-            " ريال لا تكفي؛ تحتاج " + numWithCommas(setupTotal) +
-            " ريال للتأسيس، أي بعجز قدره " + numWithCommas(shortage) +
-            " ريال. " + (result.summary || "");
-        }
+        result.summary = "ميزانيتك البالغة " + numWithCommas(budget) +
+          " ريال لا تكفي لتغطية تكلفة التأسيس المقدّرة بـ " + numWithCommas(setupTotal) +
+          " ريال؛ تحتاج إلى " + numWithCommas(shortage) +
+          " ريال إضافية. " + (result.summary || "");
       }
     }
 
