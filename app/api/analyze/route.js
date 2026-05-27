@@ -72,7 +72,9 @@ ${financialBrief}
 - المجاميع يجب أن تتطابق (مجموع البنود = الإجمالي).
 - إذا الميزانية أقل من الحد الأدنى للتأسيس = score أقل من 35 + توضيح صريح كم ينقص.
 - المنافسون: اذكر 5 منافسين بأسماء شركات وسلاسل حقيقية معروفة فعلياً في السوق السعودي تنافس في نفس نوع المشروع. مثال: لمشروع برجر اذكر سلاسل مثل (هرفي، كودو، البيك، ماكدونالدز، شيك شاك) حسب ما يناسب. لمشروع قهوة اذكر (دانكن، ستاربكس، بارنز، دوز) وهكذا. استخدم أسماء سلاسل حقيقية معروفة فقط. ممنوع منعاً تاماً الأسماء الوهمية أو المرقّمة مثل "كوفي شوب 1" أو الأوصاف العامة مثل "مطاعم شاورما". يجب أن يكون كل منافس اسم شركة أو سلسلة حقيقية معروفة.
-- نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري - التكلفة الشهرية). الـ ROI = (الربح السنوي ÷ رأس المال) × 100.
+- نقطة التعادل = إجمالي التأسيس ÷ (الإيراد الشهري عند الاستقرار - التكلفة الشهرية). الـ ROI = (صافي الربح السنوي ÷ رأس المال) × 100.
+- قاعدة الاتساق المالي الصارمة: قبل أن تكتب أي حكم، تحقق من الأرقام. إذا كانت ميزانية صاحب المشروع أكبر من أو تساوي إجمالي تكلفة التأسيس = الميزانية كافية، والقرار يجب أن يكون إيجابياً بخصوص الميزانية. لا تقل "الميزانية غير كافية" إلا إذا كانت فعلاً أقل من إجمالي التأسيس الذي حسبته بنفسك.
+- لا تبالغ في صافي الربح: صافي ربح السنة الأولى يجب أن يكون منطقياً مع نقطة التعادل. إذا كانت نقطة التعادل 10 أشهر، فالسنة الأولى بالكاد تحقق ربحاً بسيطاً وليس ربحاً ضخماً.
 - الأحياء يجب أن تكون حقيقية من ${cityName}.`;
 
     // ═══ الاستدعاء الأول: التحليل الأساسي ═══
@@ -308,7 +310,9 @@ ${styleGuide}
     const planData = await callAI(promptPlan);
 
     const merged = { ...coreData, ...planData };
+    merged._budget = budgetNum;
     const validated = validateFinancials(merged);
+    delete validated._budget;
 
     console.log("Analysis complete");
     return Response.json(validated);
@@ -350,72 +354,95 @@ function extractJSON(text) {
   return null;
 }
 
-// ═══ طبقة التحقق الرياضي ═══
+// ═══ طبقة التحقق الرياضي — تفرض تطابق كل الأرقام ═══
 function validateFinancials(result) {
   try {
     const fa = result.financial_analysis;
     if (!fa) return result;
 
+    // 1) تصحيح مجموع تكاليف التأسيس
     if (fa.setup_costs) {
       const sc = fa.setup_costs;
-      const sum = (sc.rent_deposit||0) + (sc.renovation||0) + (sc.equipment||0) +
-                  (sc.licenses||0) + (sc.initial_inventory||0) + (sc.marketing_launch||0) +
-                  (sc.working_capital||0);
-      if (sum > 0 && Math.abs((sc.total||0) - sum) / sum > 0.01) {
-        sc.total = sum;
-      }
+      sc.total = (sc.rent_deposit||0) + (sc.renovation||0) + (sc.equipment||0) +
+                 (sc.licenses||0) + (sc.initial_inventory||0) + (sc.marketing_launch||0) +
+                 (sc.working_capital||0);
     }
 
+    // 2) تصحيح مجموع التكاليف الشهرية
     if (fa.monthly_costs) {
       const mc = fa.monthly_costs;
-      const sum = (mc.rent||0) + (mc.salaries||0) + (mc.utilities||0) +
-                  (mc.materials||0) + (mc.marketing||0) + (mc.maintenance||0) +
-                  (mc.other||0);
-      if (sum > 0 && Math.abs((mc.total||0) - sum) / sum > 0.01) {
-        mc.total = sum;
-      }
+      mc.total = (mc.rent||0) + (mc.salaries||0) + (mc.utilities||0) +
+                 (mc.materials||0) + (mc.marketing||0) + (mc.maintenance||0) +
+                 (mc.other||0);
     }
 
     const setupTotal = fa.setup_costs?.total || 0;
     const monthlyTotal = fa.monthly_costs?.total || 0;
-    const rev12 = fa.revenue_projection?.month_12 || 0;
+    const rp = fa.revenue_projection || {};
+    const rev1 = rp.month_1 || 0, rev3 = rp.month_3 || 0;
+    const rev6 = rp.month_6 || 0, rev12 = rp.month_12 || 0;
+    const rev24 = rp.year_2_monthly || rev12;
+    const rev36 = rp.year_3_monthly || rev24;
 
-    if (rev12 > 0 && monthlyTotal > 0) {
-      const monthlyProfit = rev12 - monthlyTotal;
-      const rev1 = fa.revenue_projection?.month_1 || 0;
-      const rev3 = fa.revenue_projection?.month_3 || 0;
-      const rev6 = fa.revenue_projection?.month_6 || 0;
-      const avgMonthlyRev = (rev1 + rev3*2 + rev6*3 + rev12*6) / 12;
-      const estAnnualProfit = Math.round((avgMonthlyRev - monthlyTotal) * 12);
+    if (monthlyTotal > 0) {
+      // 3) متوسط الإيراد الشهري للسنة الأولى (تدرّج واقعي)
+      const avgRevY1 = (rev1*2 + rev3*3 + rev6*3 + rev12*4) / 12;
+      // 4) صافي الربح السنوي = (متوسط الإيراد - التكاليف) × 12 — رقم واحد محسوب
+      fa.annual_profit_year1 = Math.round((avgRevY1 - monthlyTotal) * 12);
+      const avgRevY3 = (rev24 + rev36) / 2;
+      fa.annual_profit_year3 = Math.round((avgRevY3 - monthlyTotal) * 12);
 
-      if (fa.annual_profit_year1 != null) {
-        const stated = fa.annual_profit_year1;
-        if (estAnnualProfit !== 0 && Math.abs(stated - estAnnualProfit) / Math.abs(estAnnualProfit) > 0.25) {
-          fa.annual_profit_year1 = estAnnualProfit;
+      // 5) نقطة التعادل = التأسيس ÷ صافي الربح الشهري عند الاستقرار — رقم واحد
+      const stableMonthlyProfit = rev12 - monthlyTotal;
+      if (stableMonthlyProfit > 0 && setupTotal > 0) {
+        let be = Math.ceil(setupTotal / stableMonthlyProfit);
+        if (be < 1) be = 1;
+        if (be > 120) be = 120;
+        fa.break_even_months = be;
+        // فرض نفس الرقم على break_even_detail (يمنع التناقض بين الاستدعاءين)
+        if (result.break_even_detail) {
+          result.break_even_detail.months = be;
         }
+      } else {
+        // المشروع لا يربح شهرياً = لا توجد نقطة تعادل واقعية
+        fa.break_even_months = 0;
+        if (result.break_even_detail) result.break_even_detail.months = 0;
       }
 
-      if (monthlyProfit > 0 && setupTotal > 0) {
-        const estBreakEven = Math.ceil(setupTotal / monthlyProfit);
-        if (fa.break_even_months != null && estBreakEven > 0 && estBreakEven <= 120) {
-          const stated = fa.break_even_months;
-          if (Math.abs(stated - estBreakEven) / estBreakEven > 0.4) {
-            fa.break_even_months = estBreakEven;
-          }
-        }
-        if (result.break_even_detail && estBreakEven > 0 && estBreakEven <= 120) {
-          if (Math.abs((result.break_even_detail.months||0) - fa.break_even_months) > 3) {
-            result.break_even_detail.months = fa.break_even_months;
-          }
-        }
+      // 6) ROI = (صافي ربح السنة الأولى ÷ رأس المال) × 100 — محسوب
+      if (setupTotal > 0) {
+        fa.roi_percentage = Math.round((fa.annual_profit_year1 / setupTotal) * 100);
       }
+    }
 
-      if (setupTotal > 0 && fa.annual_profit_year1 != null) {
-        const estROI = Math.round((fa.annual_profit_year1 / setupTotal) * 100);
-        if (fa.roi_percentage != null) {
-          if (Math.abs(fa.roi_percentage - estROI) > 15) {
-            fa.roi_percentage = estROI;
-          }
+    // 7) فحص منطق "الميزانية كافية / غير كافية" — يمنع التناقض
+    const budget = result._budget || 0;
+    if (budget > 0 && setupTotal > 0) {
+      const enough = budget >= setupTotal;
+      const dtype = result.decision_type;
+      // لو الميزانية تكفي فعلياً لكن القرار سلبي بسبب الميزانية
+      if (enough && dtype === "negative" && result.decision &&
+          (result.decision.includes("غير كافية") || result.decision.includes("لا تكفي"))) {
+        // الميزانية كافية — نصحّح القرار
+        const surplus = budget - setupTotal;
+        result.decision = "ميزانيتك كافية لتأسيس المشروع";
+        result.decision_type = "positive";
+        if (result.summary) {
+          result.summary = "ميزانيتك البالغة " + numWithCommas(budget) +
+            " ريال تكفي لتغطية تكلفة التأسيس المقدّرة بـ " + numWithCommas(setupTotal) +
+            " ريال، مع فائض قدره " + numWithCommas(surplus) +
+            " ريال يمكن استخدامه كرأس مال احتياطي. " + (result.summary || "");
+        }
+        if ((result.score || 0) < 50) result.score = 55;
+      }
+      // لو الميزانية فعلاً لا تكفي — نتأكد أن القرار يعكس ذلك
+      if (!enough) {
+        const shortage = setupTotal - budget;
+        if (result.summary && !result.summary.includes("ينقص")) {
+          result.summary = "ميزانيتك " + numWithCommas(budget) +
+            " ريال لا تكفي؛ تحتاج " + numWithCommas(setupTotal) +
+            " ريال للتأسيس، أي بعجز قدره " + numWithCommas(shortage) +
+            " ريال. " + (result.summary || "");
         }
       }
     }
