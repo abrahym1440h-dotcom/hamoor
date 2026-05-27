@@ -58,7 +58,7 @@ ${sectorBrief}
 ${financialBrief}
 
 الرواتب التقريبية: موظف سعودي ${SALARIES.emp_saudi}، خبرة عربية ${SALARIES.exp_arab}، عمالة آسيوية ${SALARIES.worker_asian}
-التراخيص: سجل تجاري ${LICENSES.commercial_register}، رخصة بلدية ${LICENSES.municipal_license}${suggestedCompetitors.length ? `\n\nمنافسون حقيقيون مناسبون لحجم هذا المشروع (استخدم هذه الأسماء في تحليل المنافسين): ${suggestedCompetitors.join("، ")}` : ''}${extraInfo}`;
+التراخيص والرسوم الحكومية: ${LICENSES.commercial_register}؛ ${LICENSES.municipal_license}؛ ${LICENSES.chamber_of_commerce}؛ ${LICENSES.ecommerce_note}${suggestedCompetitors.length ? `\n\nمنافسون حقيقيون مناسبون لحجم هذا المشروع (استخدم هذه الأسماء في تحليل المنافسين): ${suggestedCompetitors.join("، ")}` : ''}${extraInfo}`;
 
     // ═══ تعليمات الأسلوب ═══
     const styleGuide = `أسلوب الكتابة: اكتب كأنك مستشار خبير تجلس مع صاحب المشروع وتنصحه بصدق. لغة عربية طبيعية وإنسانية، خاطبه مباشرة ("مشروعك"، "ميزانيتك"، "أنصحك"). تجنّب العبارات الآلية. اشرح "لماذا" وراء كل رقم. لا مجاملة - كن صادقاً وواقعياً.`;
