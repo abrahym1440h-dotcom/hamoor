@@ -1066,6 +1066,14 @@ function AnalysisScreen({result}) {
                 <MoneyRow label="ضمان الإيجار" value={sc.rent_deposit} note="عادة 3-6 أشهر إيجار"/>
                 <MoneyRow label="التجهيز والديكور" value={sc.renovation}/>
                 <MoneyRow label="المعدات والأثاث" value={sc.equipment}/>
+                {result.equipment_breakdown?.length>0 && <div style={{margin:`${sp[1]}px 0 ${sp[2]}px`,padding:`${sp[2]}px ${sp[3]}px`,background:`${$.purple}05`,borderRadius:8,borderRight:`2px solid ${$.purple}30`}}>
+                  {result.equipment_breakdown.map((e,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
+                      <span style={{fontSize:12,color:$.L3}}>{e.item}</span>
+                      <span style={{fontSize:12,fontWeight:600,color:$.L2,direction:"ltr"}}>{fmt(e.cost)} ﷼</span>
+                    </div>
+                  ))}
+                </div>}
                 <MoneyRow label="التراخيص والتسجيل" value={sc.licenses} note="السجل التجاري + الرخص البلدية"/>
                 <MoneyRow label="المخزون الأولي" value={sc.initial_inventory}/>
                 <MoneyRow label="تسويق الإطلاق" value={sc.marketing_launch}/>
