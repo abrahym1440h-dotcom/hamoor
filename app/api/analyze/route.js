@@ -88,6 +88,7 @@ ${financialBrief}
 - قاعدة الاتساق المالي الصارمة: قبل أن تكتب أي حكم، تحقق من الأرقام. إذا كانت ميزانية صاحب المشروع أكبر من أو تساوي إجمالي تكلفة التأسيس = الميزانية كافية، والقرار يجب أن يكون إيجابياً بخصوص الميزانية. لا تقل "الميزانية غير كافية" إلا إذا كانت فعلاً أقل من إجمالي التأسيس الذي حسبته بنفسك.
 - لا تبالغ في صافي الربح: صافي ربح السنة الأولى يجب أن يكون منطقياً مع نقطة التعادل. إذا كانت نقطة التعادل 10 أشهر، فالسنة الأولى بالكاد تحقق ربحاً بسيطاً وليس ربحاً ضخماً.
 - مؤشرات الأداء (KPIs): يجب أن تكون مؤشرات تشغيلية حقيقية قابلة للقياس ومناسبة لنوع هذا المشروع تحديداً (مثل: عدد العملاء، متوسط قيمة الطلب، تكلفة اكتساب العميل، نسبة العملاء المتكررين، معدل الإشغال). ممنوع وضع نسب مزيّفة لا يمكن قياسها قبل التشغيل مثل "الجودة 95%" أو "رضا العملاء 90%" — هذه أرقام بلا معنى لمشروع لم يبدأ بعد.
+- equipment_breakdown: قسّم بند "المعدات والأثاث" إلى 3 إلى 5 بنود فرعية واقعية تناسب نوع هذا المشروع تحديداً (مطعم: معدات مطبخ، ثلاجات، طاولات وكراسي. صالون: كراسي وأجهزة تجميل، مرايا. مشروع تقني: أجهزة وخوادم، أثاث مكتبي). مجموع تكاليف هذه البنود الفرعية يجب أن يساوي قيمة بند equipment تماماً.
 - الأحياء يجب أن تكون حقيقية من ${cityName}.`;
 
     // ═══ الاستدعاء الأول: التحليل الأساسي ═══
@@ -134,6 +135,12 @@ ${baseRules}
   "financial_analysis": {
     "setup_costs": {"rent_deposit": 0, "renovation": 0, "equipment": 0, "licenses": 0, "initial_inventory": 0, "marketing_launch": 0, "working_capital": 0, "total": 0},
     "setup_costs_notes": "<شرح من سطرين: ما أكبر بند ولماذا، وأين يمكن توفير التكاليف>",
+    "equipment_breakdown": [
+      {"item": "<اسم بند فرعي من بند المعدات والأثاث، مناسب لنوع هذا المشروع تحديداً>", "cost": 0},
+      {"item": "<بند فرعي آخر>", "cost": 0},
+      {"item": "<بند فرعي آخر>", "cost": 0},
+      {"item": "<بند فرعي آخر>", "cost": 0}
+    ],
     "monthly_costs": {"rent": 0, "salaries": 0, "utilities": 0, "materials": 0, "marketing": 0, "maintenance": 0, "other": 0, "total": 0},
     "monthly_costs_notes": "<شرح من سطرين: أثقل بند شهري وكيف تتحكم فيه>",
     "salary_breakdown": [
@@ -383,6 +390,17 @@ function validateFinancials(result) {
       sc.total = (sc.rent_deposit||0) + (sc.renovation||0) + (sc.equipment||0) +
                  (sc.licenses||0) + (sc.initial_inventory||0) + (sc.marketing_launch||0) +
                  (sc.working_capital||0);
+    }
+
+    // 1ب) مطابقة تفصيل المعدات مع بند equipment
+    if (Array.isArray(result.equipment_breakdown) && result.equipment_breakdown.length && fa.setup_costs) {
+      const breakdownSum = result.equipment_breakdown.reduce((s, x) => s + (x.cost || 0), 0);
+      const equipmentValue = fa.setup_costs.equipment || 0;
+      if (breakdownSum > 0 && equipmentValue > 0 && breakdownSum !== equipmentValue) {
+        // نعدّل البنود الفرعية بنسبة بحيث يتطابق مجموعها مع بند equipment
+        const ratio = equipmentValue / breakdownSum;
+        result.equipment_breakdown.forEach(x => { x.cost = Math.round((x.cost || 0) * ratio); });
+      }
     }
 
     // 2) تصحيح مجموع التكاليف الشهرية
