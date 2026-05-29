@@ -367,7 +367,7 @@ ${adaptEngine}
       const linkupKey = process.env.LINKUP_API_KEY;
       if (!linkupKey) return null;
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 25000);
+      const timer = setTimeout(() => ctrl.abort(), 12000);
       try {
         const response = await fetch("https://api.linkup.so/v1/search", {
           method: "POST",
@@ -408,29 +408,27 @@ ${adaptEngine}
 المدينة: ${city}
 الميزانية: ${budget} ريال
 
-مهمتك: ولّد 6 أسئلة بحث محددة وذكية باللغة العربية للبحث عنها على الإنترنت لجمع معلومات حقيقية وحديثة عن هذا المشروع تحديداً. الأسئلة يجب أن تكون:
+مهمتك: ولّد 4 أسئلة بحث محددة وذكية باللغة العربية للبحث عنها على الإنترنت لجمع معلومات حقيقية وحديثة عن هذا المشروع تحديداً. الأسئلة يجب أن تكون:
 - محددة جداً (ليس "تكاليف المطعم" بل "تكلفة تأسيس مطعم برجر صغير الرياض 2026")
-- متنوعة لتغطي: التكاليف، المنافسين الحقيقيين بالأسماء، حجم السوق، الأسعار السائدة، التراخيص المطلوبة، اتجاهات الطلب
+- متنوعة لتغطي: التكاليف، المنافسين الحقيقيين بالأسماء، حجم السوق والطلب، التراخيص المطلوبة
 - تستهدف مصادر سعودية حديثة (2025-2026)
 - مكتوبة كما يبحث الشخص في Google
 
 أرجع JSON فقط بهذا الشكل:
-{"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع", "السؤال الخامس", "السؤال السادس"]}`;
+{"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع"]}`;
 
       try {
         const result = await callCerebras(queryGenPrompt);
         const queries = result.queries || [];
         console.log("Generated " + queries.length + " research queries");
-        return queries.slice(0, 6);
+        return queries.slice(0, 4);
       } catch (e) {
         console.log("Query generation failed, using fallback queries");
         return [
-          `تكلفة تأسيس ${idea} ${city} 2026`,
-          `${sector} ${city} منافسين أسماء حقيقية`,
+          `تكلفة تأسيس ${idea} ${city} 2026 ريال سعودي`,
+          `${sector} ${city} السعودية منافسين أسماء حقيقية`,
           `${idea} السوق السعودي حجم الطلب 2026`,
-          `أسعار ${sector} السعودية متوسط`,
-          `تراخيص ${sector} السعودية الشروط 2026`,
-          `${idea} ${city} أحياء مناسبة`
+          `تراخيص ${sector} السعودية الشروط 2026`
         ];
       }
     }
@@ -481,20 +479,28 @@ ${adaptEngine}
     }
 
     // ═══ استدعاء ذكي متعدد المزوّدين: Cerebras → Groq → Gemini ═══
+    let cerebrasBroken = false; // ذاكرة فشل خلال نفس الطلب
+
     async function callAI(userPrompt) {
-      // 1) Cerebras أولاً - الأسرع والأقوى
-      try {
-        return await callCerebras(userPrompt);
-      } catch (e1) {
-        console.log("Cerebras failed (" + e1.message + "), trying Groq...");
-        // 2) Groq كاحتياط أول
+      // 1) Cerebras أولاً - إلا لو فشل سابقاً في نفس الطلب
+      if (!cerebrasBroken) {
         try {
-          return await callGroq(userPrompt);
-        } catch (e2) {
-          console.log("Groq failed (" + e2.message + "), switching to Gemini...");
-          // 3) Gemini كاحتياط أخير
-          return await callGemini(userPrompt);
+          return await callCerebras(userPrompt);
+        } catch (e1) {
+          console.log("Cerebras failed (" + e1.message + ")");
+          if (e1.message.includes("401") || e1.message.includes("NO_KEY")) {
+            cerebrasBroken = true; // مفتاح خطأ، لا تكرر المحاولة
+            console.log("Cerebras key broken, skipping for rest of request");
+          }
         }
+      }
+      // 2) Groq كاحتياط
+      try {
+        return await callGroq(userPrompt);
+      } catch (e2) {
+        console.log("Groq failed (" + e2.message + "), switching to Gemini...");
+        // 3) Gemini كاحتياط أخير
+        return await callGemini(userPrompt);
       }
     }
 
