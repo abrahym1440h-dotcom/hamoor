@@ -77,7 +77,9 @@ function formatDate(isoString) {
     if (diff < 60) return `قبل ${Math.floor(diff)} دقيقة`;
     if (diff < 1440) return `قبل ${Math.floor(diff/60)} ساعة`;
     if (diff < 10080) return `قبل ${Math.floor(diff/1440)} يوم`;
-    return d.toLocaleDateString("ar-SA");
+    // تنسيق تاريخ يدوي آمن على iPad Safari (toLocaleDateString يكسره)
+    const months = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   } catch(e) { return ""; }
 }
 
