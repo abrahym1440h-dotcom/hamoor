@@ -465,6 +465,8 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
   const [shopState,setShopState]=useState("");
   const [experience,setExperience]=useState("");
   const [busy,setBusy]=useState(false);
+  const [progress,setProgress]=useState(0);
+  const [progressStage,setProgressStage]=useState("");
   const [err,setErr]=useState(null);
 
   const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
@@ -487,6 +489,23 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
     if (reachedLimit) { if (onClose) onClose(); onNeedUpgrade(); return; }
     if (!canGo) return;
     setBusy(true); setErr(null);
+    setProgress(0); setProgressStage("جاري البدء…");
+
+    // مراحل التقدم الواقعية - مبنية على وقت الخادم الفعلي
+    const stages = [
+      { at: 800, p: 8, msg: "تجهيز أسئلة البحث الذكية…" },
+      { at: 3000, p: 22, msg: "البحث في السوق السعودي…" },
+      { at: 8000, p: 42, msg: "جمع بيانات المنافسين الحقيقيين…" },
+      { at: 13000, p: 58, msg: "تحليل التكاليف والأسعار الفعلية…" },
+      { at: 18000, p: 72, msg: "بناء التحليل المالي…" },
+      { at: 23000, p: 85, msg: "صياغة التوصيات الاستراتيجية…" },
+      { at: 28000, p: 93, msg: "اللمسات الأخيرة…" }
+    ];
+    const timers = stages.map(s => setTimeout(() => {
+      setProgress(s.p);
+      setProgressStage(s.msg);
+    }, s.at));
+
     try {
       const cleanBudget = budget.replace(/,/g, "");
       const cleanRent = actualRent.replace(/,/g, "");
@@ -500,6 +519,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       const fullIdea = details.trim() ? `${idea} - تفاصيل: ${details}` : idea;
       const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
       const r = await apiCall("analyze", { idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget, extras });
+      setProgress(100); setProgressStage("اكتمل التحليل!");
       const analysis = {...r, idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget};
       let saved = analysis;
       try {
@@ -508,7 +528,12 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       onAnalyze(saved);
       if (onClose) onClose();
     } catch(e) { setErr(e.message); }
-    finally { setBusy(false); }
+    finally {
+      timers.forEach(t => clearTimeout(t));
+      setBusy(false);
+      setProgress(0);
+      setProgressStage("");
+    }
   }
 
   return (
@@ -622,13 +647,29 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
       {busy && (
-        <div style={{marginTop:sp[5],borderRadius:18,padding:`${sp[12]}px ${sp[5]}px`,textAlign:"center",position:"relative",overflow:"hidden",background:`linear-gradient(150deg, ${$.blue}14, ${$.blue}06)`,border:`1.5px solid ${$.blue}40`,boxShadow:SH.card}}>
+        <div style={{marginTop:sp[5],borderRadius:18,padding:`${sp[8]}px ${sp[5]}px ${sp[6]}px`,textAlign:"center",position:"relative",overflow:"hidden",background:`linear-gradient(150deg, ${$.blue}14, ${$.blue}06)`,border:`1.5px solid ${$.blue}40`,boxShadow:SH.card}}>
           <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(circle, ${$.blue} 1.5px, transparent 1.5px)`,backgroundSize:"22px 22px",opacity:0.22,WebkitMaskImage:"radial-gradient(ellipse at center, #000 25%, transparent 72%)",maskImage:"radial-gradient(ellipse at center, #000 25%, transparent 72%)"}}/>
           <div style={{position:"relative",zIndex:2}}>
-            <Spinner sz={46} clr={$.blue}/>
-            <div style={{fontSize:17,fontWeight:800,color:$.L1,marginTop:sp[4]}}>جاري تحليل مشروعك…</div>
-            <div style={{fontSize:13,color:$.L3,marginTop:sp[2]}}>نحلل السوق والتكاليف والمنافسة والمخاطر</div>
-            <div style={{fontSize:12,color:$.L4,marginTop:sp[3]}}>قد تستغرق العملية حتى دقيقة</div>
+            <Spinner sz={42} clr={$.blue}/>
+            <div style={{fontSize:17,fontWeight:800,color:$.L1,marginTop:sp[3]}}>جاري تحليل مشروعك</div>
+            <div style={{fontSize:13,color:$.L3,marginTop:sp[2],minHeight:18}}>{progressStage || "جاري البدء…"}</div>
+
+            {/* شريط التقدم */}
+            <div style={{marginTop:sp[5],background:`${$.blue}18`,borderRadius:100,height:8,overflow:"hidden",position:"relative"}}>
+              <div style={{
+                position:"absolute",inset:0,
+                width:`${progress}%`,
+                background:`linear-gradient(90deg, ${$.blue}, #00C8FF)`,
+                borderRadius:100,
+                transition:"width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow:`0 0 12px ${$.blue}80`
+              }}/>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}>
+              <div style={{fontSize:11,color:$.L4}}>بحث حقيقي + تحليل ذكي</div>
+              <div style={{fontSize:14,fontWeight:700,color:$.blue}}>{progress}%</div>
+            </div>
           </div>
         </div>
       )}
@@ -1016,8 +1057,7 @@ function AnalysisScreen({result}) {
                   ))}
                 </div>}
               </Section>}
-              {/* قسم المنافسين مخفي مؤقتاً - يُفعّل لاحقاً بعد تطوير القائمة. لإعادة التفعيل: غيّر false إلى m.competitors?.length>0 */}
-              {false && m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين في السوق`}>
+              {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين حقيقيين من البحث الحديث`}>
                 {m.competitors.map((c,i)=>(
                   <div key={i} style={{padding:`${sp[4]}px`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none",background:`${$.orange}04`,borderRadius:10,marginBottom:sp[2]}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[2],flexWrap:"wrap",gap:sp[2]}}>
