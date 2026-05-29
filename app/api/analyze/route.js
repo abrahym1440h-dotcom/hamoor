@@ -78,6 +78,7 @@ ${financialBrief}
     const baseRules = `لغة: عربية فصحى فقط، ممنوع أي حرف من لغة أخرى. أرقام عادية.
 
 قواعد الدقة:
+- إذا توفّرت "معلومات السوق الحية" أسفل هذا الـ prompt (من بحث فعلي عبر الإنترنت)، استخدمها كمرجع أساسي للأرقام والمنافسين وأحجام السوق - فهي أحدث من بياناتك الداخلية. ادمجها مع البيانات الأساسية المعطاة.
 - أرقام واقعية معدّلة حسب حجم المدينة والحي. المجاميع تتطابق (مجموع البنود = الإجمالي).
 - ميزانية أقل من الحد الأدنى للتأسيس = score تحت 35 + توضيح كم ينقص.
 - المنافسون: استخدم القائمة المعطاة في المعطيات (مختارة لحجم المشروع). حلّل قوة وثغرة كل واحد. لو ما أُعطيت قائمة، اذكر شركات وسلاسل سعودية حقيقية. ممنوع أسماء وهمية أو أوصاف عامة.
@@ -318,21 +319,146 @@ ${adaptEngine}
       return parsed;
     }
 
-    // ═══ استدعاء ذكي: Groq أولاً (أسرع وأثبت)، وعند فشله Gemini ═══
-    async function callAI(userPrompt) {
+    // ═══ دالة استدعاء Cerebras (الأسرع والأقوى - النموذج الأساسي الجديد) ═══
+    async function callCerebras(userPrompt, attempt = 1) {
+      const cerebrasKey = process.env.CEREBRAS_API_KEY;
+      if (!cerebrasKey) throw new Error("CEREBRAS_NO_KEY");
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      let response;
       try {
-        return await callGroq(userPrompt);
+        response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cerebrasKey}` },
+          body: JSON.stringify({
+            model: "gpt-oss-120b",
+            messages: [{ role: "user", content: userPrompt }],
+            temperature: 0.35,
+            max_tokens: 4000,
+            response_format: { type: "json_object" }
+          }),
+          signal: ctrl.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!response.ok) {
+        if (response.status === 429 && attempt < 2) {
+          await new Promise(r => setTimeout(r, 3000));
+          return callCerebras(userPrompt, attempt + 1);
+        }
+        const errText = await response.text();
+        console.error("Cerebras Error:", response.status, errText.substring(0, 200));
+        throw new Error("CEREBRAS_FAIL_" + response.status);
+      }
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("CEREBRAS_FAIL_EMPTY");
+      const parsed = extractJSON(text);
+      if (!parsed) throw new Error("CEREBRAS_FAIL_PARSE");
+      return parsed;
+    }
+
+    // ═══ دالة البحث الحي عبر Linkup ═══
+    async function searchLinkup(query) {
+      const linkupKey = process.env.LINKUP_API_KEY;
+      if (!linkupKey) return null;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const response = await fetch("https://api.linkup.so/v1/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${linkupKey}` },
+          body: JSON.stringify({
+            q: query,
+            depth: "standard",
+            outputType: "searchResults",
+            includeImages: false
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (!response.ok) {
+          console.error("Linkup Error:", response.status);
+          return null;
+        }
+        const data = await response.json();
+        const results = data.results || [];
+        return results.slice(0, 5).map(r => ({
+          title: r.name || r.title || "",
+          snippet: (r.content || r.snippet || "").substring(0, 400),
+          url: r.url || ""
+        }));
       } catch (e) {
-        console.log("Groq failed (" + e.message + "), switching to Gemini backup...");
-        return await callGemini(userPrompt);
+        clearTimeout(timer);
+        console.error("Linkup exception:", e.message);
+        return null;
       }
     }
 
-    console.log("Analyzing (Groq primary, Gemini backup, parallel)...");
+    // ═══ إثراء التحليل ببحث حي عن السوق السعودي ═══
+    async function enrichWithLiveSearch(idea, sector, city, budget) {
+      const queries = [
+        `${idea} ${city} السعودية تكاليف 2026`,
+        `${sector} السعودية منافسين أسعار 2026`,
+        `${idea} السوق السعودي حجم الطلب`
+      ];
+      try {
+        const searches = await Promise.all(queries.map(q => searchLinkup(q)));
+        const valid = searches.filter(s => s && s.length > 0);
+        if (valid.length === 0) return "";
+        let context = "\n\n═══ معلومات السوق الحية (من البحث الفعلي عبر الإنترنت) ═══\n";
+        valid.forEach((results, i) => {
+          context += `\n[بحث ${i+1}: ${queries[i]}]\n`;
+          results.forEach(r => {
+            if (r.snippet) context += `• ${r.title}: ${r.snippet}\n`;
+          });
+        });
+        context += "\nاستخدم هذه المعلومات الحية لإثراء التحليل بأرقام وحقائق فعلية من السوق، مع الحفاظ على الأرقام الأساسية المعطاة.\n";
+        return context;
+      } catch (e) {
+        console.error("Search enrichment failed:", e.message);
+        return "";
+      }
+    }
+
+    // ═══ استدعاء ذكي متعدد المزوّدين: Cerebras → Groq → Gemini ═══
+    async function callAI(userPrompt) {
+      // 1) Cerebras أولاً - الأسرع والأقوى
+      try {
+        return await callCerebras(userPrompt);
+      } catch (e1) {
+        console.log("Cerebras failed (" + e1.message + "), trying Groq...");
+        // 2) Groq كاحتياط أول
+        try {
+          return await callGroq(userPrompt);
+        } catch (e2) {
+          console.log("Groq failed (" + e2.message + "), switching to Gemini...");
+          // 3) Gemini كاحتياط أخير
+          return await callGemini(userPrompt);
+        }
+      }
+    }
+
+    console.log("Starting analysis: Cerebras primary + Linkup search...");
+
+    // البحث الحي بالتوازي مع تجهيز التحليل
+    const liveSearchPromise = enrichWithLiveSearch(idea, userSector, city, budgetNum);
+
+    const searchContext = await liveSearchPromise;
+    if (searchContext) {
+      console.log("Live search enrichment: " + searchContext.length + " chars added");
+    } else {
+      console.log("Live search: no results (continuing with static data)");
+    }
+
+    // حقن نتائج البحث الحي في الـ prompts
+    const enrichedPromptCore = promptCore + searchContext;
+    const enrichedPromptPlan = promptPlan + searchContext;
 
     const [coreData, planData] = await Promise.all([
-      callAI(promptCore),
-      callAI(promptPlan)
+      callAI(enrichedPromptCore),
+      callAI(enrichedPromptPlan)
     ]);
 
     const merged = { ...coreData, ...planData };
