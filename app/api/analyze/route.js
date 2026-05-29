@@ -129,11 +129,9 @@ ${baseRules}
     "demand_drivers": ["<عامل يرفع الطلب>", "<عامل آخر>", "<عامل ثالث>"],
     "market_gaps": ["<فجوة في السوق تقدر تستغلها>", "<فجوة أخرى>"],
     "competitors": [
-      {"name": "<اسم سلسلة حقيقية معروفة>", "market_position": "<موقعها في السوق: رائدة/قوية/متوسطة>", "strength": "<أبرز قوة>", "weakness": "<ثغرة تقدر تستغلها>", "price_range": "<فئة أسعارها: اقتصادية/متوسطة/مرتفعة>"},
-      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"},
-      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"},
-      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"},
-      {"name": "<اسم سلسلة حقيقية>", "market_position": "<موقعها>", "strength": "<قوة>", "weakness": "<ثغرة>", "price_range": "<فئة الأسعار>"}
+      {"name": "<اسم سلسلة حقيقية ظهرت في البحث>", "market_position": "<موقعها في السوق: رائدة/قوية/متوسطة>", "strength": "<أبرز قوة محددة>", "weakness": "<ثغرة محددة تقدر تستغلها>", "price_range": "<فئة أسعارها>"},
+      {"name": "<اسم سلسلة حقيقية ثانية>", "market_position": "<موقعها>", "strength": "<قوة محددة>", "weakness": "<ثغرة محددة>", "price_range": "<فئة الأسعار>"},
+      {"name": "<اسم سلسلة حقيقية ثالثة>", "market_position": "<موقعها>", "strength": "<قوة محددة>", "weakness": "<ثغرة محددة>", "price_range": "<فئة الأسعار>"}
     ]
   },
   "financial_analysis": {
