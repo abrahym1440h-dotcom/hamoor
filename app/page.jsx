@@ -647,30 +647,88 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
       {busy && (
-        <div style={{marginTop:sp[5],borderRadius:18,padding:`${sp[8]}px ${sp[5]}px ${sp[6]}px`,textAlign:"center",position:"relative",overflow:"hidden",background:`linear-gradient(150deg, ${$.blue}14, ${$.blue}06)`,border:`1.5px solid ${$.blue}40`,boxShadow:SH.card}}>
-          <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(circle, ${$.blue} 1.5px, transparent 1.5px)`,backgroundSize:"22px 22px",opacity:0.22,WebkitMaskImage:"radial-gradient(ellipse at center, #000 25%, transparent 72%)",maskImage:"radial-gradient(ellipse at center, #000 25%, transparent 72%)"}}/>
+        <div style={{marginTop:sp[5],borderRadius:22,padding:`${sp[7]}px ${sp[5]}px ${sp[6]}px`,position:"relative",overflow:"hidden",background:`linear-gradient(170deg, #0a0e1a, #0d1228)`,border:`1px solid rgba(255,255,255,0.08)`,boxShadow:SH.card}}>
           <div style={{position:"relative",zIndex:2}}>
-            <Spinner sz={42} clr={$.blue}/>
-            <div style={{fontSize:17,fontWeight:800,color:$.L1,marginTop:sp[3]}}>جاري تحليل مشروعك</div>
-            <div style={{fontSize:13,color:$.L3,marginTop:sp[2],minHeight:18}}>{progressStage || "جاري البدء…"}</div>
+            {/* العنوان والمرحلة */}
+            <div style={{textAlign:"center",marginBottom:sp[5]}}>
+              <div style={{fontSize:17,fontWeight:800,color:$.L1,fontFamily:"inherit"}}>جاري تحليل مشروعك</div>
+              <div style={{fontSize:13,color:$.L3,marginTop:sp[2],minHeight:18,fontFamily:"inherit"}}>{progressStage || "جاري البدء…"}</div>
+            </div>
 
-            {/* شريط التقدم */}
-            <div style={{marginTop:sp[5],background:`${$.blue}18`,borderRadius:100,height:8,overflow:"hidden",position:"relative"}}>
+            {/* شريط زجاجي مع لمعان وجزيئات */}
+            <div style={{
+              position:"relative",
+              height:64,
+              borderRadius:18,
+              overflow:"hidden",
+              background:"linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))",
+              border:"0.5px solid rgba(255,255,255,0.1)",
+              backdropFilter:"blur(20px)",
+              WebkitBackdropFilter:"blur(20px)"
+            }}>
+              {/* التعبئة المتدرّجة */}
+              <div style={{
+                position:"absolute",top:0,right:0,bottom:0,
+                width:`${progress}%`,
+                background:"linear-gradient(90deg, rgba(0,122,255,0.6), rgba(0,200,255,0.8), rgba(94,234,212,0.6))",
+                transition:"width 1s cubic-bezier(0.4, 0, 0.2, 1)",
+                overflow:"hidden"
+              }}>
+                {/* لمعان متحرك */}
+                <div style={{
+                  position:"absolute",inset:0,
+                  background:"linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)",
+                  backgroundSize:"200% 100%",
+                  animation:"hamourShimmer 2.5s linear infinite"
+                }}/>
+              </div>
+
+              {/* جزيئات تطفو */}
+              <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
+                {[0,1,2,3,4,5,6,7].map(i=>(
+                  <div key={i} style={{
+                    position:"absolute",
+                    width:3,height:3,borderRadius:"50%",
+                    background:"#5eead4",
+                    left:`${(i*12.5+5)}%`,
+                    bottom:0,
+                    opacity:0,
+                    animation:`hamourFloat 4s linear infinite`,
+                    animationDelay:`${i*0.5}s`
+                  }}/>
+                ))}
+              </div>
+
+              {/* النسبة في المنتصف */}
               <div style={{
                 position:"absolute",inset:0,
-                width:`${progress}%`,
-                background:`linear-gradient(90deg, ${$.blue}, #00C8FF)`,
-                borderRadius:100,
-                transition:"width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-                boxShadow:`0 0 12px ${$.blue}80`
-              }}/>
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:24,fontWeight:800,color:"#fff",
+                fontFamily:"inherit",
+                textShadow:"0 1px 8px rgba(0,0,0,0.5)",
+                zIndex:2,
+                letterSpacing:"-0.5px"
+              }}>{progress}%</div>
             </div>
 
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}>
-              <div style={{fontSize:11,color:$.L4}}>بحث حقيقي + تحليل ذكي</div>
-              <div style={{fontSize:14,fontWeight:700,color:$.blue}}>{progress}%</div>
+            {/* النص السفلي */}
+            <div style={{textAlign:"center",fontSize:11,color:$.L4,marginTop:sp[3],fontFamily:"inherit",letterSpacing:"0.3px"}}>
+              بحث حقيقي · تحليل ذكي · بيانات حية
             </div>
           </div>
+
+          {/* الأنيميشن CSS */}
+          <style>{`
+            @keyframes hamourShimmer {
+              from { background-position: 200% 0; }
+              to { background-position: -100% 0; }
+            }
+            @keyframes hamourFloat {
+              0% { transform: translateY(20px); opacity: 0; }
+              20% { opacity: 1; }
+              100% { transform: translateY(-80px); opacity: 0; }
+            }
+          `}</style>
         </div>
       )}
       <button onClick={go} disabled={busy||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?"linear-gradient(150deg,#FFB800,#FF9500)":(canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3),color:(reachedLimit||canGo)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
