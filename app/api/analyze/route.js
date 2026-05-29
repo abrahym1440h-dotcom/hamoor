@@ -78,7 +78,10 @@ ${financialBrief}
     const baseRules = `لغة: عربية فصحى فقط، ممنوع أي حرف من لغة أخرى. أرقام عادية.
 
 قواعد الدقة:
-- إذا توفّرت "معلومات السوق الحية" أسفل هذا الـ prompt (من بحث فعلي عبر الإنترنت)، استخدمها كمرجع أساسي للأرقام والمنافسين وأحجام السوق - فهي أحدث من بياناتك الداخلية. ادمجها مع البيانات الأساسية المعطاة.
+- البحث الحقيقي أولوية مطلقة: إذا توفّرت "نتائج البحث الحقيقي من الإنترنت" أسفل هذا الـ prompt، فهي مصدرك الأساسي. استخرج منها الأرقام والأسماء والحقائق وادمجها في تحليلك. لا تتجاهلها وتعتمد على ذاكرتك.
+- المنافسون: استخدم الأسماء التي ظهرت في البحث أولاً، ثم القائمة المعطاة. ممنوع أسماء وهمية أو عامة. حلّل كل منافس بقوة وثغرة محددة.
+- التكاليف: إذا ظهرت أرقام في البحث، استخدمها. إذا تعارضت مع توقعك، البحث أحدث وأدق.
+- في recommendations اذكر صراحة "حسب البحث..." عند الاعتماد على معلومة من البحث.
 - أرقام واقعية معدّلة حسب حجم المدينة والحي. المجاميع تتطابق (مجموع البنود = الإجمالي).
 - ميزانية أقل من الحد الأدنى للتأسيس = score تحت 35 + توضيح كم ينقص.
 - المنافسون: استخدم القائمة المعطاة في المعطيات (مختارة لحجم المشروع). حلّل قوة وثغرة كل واحد. لو ما أُعطيت قائمة، اذكر شركات وسلاسل سعودية حقيقية. ممنوع أسماء وهمية أو أوصاف عامة.
@@ -364,14 +367,14 @@ ${adaptEngine}
       const linkupKey = process.env.LINKUP_API_KEY;
       if (!linkupKey) return null;
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 15000);
+      const timer = setTimeout(() => ctrl.abort(), 25000);
       try {
         const response = await fetch("https://api.linkup.so/v1/search", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${linkupKey}` },
           body: JSON.stringify({
             q: query,
-            depth: "standard",
+            depth: "deep",
             outputType: "searchResults",
             includeImages: false
           }),
@@ -385,9 +388,9 @@ ${adaptEngine}
         const data = await response.json();
         const results = data.results || [];
         console.log("Linkup query '" + query.substring(0, 50) + "': " + results.length + " results");
-        return results.slice(0, 3).map(r => ({
-          title: (r.name || r.title || "").substring(0, 80),
-          snippet: (r.content || r.snippet || "").substring(0, 200),
+        return results.slice(0, 4).map(r => ({
+          title: (r.name || r.title || "").substring(0, 100),
+          snippet: (r.content || r.snippet || "").substring(0, 350),
           url: r.url || ""
         }));
       } catch (e) {
@@ -397,35 +400,84 @@ ${adaptEngine}
       }
     }
 
-    // ═══ إثراء التحليل ببحث حي عن السوق السعودي ═══
-    async function enrichWithLiveSearch(idea, sector, city, budget) {
-      const queries = [
-        `${idea} ${city} السعودية تكاليف 2026`,
-        `${sector} السعودية منافسين 2026`
-      ];
+    // ═══ المرحلة 1: AI يولّد أسئلة بحث محددة للمشروع ═══
+    async function generateResearchQueries(idea, sector, city, budget) {
+      const queryGenPrompt = `أنت محلل أعمال سعودي خبير. مشروع تجاري معروض عليك للتحليل:
+الفكرة: ${idea}
+القطاع: ${sector}
+المدينة: ${city}
+الميزانية: ${budget} ريال
+
+مهمتك: ولّد 6 أسئلة بحث محددة وذكية باللغة العربية للبحث عنها على الإنترنت لجمع معلومات حقيقية وحديثة عن هذا المشروع تحديداً. الأسئلة يجب أن تكون:
+- محددة جداً (ليس "تكاليف المطعم" بل "تكلفة تأسيس مطعم برجر صغير الرياض 2026")
+- متنوعة لتغطي: التكاليف، المنافسين الحقيقيين بالأسماء، حجم السوق، الأسعار السائدة، التراخيص المطلوبة، اتجاهات الطلب
+- تستهدف مصادر سعودية حديثة (2025-2026)
+- مكتوبة كما يبحث الشخص في Google
+
+أرجع JSON فقط بهذا الشكل:
+{"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع", "السؤال الخامس", "السؤال السادس"]}`;
+
       try {
-        const searches = await Promise.all(queries.map(q => searchLinkup(q)));
-        const valid = searches.filter(s => s && s.length > 0);
-        console.log("Live search: " + valid.length + "/" + queries.length + " queries returned data");
-        if (valid.length === 0) return "";
-        let context = "\n\n═══ معلومات حديثة من السوق ═══\n";
-        valid.forEach((results, i) => {
-          context += `\n[${queries[i]}]\n`;
-          results.forEach(r => {
-            if (r.snippet) context += `• ${r.snippet}\n`;
-          });
-        });
-        context += "\nاستفد من هذه المعلومات لإثراء أرقامك بحقائق حديثة من السوق.\n";
-        // حدّ أقصى لطول السياق (4000 حرف) لتجنّب تجاوز حجم الـ prompt
-        if (context.length > 4000) {
-          context = context.substring(0, 4000) + "\n...";
-          console.log("Live search context truncated to 4000 chars");
-        }
-        return context;
+        const result = await callCerebras(queryGenPrompt);
+        const queries = result.queries || [];
+        console.log("Generated " + queries.length + " research queries");
+        return queries.slice(0, 6);
       } catch (e) {
-        console.error("Search enrichment failed:", e.message);
-        return "";
+        console.log("Query generation failed, using fallback queries");
+        return [
+          `تكلفة تأسيس ${idea} ${city} 2026`,
+          `${sector} ${city} منافسين أسماء حقيقية`,
+          `${idea} السوق السعودي حجم الطلب 2026`,
+          `أسعار ${sector} السعودية متوسط`,
+          `تراخيص ${sector} السعودية الشروط 2026`,
+          `${idea} ${city} أحياء مناسبة`
+        ];
       }
+    }
+
+    // ═══ المرحلة 2: بحث عميق متوازي لكل سؤال ═══
+    async function deepResearch(queries) {
+      console.log("Starting deep research on " + queries.length + " queries...");
+      const searches = await Promise.all(queries.map(q => searchLinkup(q)));
+      const validResults = [];
+      searches.forEach((results, i) => {
+        if (results && results.length > 0) {
+          validResults.push({ query: queries[i], results });
+        }
+      });
+      console.log("Deep research: " + validResults.length + "/" + queries.length + " queries returned data");
+      return validResults;
+    }
+
+    // ═══ المرحلة 3: تجميع نتائج البحث في سياق منظم ═══
+    function buildResearchContext(researchData) {
+      if (!researchData || researchData.length === 0) {
+        return { context: "", hasData: false };
+      }
+      let context = "\n\n═══════ نتائج البحث الحقيقي من الإنترنت ═══════\n";
+      context += "هذه معلومات فعلية تم البحث عنها قبل دقائق. اعتمد عليها كمصدر أساسي في التحليل.\n";
+      researchData.forEach((item, i) => {
+        context += `\n--- بحث ${i+1}: ${item.query} ---\n`;
+        item.results.forEach(r => {
+          if (r.snippet) {
+            context += `• ${r.snippet}\n`;
+          }
+        });
+      });
+      context += "\n══════════════════════════════════════\n";
+      context += "تعليمات استخدام البحث:\n";
+      context += "- استخرج الأرقام والأسماء الحقيقية من البحث وادمجها في تحليلك\n";
+      context += "- المنافسون: استخدم الأسماء التي ظهرت في البحث\n";
+      context += "- التكاليف والأسعار: استخدم الأرقام من البحث إن وُجدت\n";
+      context += "- إذا تعارضت بياناتك الداخلية مع البحث، البحث أحدث وأدق\n";
+      context += "- اذكر في recommendations إذا كنت اعتمدت على معلومة من البحث\n\n";
+
+      // حد أقصى لطول السياق
+      if (context.length > 8000) {
+        context = context.substring(0, 8000) + "\n... [اقتُطعت بقية النتائج لحجم النص]\n";
+        console.log("Research context truncated to 8000 chars");
+      }
+      return { context, hasData: true, dataPoints: researchData.length };
     }
 
     // ═══ استدعاء ذكي متعدد المزوّدين: Cerebras → Groq → Gemini ═══
@@ -446,16 +498,20 @@ ${adaptEngine}
       }
     }
 
-    console.log("Starting analysis: Cerebras primary + Linkup search...");
+    console.log("═══ بدء التحليل بالبحث الحقيقي ═══");
 
-    // البحث الحي بالتوازي مع تجهيز التحليل
-    const liveSearchPromise = enrichWithLiveSearch(idea, userSector, city, budgetNum);
+    // المرحلة 1: توليد أسئلة بحث ذكية
+    const researchQueries = await generateResearchQueries(idea, userSector, city, budgetNum);
 
-    const searchContext = await liveSearchPromise;
-    if (searchContext) {
-      console.log("Live search enrichment: " + searchContext.length + " chars added");
+    // المرحلة 2: بحث عميق
+    const researchData = await deepResearch(researchQueries);
+
+    // المرحلة 3: تجميع السياق
+    const { context: searchContext, hasData, dataPoints } = buildResearchContext(researchData);
+    if (hasData) {
+      console.log("Research-driven analysis: " + dataPoints + " research points + " + searchContext.length + " chars");
     } else {
-      console.log("Live search: no results (continuing with static data)");
+      console.log("WARNING: No research data, falling back to AI knowledge");
     }
 
     // حقن نتائج البحث الحي في الـ prompts
