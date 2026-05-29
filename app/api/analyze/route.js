@@ -334,7 +334,7 @@ ${adaptEngine}
             model: "gpt-oss-120b",
             messages: [{ role: "user", content: userPrompt }],
             temperature: 0.35,
-            max_tokens: 4000,
+            max_tokens: 6000,
             response_format: { type: "json_object" }
           }),
           signal: ctrl.signal
@@ -384,9 +384,10 @@ ${adaptEngine}
         }
         const data = await response.json();
         const results = data.results || [];
-        return results.slice(0, 5).map(r => ({
-          title: r.name || r.title || "",
-          snippet: (r.content || r.snippet || "").substring(0, 400),
+        console.log("Linkup query '" + query.substring(0, 50) + "': " + results.length + " results");
+        return results.slice(0, 3).map(r => ({
+          title: (r.name || r.title || "").substring(0, 80),
+          snippet: (r.content || r.snippet || "").substring(0, 200),
           url: r.url || ""
         }));
       } catch (e) {
@@ -400,21 +401,26 @@ ${adaptEngine}
     async function enrichWithLiveSearch(idea, sector, city, budget) {
       const queries = [
         `${idea} ${city} السعودية تكاليف 2026`,
-        `${sector} السعودية منافسين أسعار 2026`,
-        `${idea} السوق السعودي حجم الطلب`
+        `${sector} السعودية منافسين 2026`
       ];
       try {
         const searches = await Promise.all(queries.map(q => searchLinkup(q)));
         const valid = searches.filter(s => s && s.length > 0);
+        console.log("Live search: " + valid.length + "/" + queries.length + " queries returned data");
         if (valid.length === 0) return "";
-        let context = "\n\n═══ معلومات السوق الحية (من البحث الفعلي عبر الإنترنت) ═══\n";
+        let context = "\n\n═══ معلومات حديثة من السوق ═══\n";
         valid.forEach((results, i) => {
-          context += `\n[بحث ${i+1}: ${queries[i]}]\n`;
+          context += `\n[${queries[i]}]\n`;
           results.forEach(r => {
-            if (r.snippet) context += `• ${r.title}: ${r.snippet}\n`;
+            if (r.snippet) context += `• ${r.snippet}\n`;
           });
         });
-        context += "\nاستخدم هذه المعلومات الحية لإثراء التحليل بأرقام وحقائق فعلية من السوق، مع الحفاظ على الأرقام الأساسية المعطاة.\n";
+        context += "\nاستفد من هذه المعلومات لإثراء أرقامك بحقائق حديثة من السوق.\n";
+        // حدّ أقصى لطول السياق (4000 حرف) لتجنّب تجاوز حجم الـ prompt
+        if (context.length > 4000) {
+          context = context.substring(0, 4000) + "\n...";
+          console.log("Live search context truncated to 4000 chars");
+        }
         return context;
       } catch (e) {
         console.error("Search enrichment failed:", e.message);
@@ -471,7 +477,21 @@ ${adaptEngine}
 
   } catch (error) {
     console.error("Server Error:", error.message);
-    return Response.json({ error: error.message || "خطأ في الخادم" }, { status: 500 });
+    // ترجمة الأخطاء التقنية لرسائل واضحة
+    let userMsg = "حدث خطأ في التحليل، حاول مرة أخرى";
+    const msg = error.message || "";
+    if (msg.includes("FAIL_PARSE")) {
+      userMsg = "تعذّر تحليل المشروع - حاول مرة أخرى بعد لحظات";
+    } else if (msg.includes("FAIL_EMPTY")) {
+      userMsg = "لم يصل رد كامل من المحلّل - حاول مرة أخرى";
+    } else if (msg.includes("aborted") || msg.includes("timeout")) {
+      userMsg = "التحليل أخذ وقتاً أطول من المتوقع - حاول مرة أخرى";
+    } else if (msg.includes("429") || msg.includes("rate")) {
+      userMsg = "الخدمة مزدحمة الآن - حاول بعد دقيقة";
+    } else if (msg.includes("NO_KEY")) {
+      userMsg = "إعدادات الخدمة غير مكتملة - اتصل بالدعم";
+    }
+    return Response.json({ error: userMsg, debug: msg }, { status: 500 });
   }
 }
 
