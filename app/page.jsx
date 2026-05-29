@@ -1115,7 +1115,8 @@ function AnalysisScreen({result}) {
                   ))}
                 </div>}
               </Section>}
-              {m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين حقيقيين من البحث الحديث`}>
+              {/* قسم المنافسين مخفي. لإعادة التفعيل: احذف false && */}
+              {false && m.competitors?.length>0 && <Section title="المنافسون الرئيسيون" Icon={Briefcase} color={$.orange} subtitle={`${m.competitors.length} منافسين حقيقيين من البحث الحديث`}>
                 {m.competitors.map((c,i)=>(
                   <div key={i} style={{padding:`${sp[4]}px`,borderBottom:i<m.competitors.length-1?`0.5px solid ${$.sepL}`:"none",background:`${$.orange}04`,borderRadius:10,marginBottom:sp[2]}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[2],flexWrap:"wrap",gap:sp[2]}}>
