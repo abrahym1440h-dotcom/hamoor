@@ -116,7 +116,7 @@ export async function cancelSubscription(userId) {
   return true;
 }
 
-// مدة التجديد: 7 أيام بالميلي ثانية
+// مدة التجديد للتحليلات: 7 أيام بالميلي ثانية
 const RESET_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
 
 // تجيب عدد التحليلات المستخدمة، وتصفّرها تلقائياً إذا مرّ أسبوع
@@ -164,6 +164,69 @@ export async function incrementUsage(userId) {
   } catch(e) {
     console.error("incrementUsage error:", e.message);
   }
+}
+
+// ═══ عدّادات شهرية عامة (للاقتراحات والتفاصيل) — تتجدد كل 30 يوم ═══
+const MONTH_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
+async function getMonthlyUsage(userId, usedCol, resetCol) {
+  if (!userId) return 0;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select(`${usedCol}, ${resetCol}`)
+      .eq("id", userId)
+      .single();
+    if (!data) return 0;
+
+    const resetAt = data[resetCol] ? new Date(data[resetCol]).getTime() : 0;
+    const now = Date.now();
+
+    if (!resetAt || (now - resetAt) >= MONTH_PERIOD_MS) {
+      await supabase
+        .from("profiles")
+        .update({ [usedCol]: 0, [resetCol]: new Date().toISOString() })
+        .eq("id", userId);
+      return 0;
+    }
+    return data[usedCol] || 0;
+  } catch(e) {
+    return 0;
+  }
+}
+
+async function incrementMonthlyUsage(userId, usedCol) {
+  if (!userId) return;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select(usedCol)
+      .eq("id", userId)
+      .single();
+    const current = data?.[usedCol] || 0;
+    await supabase
+      .from("profiles")
+      .update({ [usedCol]: current + 1 })
+      .eq("id", userId);
+  } catch(e) {
+    console.error("incrementMonthlyUsage error:", e.message);
+  }
+}
+
+// الاقتراحات: مجاني مرّة واحدة كل شهر
+export function getSuggestionsUsage(userId) {
+  return getMonthlyUsage(userId, "suggestions_used", "suggestions_reset_at");
+}
+export function incrementSuggestionsUsage(userId) {
+  return incrementMonthlyUsage(userId, "suggestions_used");
+}
+
+// تفاصيل الاقتراحات: للمشترك 3 كل شهر
+export function getDetailsUsage(userId) {
+  return getMonthlyUsage(userId, "details_used", "details_reset_at");
+}
+export function incrementDetailsUsage(userId) {
+  return incrementMonthlyUsage(userId, "details_used");
 }
 
 function translateError(msg) {
