@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getSuggestionsUsage, incrementSuggestionsUsage, getDetailsUsage, incrementDetailsUsage } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -51,6 +51,8 @@ const FREE_ANALYSES = 2;
 const FREE_ARTICLE_IDS = [1, 2, 3, 22, 23];
 const FREE_ARTICLES = FREE_ARTICLE_IDS.length;
 const PREMIUM_ANALYSES = 10;
+const FREE_SUGGESTIONS = 1;
+const PREMIUM_DETAILS = 3;
 
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
@@ -2159,32 +2161,65 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
     </div>
   );
 }
-function SuggestionsScreen({isPremium, onNeedUpgrade}) {
+function SuggestionsScreen({user, isPremium, onNeedUpgrade, suggestionsCount, detailsCount, onSuggestUsed, onDetailUsed}) {
   const screen = useScreenSize();
   const [budget,setBudget]=useState("");
   const [city,setCity]=useState("");
   const [sector,setSector]=useState("");
+  const [targetProfit,setTargetProfit]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
   const [result,setResult]=useState(null);
+  // التفاصيل
+  const [detailName,setDetailName]=useState(null);
+  const [detailGuide,setDetailGuide]=useState(null);
+  const [detailBusy,setDetailBusy]=useState(false);
+  const [detailErr,setDetailErr]=useState(null);
+  const [openedNames,setOpenedNames]=useState([]);
+
+  const reachedSuggestLimit = !isPremium && suggestionsCount >= FREE_SUGGESTIONS;
+  const detailsLeft = Math.max(0, PREMIUM_DETAILS - detailsCount);
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
-    if (raw === "") { setBudget(""); return; }
-    setBudget(numWithCommas(parseInt(raw)));
+    setBudget(raw === "" ? "" : numWithCommas(parseInt(raw)));
+  }
+  function handleTargetChange(e) {
+    const raw = e.target.value.replace(/\D/g, "");
+    setTargetProfit(raw === "" ? "" : numWithCommas(parseInt(raw)));
   }
 
   async function go() {
-    if (!isPremium) { onNeedUpgrade(); return; }
+    if (reachedSuggestLimit) { onNeedUpgrade(); return; }
     if (!budget.trim() || busy) return;
     setBusy(true); setErr(null); setResult(null);
     try {
       const cleanBudget = budget.replace(/,/g, "");
-      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null });
+      const cleanTarget = targetProfit.replace(/,/g, "");
+      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null, target_profit:cleanTarget||null });
       setResult(r);
+      if (!isPremium) onSuggestUsed();
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
   }
+
+  async function openDetail(s) {
+    if (!isPremium) { onNeedUpgrade(); return; }
+    setDetailName(s.name); setDetailGuide(null); setDetailErr(null);
+    const already = openedNames.includes(s.name);
+    if (!already && detailsCount >= PREMIUM_DETAILS) {
+      setDetailErr("LIMIT");
+      return;
+    }
+    setDetailBusy(true);
+    try {
+      const r = await apiCall("suggest-detail", { name:s.name, sector:s.sector||sector||null, city:city||null, budget:budget.replace(/,/g,"")||null });
+      setDetailGuide(r);
+      if (!already) { setOpenedNames(prev => [...prev, s.name]); onDetailUsed(); }
+    } catch(e) { setDetailErr(e.message); }
+    finally { setDetailBusy(false); }
+  }
+  function closeDetail() { setDetailName(null); setDetailGuide(null); setDetailErr(null); setDetailBusy(false); }
 
   function typeColor(t) {
     if (t==="آمن") return $.green;
@@ -2209,21 +2244,41 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
           </div>
           <h1 style={{fontSize:screen.isDesktop?38:28,fontWeight:800,color:$.L1,letterSpacing:"-0.6px"}}>اقتراحات المشاريع</h1>
         </div>
-        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>أدخل ميزانيتك واحصل على مشاريع واقعية تناسب قدرتك المالية، مدروسة حسب السوق السعودي</p>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>أدخل ميزانيتك والربح الذي تطمح له، واحصل على مشاريع واقعية مدروسة حسب السوق السعودي</p>
 
-        {!isPremium && (
+        {!isPremium && !reachedSuggestLimit && (
+          <Card style={{padding:sp[4],border:`1.5px solid ${$.purple}25`,background:`${$.purple}08`,marginBottom:sp[5],display:"flex",gap:sp[3],alignItems:"flex-start"}}>
+            <Sparkles size={18} color={$.purple} style={{flexShrink:0,marginTop:2}}/>
+            <p style={{fontSize:13,color:$.L2,lineHeight:1.7}}>لديك <b style={{color:$.purple}}>تحليل اقتراحات مجاني واحد</b> هذا الشهر. استخدمه بميزانية واضحة لتحصل على أفضل النتائج.</p>
+          </Card>
+        )}
+
+        {!isPremium && reachedSuggestLimit && (
           <Card style={{padding:sp[5],border:`1.5px solid ${$.orange}30`,background:`${$.orange}08`,marginBottom:sp[5],textAlign:"center"}}>
             <Crown size={28} color={$.orange} style={{marginBottom:sp[2]}}/>
-            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>قسم خاص بالمشتركين</div>
-            <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات مشاريع مخصصة لميزانيتك ومدينتك</p>
+            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>استخدمت اقتراحك المجاني هذا الشهر</div>
+            <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات بلا حدود وفتح تفاصيل المشاريع</p>
             <button onClick={onNeedUpgrade} style={{background:$.orange,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>اشترك الآن</button>
           </Card>
         )}
 
-        <Card style={{padding:sp[5],marginBottom:sp[5],opacity:isPremium?1:0.55,pointerEvents:isPremium?"auto":"none"}}>
+        {isPremium && (
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[5]}}>
+            <FileText size={13} color={$.L4}/>
+            <span style={{fontSize:12,color:$.L3}}>تفاصيل المشاريع المتبقية هذا الشهر: <b style={{color:detailsLeft>0?$.green:$.orange}}>{detailsLeft}</b> من {PREMIUM_DETAILS}</span>
+          </div>
+        )}
+
+        <Card style={{padding:sp[5],marginBottom:sp[5],opacity:reachedSuggestLimit?0.55:1,pointerEvents:reachedSuggestLimit?"none":"auto"}}>
           <FormField label="الميزانية المتاحة بالريال" icon={<Briefcase size={14} color={$.L4}/>}>
             <div style={{position:"relative"}}>
               <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
+              <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
+            </div>
+          </FormField>
+          <FormField label="الربح الشهري المستهدف (اختياري)" icon={<Target size={14} color={$.L4}/>}>
+            <div style={{position:"relative"}}>
+              <input value={targetProfit} onChange={handleTargetChange} placeholder="مثال: 20,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],direction:"ltr",textAlign:"right"}}/>
               <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
             </div>
           </FormField>
@@ -2248,8 +2303,8 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
             </FormField>
           </div>
           {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-          <button onClick={go} disabled={!budget.trim()||busy} style={{width:"100%",marginTop:sp[4],background:budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3,color:budget.trim()&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:budget.trim()&&!busy?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-            {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
+          <button onClick={go} disabled={busy||(!reachedSuggestLimit&&!budget.trim())} style={{width:"100%",marginTop:sp[4],background:reachedSuggestLimit?$.orange:(budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3),color:reachedSuggestLimit||(budget.trim()&&!busy)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:busy?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+            {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:reachedSuggestLimit?<><Crown size={16}/>اشترك للمزيد</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
           </button>
         </Card>
 
@@ -2304,11 +2359,14 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
                     </div>
                   )}
                   {s.success_tip && (
-                    <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3]}}>
+                    <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3],marginBottom:sp[3]}}>
                       <Lightbulb size={14} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
                       <span style={{fontSize:12.5,color:$.L2,lineHeight:1.6}}>{s.success_tip}</span>
                     </div>
                   )}
+                  <button onClick={()=>openDetail(s)} style={{width:"100%",marginTop:sp[2],background:isPremium?`${$.purple}12`:$.F4,color:isPremium?$.purple:$.L3,border:`1px solid ${isPremium?$.purple+"30":$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13.5,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+                    {isPremium?<><FileText size={15}/>دليل التنفيذ بالتفصيل<ChevronRight size={15}/></>:<><Lock size={14}/>التفاصيل للمشتركين</>}
+                  </button>
                 </Card>
               ))}
             </div>
@@ -2316,6 +2374,145 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
           </>
         )}
       </div>
+
+      <Sheet open={!!detailName} onClose={closeDetail}>
+        <div style={{padding:`${sp[3]}px ${sp[5]}px ${sp[8]}px`}}>
+          {detailErr === "LIMIT" ? (
+            <div style={{textAlign:"center",padding:`${sp[6]}px ${sp[2]}px`}}>
+              <Crown size={32} color={$.orange} style={{marginBottom:sp[3]}}/>
+              <div style={{fontSize:16,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>وصلت حد التفاصيل لهذا الشهر</div>
+              <p style={{fontSize:13,color:$.L3,lineHeight:1.7}}>يمكنك فتح تفاصيل {PREMIUM_DETAILS} مشاريع شهرياً. يتجدد رصيدك تلقائياً بعد شهر.</p>
+            </div>
+          ) : detailBusy ? (
+            <div style={{textAlign:"center",padding:`${sp[8]}px ${sp[2]}px`}}>
+              <Spinner sz={26}/>
+              <div style={{fontSize:14,color:$.L2,marginTop:sp[3],fontWeight:600}}>جاري إعداد دليل التنفيذ…</div>
+              <div style={{fontSize:12,color:$.L4,marginTop:sp[1]}}>دليل مفصّل خطوة بخطوة لهذا المشروع</div>
+            </div>
+          ) : detailErr ? (
+            <div style={{padding:`${sp[6]}px ${sp[2]}px`}}>
+              <div style={{background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[4]}px`,fontSize:14,color:$.red,lineHeight:1.7,textAlign:"center"}}>{detailErr}</div>
+            </div>
+          ) : detailGuide ? (
+            <DetailGuideView guide={detailGuide}/>
+          ) : null}
+        </div>
+      </Sheet>
+    </div>
+  );
+}
+
+// عارض دليل التنفيذ المولّد
+function DetailGuideView({guide}) {
+  const Section = ({icon, title, children}) => (
+    <div style={{marginBottom:sp[5]}}>
+      <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+        {icon}
+        <h3 style={{fontSize:15,fontWeight:800,color:$.L1}}>{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+  return (
+    <div>
+      <h2 style={{fontSize:20,fontWeight:800,color:$.L1,lineHeight:1.4,marginBottom:sp[3]}}>{guide.title || "دليل التنفيذ"}</h2>
+      {guide.summary && <p style={{fontSize:14,color:$.L2,lineHeight:1.9,marginBottom:sp[5],background:`${$.purple}06`,border:`1px solid ${$.purple}20`,borderRadius:12,padding:`${sp[4]}px`}}>{guide.summary}</p>}
+
+      {Array.isArray(guide.steps) && guide.steps.length>0 && (
+        <Section icon={<ChevronRight size={17} color={$.purple}/>} title="خطوات التنفيذ">
+          {guide.steps.map((st,i)=>(
+            <div key={i} style={{display:"flex",gap:sp[3],marginBottom:sp[3]}}>
+              <div style={{width:26,height:26,borderRadius:8,background:`${$.purple}15`,color:$.purple,fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:2}}>{st.title}</div>
+                <div style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{st.detail}</div>
+              </div>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {Array.isArray(guide.costs_breakdown) && guide.costs_breakdown.length>0 && (
+        <Section icon={<DollarSign size={16} color={$.green}/>} title="تفصيل التكاليف">
+          {guide.costs_breakdown.map((c,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",gap:sp[3],padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`}}>
+              <span style={{fontSize:13,color:$.L2}}>{c.item}</span>
+              <span style={{fontSize:13,fontWeight:700,color:$.L1,whiteSpace:"nowrap"}}>{c.amount}</span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {Array.isArray(guide.licenses) && guide.licenses.length>0 && (
+        <Section icon={<FileText size={16} color={$.blue}/>} title="التراخيص المطلوبة">
+          {guide.licenses.map((l,i)=>(
+            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2]}}>
+              <CheckCircle size={14} color={$.blue} style={{flexShrink:0,marginTop:3}}/>
+              <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}><b style={{color:$.L1}}>{l.name}</b>{l.issuer?` — ${l.issuer}`:""}</span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {Array.isArray(guide.marketing_plan) && guide.marketing_plan.length>0 && (
+        <Section icon={<Activity size={16} color={$.purple}/>} title="خطة التسويق">
+          {guide.marketing_plan.map((m,i)=>(
+            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2]}}>
+              <div style={{width:5,height:5,borderRadius:"50%",background:$.purple,marginTop:8,flexShrink:0}}/>
+              <span style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{m}</span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {Array.isArray(guide.tips) && guide.tips.length>0 && (
+        <Section icon={<Lightbulb size={16} color={$.orange}/>} title="نصائح من خبير">
+          {guide.tips.map((t,i)=>(
+            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2],background:`${$.orange}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`}}>
+              <Lightbulb size={13} color={$.orange} style={{flexShrink:0,marginTop:3}}/>
+              <span style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{t}</span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {Array.isArray(guide.risks) && guide.risks.length>0 && (
+        <Section icon={<AlertTriangle size={16} color={$.red}/>} title="المخاطر وكيف تتعامل معها">
+          {guide.risks.map((r,i)=>(
+            <div key={i} style={{marginBottom:sp[3],background:$.F5,borderRadius:10,padding:`${sp[3]}px`}}>
+              <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:2}}>{r.risk}</div>
+              <div style={{fontSize:12.5,color:$.L3,lineHeight:1.6}}>{r.mitigation}</div>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {guide.first_month_plan && (
+        <Section icon={<Calendar size={16} color={$.blue}/>} title="خطة أول 30 يوم">
+          <p style={{fontSize:13.5,color:$.L2,lineHeight:1.8}}>{guide.first_month_plan}</p>
+        </Section>
+      )}
+
+      {Array.isArray(guide.success_factors) && guide.success_factors.length>0 && (
+        <Section icon={<Award size={16} color={$.green}/>} title="عوامل النجاح الحاسمة">
+          {guide.success_factors.map((f,i)=>(
+            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2]}}>
+              <CheckCircle size={14} color={$.green} style={{flexShrink:0,marginTop:3}}/>
+              <span style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{f}</span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {guide.honest_verdict && (
+        <div style={{background:`${$.purple}08`,border:`1.5px solid ${$.purple}25`,borderRadius:14,padding:`${sp[4]}px`,marginTop:sp[2]}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
+            <Info size={15} color={$.purple}/>
+            <span style={{fontSize:13,fontWeight:800,color:$.purple}}>الحكم الصريح</span>
+          </div>
+          <p style={{fontSize:14,color:$.L1,lineHeight:1.8}}>{guide.honest_verdict}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -2607,6 +2804,8 @@ export default function HamourApp() {
   const [isPremium, setIsPremium] = useState(false);
   const [analyses, setAnalyses] = useState([]);
   const [usageCount, setUsageCount] = useState(0);
+  const [suggestionsCount, setSuggestionsCount] = useState(0);
+  const [detailsCount, setDetailsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dark, setDark] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -2633,6 +2832,10 @@ export default function HamourApp() {
     setIsPremium(!!p.is_premium);
     const used = await getUsage(uid);
     setUsageCount(used);
+    const sUsed = await getSuggestionsUsage(uid);
+    setSuggestionsCount(sUsed);
+    const dUsed = await getDetailsUsage(uid);
+    setDetailsCount(dUsed);
   }, []);
 
   const refreshAnalyses = useCallback(async () => {
@@ -2704,6 +2907,20 @@ export default function HamourApp() {
     setTab("analysis");
   }
 
+  function handleSuggestUsed() {
+    if (user && !isPremium) {
+      setSuggestionsCount(c => c + 1);
+      incrementSuggestionsUsage(user.id);
+    }
+  }
+
+  function handleDetailUsed() {
+    if (user && isPremium) {
+      setDetailsCount(c => c + 1);
+      incrementDetailsUsage(user.id);
+    }
+  }
+
   async function handleActivated() {
     if (user) await loadProfile(user.id);
   }
@@ -2770,7 +2987,7 @@ export default function HamourApp() {
       <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result}/>}
-        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="suggestions" && <SuggestionsScreen user={user} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} suggestionsCount={suggestionsCount} detailsCount={detailsCount} onSuggestUsed={handleSuggestUsed} onDetailUsed={handleDetailUsed}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
