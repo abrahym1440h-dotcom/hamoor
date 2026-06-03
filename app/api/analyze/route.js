@@ -18,9 +18,16 @@ export async function POST(req) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
+    // لا نفشل إلا لو ما فيه ولا مفتاح واحد من المزوّدين الثلاثة
+    if (!process.env.CEREBRAS_API_KEY && !process.env.GROQ_API_KEY && !apiKey) {
+      return Response.json({ error: "إعدادات الخدمة غير مكتملة - تأكد من مفاتيح API" }, { status: 500 });
     }
+
+    // ═══ ميزانية وقت عامة تحت حد Vercel (60 ثانية) ═══
+    // كل استدعاء يحسب مهلته من الوقت المتبقي، فلا يتجاوز المجموع الحد أبداً
+    const DEADLINE_MS = 54000;
+    const _startTime = Date.now();
+    const remaining = () => DEADLINE_MS - (Date.now() - _startTime);
 
     const budgetNum = parseInt(budget);
     const cityName = city.split(" - ")[0].trim();
@@ -253,7 +260,8 @@ ${adaptEngine}
       const model = "gemini-2.5-flash";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 40000);
+      const ms = Math.max(1000, Math.min(18000, remaining() - 1000));
+      const timer = setTimeout(() => ctrl.abort(), ms);
       let response;
       try {
         response = await fetch(url, {
@@ -287,7 +295,8 @@ ${adaptEngine}
       const groqKey = process.env.GROQ_API_KEY;
       if (!groqKey) throw new Error("لا يوجد مفتاح احتياطي");
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 45000);
+      const ms = Math.max(1000, Math.min(18000, remaining() - 1000));
+      const timer = setTimeout(() => ctrl.abort(), ms);
       let response;
       try {
         response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -321,11 +330,12 @@ ${adaptEngine}
     }
 
     // ═══ دالة استدعاء Cerebras (الأسرع والأقوى - النموذج الأساسي الجديد) ═══
-    async function callCerebras(userPrompt, attempt = 1) {
+    async function callCerebras(userPrompt, attempt = 1, maxMs = 22000) {
       const cerebrasKey = process.env.CEREBRAS_API_KEY;
       if (!cerebrasKey) throw new Error("CEREBRAS_NO_KEY");
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 30000);
+      const ms = Math.max(1000, Math.min(maxMs, remaining() - 1000));
+      const timer = setTimeout(() => ctrl.abort(), ms);
       let response;
       try {
         response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
@@ -346,7 +356,7 @@ ${adaptEngine}
       if (!response.ok) {
         if (response.status === 429 && attempt < 2) {
           await new Promise(r => setTimeout(r, 3000));
-          return callCerebras(userPrompt, attempt + 1);
+          return callCerebras(userPrompt, attempt + 1, maxMs);
         }
         const errText = await response.text();
         console.error("Cerebras Error:", response.status, errText.substring(0, 200));
@@ -365,7 +375,8 @@ ${adaptEngine}
       const linkupKey = process.env.LINKUP_API_KEY;
       if (!linkupKey) return null;
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 12000);
+      const ms = Math.max(1000, Math.min(10000, remaining() - 1000));
+      const timer = setTimeout(() => ctrl.abort(), ms);
       try {
         const response = await fetch("https://api.linkup.so/v1/search", {
           method: "POST",
@@ -416,7 +427,7 @@ ${adaptEngine}
 {"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع"]}`;
 
       try {
-        const result = await callCerebras(queryGenPrompt);
+        const result = await callCerebras(queryGenPrompt, 1, 10000);
         const queries = result.queries || [];
         console.log("Generated " + queries.length + " research queries");
         return queries.slice(0, 4);
@@ -480,8 +491,8 @@ ${adaptEngine}
     let cerebrasBroken = false; // ذاكرة فشل خلال نفس الطلب
 
     async function callAI(userPrompt) {
-      // 1) Cerebras أولاً - إلا لو فشل سابقاً في نفس الطلب
-      if (!cerebrasBroken) {
+      // 1) Cerebras أولاً - إلا لو فشل سابقاً في نفس الطلب أو ما بقي وقت كافٍ
+      if (!cerebrasBroken && remaining() > 6000) {
         try {
           return await callCerebras(userPrompt);
         } catch (e1) {
@@ -492,20 +503,26 @@ ${adaptEngine}
           }
         }
       }
-      // 2) Groq كاحتياط
-      try {
-        return await callGroq(userPrompt);
-      } catch (e2) {
-        console.log("Groq failed (" + e2.message + "), switching to Gemini...");
-        // 3) Gemini كاحتياط أخير
+      // 2) Groq كاحتياط - فقط لو بقي وقت كافٍ
+      if (remaining() > 6000) {
+        try {
+          return await callGroq(userPrompt);
+        } catch (e2) {
+          console.log("Groq failed (" + e2.message + "), switching to Gemini...");
+        }
+      }
+      // 3) Gemini كاحتياط أخير - فقط لو بقي وقت كافٍ
+      if (remaining() > 6000) {
         return await callGemini(userPrompt);
       }
+      // ما بقي وقت = نوقف بأمان قبل أن يقتل Vercel الطلب عند الـ60 ثانية
+      throw new Error("timeout_budget");
     }
 
     console.log("═══ بدء التحليل بالبحث الحقيقي ═══");
 
     // المرحلة 1: توليد أسئلة بحث ذكية
-    const researchQueries = await generateResearchQueries(idea, userSector, city, budgetNum);
+    const researchQueries = await generateResearchQueries(idea, sector, city, budgetNum);
 
     // المرحلة 2: بحث عميق
     const researchData = await deepResearch(researchQueries);
