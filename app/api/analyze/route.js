@@ -1,4 +1,4 @@
-import { CITIES_DATA, SALARIES, LICENSES, detectSector, getCityBrief, getSectorBrief, getFinancialBrief, getCompetitorsByBudget } from "../data.js";
+import { CITIES_DATA, SALARIES, LICENSES, SECTOR_FINANCIALS, detectSector, getCityBrief, getSectorBrief, getFinancialBrief, getCompetitorsByBudget } from "../data.js";
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -18,16 +18,9 @@ export async function POST(req) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    // لا نفشل إلا لو ما فيه ولا مفتاح واحد من المزوّدين الثلاثة
-    if (!process.env.CEREBRAS_API_KEY && !process.env.GROQ_API_KEY && !apiKey) {
-      return Response.json({ error: "إعدادات الخدمة غير مكتملة - تأكد من مفاتيح API" }, { status: 500 });
+    if (!apiKey) {
+      return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
     }
-
-    // ═══ ميزانية وقت عامة تحت حد Vercel (60 ثانية) ═══
-    // كل استدعاء يحسب مهلته من الوقت المتبقي، فلا يتجاوز المجموع الحد أبداً
-    const DEADLINE_MS = 54000;
-    const _startTime = Date.now();
-    const remaining = () => DEADLINE_MS - (Date.now() - _startTime);
 
     const budgetNum = parseInt(budget);
     const cityName = city.split(" - ")[0].trim();
@@ -90,6 +83,7 @@ ${financialBrief}
 - التكاليف: إذا ظهرت أرقام في البحث، استخدمها. إذا تعارضت مع توقعك، البحث أحدث وأدق.
 - في recommendations اذكر صراحة "حسب البحث..." عند الاعتماد على معلومة من البحث.
 - أرقام واقعية معدّلة حسب حجم المدينة والحي. المجاميع تتطابق (مجموع البنود = الإجمالي).
+- تحقق رياضي إلزامي قبل إرجاع JSON: (1) اجمع بنود التأسيس يدوياً وتأكد = total. (2) اجمع البنود الشهرية وتأكد = total. (3) نقطة التعادل = التأسيس ÷ (إيراد الاستقرار - الشهرية)، احسبها وتأكد النتيجة منطقية. (4) الربح السنوي = (متوسط الإيراد الشهري - الشهرية) × 12. إن وجدت تعارضاً صحّح الأرقام قبل الإخراج.
 - ميزانية أقل من الحد الأدنى للتأسيس = score تحت 35 + توضيح كم ينقص.
 - المنافسون: استخدم القائمة المعطاة في المعطيات (مختارة لحجم المشروع). حلّل قوة وثغرة كل واحد. لو ما أُعطيت قائمة، اذكر شركات وسلاسل سعودية حقيقية. ممنوع أسماء وهمية أو أوصاف عامة.
 - نقطة التعادل = إجمالي التأسيس ÷ (الإيراد عند الاستقرار - التكلفة الشهرية). ROI = (صافي الربح السنوي ÷ رأس المال) × 100.
@@ -260,8 +254,7 @@ ${adaptEngine}
       const model = "gemini-2.5-flash";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const ctrl = new AbortController();
-      const ms = Math.max(1000, Math.min(18000, remaining() - 1000));
-      const timer = setTimeout(() => ctrl.abort(), ms);
+      const timer = setTimeout(() => ctrl.abort(), 40000);
       let response;
       try {
         response = await fetch(url, {
@@ -295,8 +288,7 @@ ${adaptEngine}
       const groqKey = process.env.GROQ_API_KEY;
       if (!groqKey) throw new Error("لا يوجد مفتاح احتياطي");
       const ctrl = new AbortController();
-      const ms = Math.max(1000, Math.min(18000, remaining() - 1000));
-      const timer = setTimeout(() => ctrl.abort(), ms);
+      const timer = setTimeout(() => ctrl.abort(), 45000);
       let response;
       try {
         response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -330,12 +322,11 @@ ${adaptEngine}
     }
 
     // ═══ دالة استدعاء Cerebras (الأسرع والأقوى - النموذج الأساسي الجديد) ═══
-    async function callCerebras(userPrompt, attempt = 1, maxMs = 22000) {
+    async function callCerebras(userPrompt, attempt = 1) {
       const cerebrasKey = process.env.CEREBRAS_API_KEY;
       if (!cerebrasKey) throw new Error("CEREBRAS_NO_KEY");
       const ctrl = new AbortController();
-      const ms = Math.max(1000, Math.min(maxMs, remaining() - 1000));
-      const timer = setTimeout(() => ctrl.abort(), ms);
+      const timer = setTimeout(() => ctrl.abort(), 30000);
       let response;
       try {
         response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
@@ -356,7 +347,7 @@ ${adaptEngine}
       if (!response.ok) {
         if (response.status === 429 && attempt < 2) {
           await new Promise(r => setTimeout(r, 3000));
-          return callCerebras(userPrompt, attempt + 1, maxMs);
+          return callCerebras(userPrompt, attempt + 1);
         }
         const errText = await response.text();
         console.error("Cerebras Error:", response.status, errText.substring(0, 200));
@@ -375,8 +366,7 @@ ${adaptEngine}
       const linkupKey = process.env.LINKUP_API_KEY;
       if (!linkupKey) return null;
       const ctrl = new AbortController();
-      const ms = Math.max(1000, Math.min(10000, remaining() - 1000));
-      const timer = setTimeout(() => ctrl.abort(), ms);
+      const timer = setTimeout(() => ctrl.abort(), 12000);
       try {
         const response = await fetch("https://api.linkup.so/v1/search", {
           method: "POST",
@@ -397,6 +387,16 @@ ${adaptEngine}
         const data = await response.json();
         const results = data.results || [];
         console.log("Linkup query '" + query.substring(0, 50) + "': " + results.length + " results");
+        // ترتيب النتائج: التي تحتوي أرقاماً مالية أولاً (الأكثر فائدة للتحليل)
+        const numScore = (t) => {
+          const txt = (t.content || t.snippet || "") + (t.name || t.title || "");
+          let s = 0;
+          if (/\d{2,}/.test(txt)) s += 2;
+          if (/(ريال|ألف|مليون|تكلفة|سعر|إيجار|رأس مال|٪|%)/.test(txt)) s += 3;
+          if (/(2025|2026)/.test(txt)) s += 1;
+          return s;
+        };
+        results.sort((a, b) => numScore(b) - numScore(a));
         return results.slice(0, 4).map(r => ({
           title: (r.name || r.title || "").substring(0, 100),
           snippet: (r.content || r.snippet || "").substring(0, 350),
@@ -427,7 +427,7 @@ ${adaptEngine}
 {"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع"]}`;
 
       try {
-        const result = await callCerebras(queryGenPrompt, 1, 10000);
+        const result = await callCerebras(queryGenPrompt);
         const queries = result.queries || [];
         console.log("Generated " + queries.length + " research queries");
         return queries.slice(0, 4);
@@ -491,8 +491,8 @@ ${adaptEngine}
     let cerebrasBroken = false; // ذاكرة فشل خلال نفس الطلب
 
     async function callAI(userPrompt) {
-      // 1) Cerebras أولاً - إلا لو فشل سابقاً في نفس الطلب أو ما بقي وقت كافٍ
-      if (!cerebrasBroken && remaining() > 6000) {
+      // 1) Cerebras أولاً - إلا لو فشل سابقاً في نفس الطلب
+      if (!cerebrasBroken) {
         try {
           return await callCerebras(userPrompt);
         } catch (e1) {
@@ -503,26 +503,20 @@ ${adaptEngine}
           }
         }
       }
-      // 2) Groq كاحتياط - فقط لو بقي وقت كافٍ
-      if (remaining() > 6000) {
-        try {
-          return await callGroq(userPrompt);
-        } catch (e2) {
-          console.log("Groq failed (" + e2.message + "), switching to Gemini...");
-        }
-      }
-      // 3) Gemini كاحتياط أخير - فقط لو بقي وقت كافٍ
-      if (remaining() > 6000) {
+      // 2) Groq كاحتياط
+      try {
+        return await callGroq(userPrompt);
+      } catch (e2) {
+        console.log("Groq failed (" + e2.message + "), switching to Gemini...");
+        // 3) Gemini كاحتياط أخير
         return await callGemini(userPrompt);
       }
-      // ما بقي وقت = نوقف بأمان قبل أن يقتل Vercel الطلب عند الـ60 ثانية
-      throw new Error("timeout_budget");
     }
 
     console.log("═══ بدء التحليل بالبحث الحقيقي ═══");
 
     // المرحلة 1: توليد أسئلة بحث ذكية
-    const researchQueries = await generateResearchQueries(idea, sector, city, budgetNum);
+    const researchQueries = await generateResearchQueries(idea, userSector, city, budgetNum);
 
     // المرحلة 2: بحث عميق
     const researchData = await deepResearch(researchQueries);
@@ -544,10 +538,62 @@ ${adaptEngine}
       callAI(enrichedPromptPlan)
     ]);
 
-    const merged = { ...coreData, ...planData };
+    let merged = { ...coreData, ...planData };
+
+    // ═══ مرحلة التدقيق: مراجعة سريعة للأرقام مقابل البحث (Cerebras فقط - سريع) ═══
+    if (hasData && !cerebrasBroken) {
+      try {
+        const fa = merged.financial_analysis || {};
+        const auditPrompt = `أنت مدقق مالي صارم. راجع هذه الأرقام من دراسة جدوى لمشروع "${idea}" في ${city}:
+- إجمالي التأسيس: ${fa.setup_costs?.total || 0} ريال
+- التكاليف الشهرية: ${fa.monthly_costs?.total || 0} ريال
+- إيراد الشهر 12: ${fa.revenue_projection?.month_12 || 0} ريال
+- صافي ربح السنة الأولى: ${fa.annual_profit_year1 || 0} ريال
+- ميزانية صاحب المشروع: ${budgetNum} ريال
+
+ونتائج بحث حديثة عن السوق:
+${searchContext.substring(0, 3000)}
+
+مهمتك: قارن الأرقام مع البحث. إن وجدت رقماً بعيداً بوضوح عن واقع السوق (أعلى أو أدنى بأكثر من 50%)، صحّحه. أرجع JSON فقط:
+{"corrections_needed": <true|false>, "setup_total": <الرقم الصحيح أو نفسه>, "monthly_total": <الرقم>, "month_12_revenue": <الرقم>, "audit_note": "<جملة واحدة: ما الذي صححته ولماذا، أو 'الأرقام متسقة مع السوق'>"}`;
+        const audit = await callCerebras(auditPrompt);
+        if (audit && audit.corrections_needed) {
+          const fa2 = merged.financial_analysis || {};
+          if (audit.setup_total > 0 && fa2.setup_costs) {
+            const ratio = audit.setup_total / (fa2.setup_costs.total || audit.setup_total);
+            if (ratio > 0.3 && ratio < 3) { // حماية من تصحيحات جنونية
+              Object.keys(fa2.setup_costs).forEach(k => {
+                if (k !== "total" && typeof fa2.setup_costs[k] === "number") {
+                  fa2.setup_costs[k] = Math.round(fa2.setup_costs[k] * ratio);
+                }
+              });
+            }
+          }
+          if (audit.month_12_revenue > 0 && fa2.revenue_projection) {
+            const r12 = fa2.revenue_projection.month_12 || 0;
+            const ratio = r12 > 0 ? audit.month_12_revenue / r12 : 1;
+            if (ratio > 0.3 && ratio < 3) {
+              ["month_1","month_3","month_6","month_12"].forEach(k => {
+                if (typeof fa2.revenue_projection[k] === "number") {
+                  fa2.revenue_projection[k] = Math.round(fa2.revenue_projection[k] * ratio);
+                }
+              });
+            }
+          }
+          console.log("Audit pass: corrections applied - " + (audit.audit_note || ""));
+        } else {
+          console.log("Audit pass: numbers consistent with market");
+        }
+      } catch (e) {
+        console.log("Audit pass skipped (" + e.message + ")");
+      }
+    }
+
     merged._budget = budgetNum;
+    merged._sector = sector;
     const validated = validateFinancials(merged);
     delete validated._budget;
+    delete validated._sector;
 
     console.log("Analysis complete");
     return Response.json(validated);
@@ -608,6 +654,24 @@ function validateFinancials(result) {
   try {
     const fa = result.financial_analysis;
     if (!fa) return result;
+
+    // 0) فحص العقلانية مقابل نطاقات القطاع المعروفة (للمشاريع الفيزيائية فقط)
+    // المشاريع الرقمية تكاليفها مختلفة جذرياً عن نطاقات القطاعات التقليدية
+    const sectorRanges = result._sector ? SECTOR_FINANCIALS[result._sector] : null;
+    if (sectorRanges && result.is_physical_location !== false && fa.setup_costs) {
+      const aiTotal = (fa.setup_costs.rent_deposit||0)+(fa.setup_costs.renovation||0)+(fa.setup_costs.equipment||0)+(fa.setup_costs.licenses||0)+(fa.setup_costs.initial_inventory||0)+(fa.setup_costs.marketing_launch||0)+(fa.setup_costs.working_capital||0);
+      const min = sectorRanges.setup_total?.min || 0;
+      const max = sectorRanges.setup_total?.max || Infinity;
+      // لو AI طلع رقماً أقل من نصف الحد الأدنى أو أكثر من ضعف الأقصى = انحراف صارخ
+      if (aiTotal > 0 && (aiTotal < min * 0.5 || aiTotal > max * 2)) {
+        const target = aiTotal < min * 0.5 ? min : max;
+        const ratio = target / aiTotal;
+        ["rent_deposit","renovation","equipment","licenses","initial_inventory","marketing_launch","working_capital"].forEach(k => {
+          if (typeof fa.setup_costs[k] === "number") fa.setup_costs[k] = Math.round(fa.setup_costs[k] * ratio);
+        });
+        result._sanity_note = "تم تعديل تكاليف التأسيس لتتوافق مع نطاقات القطاع المعروفة في السوق السعودي";
+      }
+    }
 
     // 1) تصحيح مجموع تكاليف التأسيس
     if (fa.setup_costs) {
