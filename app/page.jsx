@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getSuggestionsUsage, incrementSuggestionsUsage, getDetailsUsage, incrementDetailsUsage } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -50,9 +50,7 @@ const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 const FREE_ANALYSES = 2;
 const FREE_ARTICLE_IDS = [1, 2, 3, 22, 23];
 const FREE_ARTICLES = FREE_ARTICLE_IDS.length;
-const PREMIUM_ANALYSES = 10;
-const FREE_SUGGESTIONS = 1;
-const PREMIUM_DETAILS = 3;
+const PREMIUM_ANALYSES = Infinity; // المشترك بلا حد
 
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
@@ -366,7 +364,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   }
 
   const FEATURES = [
-    `${PREMIUM_ANALYSES} تحليلات مشاريع شهرياً`,
+    "تحليلات مشاريع بلا حدود",
     "كل المقالات مفتوحة",
     "قسم اقتراحات المشاريع",
     "تحليل عميق بالذكاء الاصطناعي"
@@ -454,7 +452,7 @@ const SECTOR_OPTIONS = [
   "خياطة","تعليم","لياقة","تقنية"
 ];
 
-function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeedUpgrade, onSwitchToDetailed}) {
+function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeedUpgrade}) {
   const [idea,setIdea]=useState("");
   const [details,setDetails]=useState("");
   const [sector,setSector]=useState("");
@@ -560,21 +558,8 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
         <div style={{background:`${$.orange}10`,border:`1.5px solid ${$.orange}30`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[4],textAlign:"center"}}>
           <Crown size={24} color={$.orange} style={{marginBottom:sp[2]}}/>
           <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>وصلت للحد المسموح</div>
-          <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>اشترك للحصول على {PREMIUM_ANALYSES} تحليلات</p>
+          <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>اشترك واحصل على تحليلات بلا حدود</p>
         </div>
-      )}
-
-      {onSwitchToDetailed && (
-        <button onClick={onSwitchToDetailed} style={{width:"100%",marginBottom:sp[4],background:`linear-gradient(150deg, ${$.purple}14, ${$.indigo}10)`,border:`1.5px solid ${$.purple}30`,borderRadius:14,padding:`${sp[3]}px ${sp[4]}px`,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[3]}}>
-          <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
-            <div style={{width:34,height:34,borderRadius:10,background:`${$.purple}1A`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Layers size={17} color={$.purple} strokeWidth={2}/></div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:14,fontWeight:700,color:$.L1}}>تحليل تفصيلي أعمق</div>
-              <div style={{fontSize:11,color:$.L3,marginTop:1}}>تدخل كل معلومات مشروعك ويحللها هامور بدقة</div>
-            </div>
-          </div>
-          <ArrowRight size={18} color={$.purple}/>
-        </button>
       )}
 
       <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
@@ -752,292 +737,9 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
     </div>
   );
 }
-
-// شريط الكشف الزجاجي - قابل لإعادة الاستخدام في النموذجين
-function GlassProgress({progress, progressStage, title="جاري تحليل مشروعك"}) {
-  return (
-    <div style={{marginTop:sp[5],borderRadius:22,padding:`${sp[7]}px ${sp[5]}px ${sp[6]}px`,position:"relative",overflow:"hidden",background:`linear-gradient(170deg, #0a0e1a, #0d1228)`,border:`1px solid rgba(255,255,255,0.08)`,boxShadow:SH.card}}>
-      <div style={{position:"relative",zIndex:2}}>
-        <div style={{textAlign:"center",marginBottom:sp[5]}}>
-          <div style={{fontSize:17,fontWeight:800,color:"#F4F6FB",fontFamily:"inherit"}}>{title}</div>
-          <div style={{fontSize:13,color:"rgba(228,233,242,0.55)",marginTop:sp[2],minHeight:18,fontFamily:"inherit"}}>{progressStage || "جاري البدء…"}</div>
-        </div>
-        <div style={{position:"relative",height:64,borderRadius:18,overflow:"hidden",background:"linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))",border:"0.5px solid rgba(255,255,255,0.1)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)"}}>
-          <div style={{position:"absolute",top:0,right:0,bottom:0,width:`${progress}%`,background:"linear-gradient(90deg, rgba(0,122,255,0.6), rgba(0,200,255,0.8), rgba(94,234,212,0.6))",transition:"width 1s cubic-bezier(0.4, 0, 0.2, 1)",overflow:"hidden"}}>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)",backgroundSize:"200% 100%",animation:"hamourShimmer 2.5s linear infinite"}}/>
-          </div>
-          <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
-            {[0,1,2,3,4,5,6,7].map(i=>(
-              <div key={i} style={{position:"absolute",width:3,height:3,borderRadius:"50%",background:"#5eead4",left:`${(i*12.5+5)}%`,bottom:0,opacity:0,animation:`hamourFloat 4s linear infinite`,animationDelay:`${i*0.5}s`}}/>
-            ))}
-          </div>
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:800,color:"#fff",fontFamily:"inherit",textShadow:"0 1px 8px rgba(0,0,0,0.5)",zIndex:2,letterSpacing:"-0.5px"}}>{progress}%</div>
-        </div>
-        <div style={{textAlign:"center",fontSize:11,color:"rgba(228,233,242,0.32)",marginTop:sp[3],fontFamily:"inherit",letterSpacing:"0.3px"}}>
-          تحليل تفصيلي · معلوماتك أنت · دقة أعلى
-        </div>
-      </div>
-      <style>{`
-        @keyframes hamourShimmer { from { background-position: 200% 0; } to { background-position: -100% 0; } }
-        @keyframes hamourFloat { 0% { transform: translateY(20px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-80px); opacity: 0; } }
-      `}</style>
-    </div>
-  );
-}
-
-// نموذج التحليل التفصيلي - المستخدم يدخل كل المعلومات وهامور يحللها (Gemini، بدون بحث)
-function DetailedAnalyzeForm({onAnalyze, onClose, onBack, user, analysesCount, isPremium, onNeedUpgrade}) {
-  const [idea,setIdea]=useState("");
-  const [details,setDetails]=useState("");
-  const [sector,setSector]=useState("");
-  const [city,setCity]=useState("الرياض");
-  const [neighborhood,setNeighborhood]=useState("");
-  const [budget,setBudget]=useState("");
-  const [area,setArea]=useState("");
-  const [actualRent,setActualRent]=useState("");
-  const [staffCount,setStaffCount]=useState("");
-  const [shopState,setShopState]=useState("");
-  const [experience,setExperience]=useState("");
-  const [setupEstimate,setSetupEstimate]=useState("");
-  const [monthlyEstimate,setMonthlyEstimate]=useState("");
-  const [avgTicket,setAvgTicket]=useState("");
-  const [customersPerDay,setCustomersPerDay]=useState("");
-  const [mainProducts,setMainProducts]=useState("");
-  const [knownCompetitors,setKnownCompetitors]=useState("");
-  const [differentiation,setDifferentiation]=useState("");
-  const [targetAudience,setTargetAudience]=useState("");
-  const [marketingChannels,setMarketingChannels]=useState("");
-  const [extraNotes,setExtraNotes]=useState("");
-  const [busy,setBusy]=useState(false);
-  const [progress,setProgress]=useState(0);
-  const [progressStage,setProgressStage]=useState("");
-  const [err,setErr]=useState(null);
-
-  const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
-  const reachedLimit = analysesCount >= limit;
-  const canGo = idea.trim()&&sector&&budget.trim()&&staffCount&&shopState&&experience&&!busy&&!reachedLimit;
-
-  const onNum = (setter) => (e) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    setter(raw === "" ? "" : numWithCommas(parseInt(raw)));
-  };
-  const strip = (v) => v.replace(/,/g, "");
-
-  async function go() {
-    if (reachedLimit) { if (onClose) onClose(); onNeedUpgrade(); return; }
-    if (!canGo) return;
-    setBusy(true); setErr(null);
-    setProgress(0); setProgressStage("جاري البدء…");
-
-    const stages = [
-      { at: 600, p: 12, msg: "تجهيز معلومات مشروعك…" },
-      { at: 3000, p: 35, msg: "تحليل التكاليف والأسعار…" },
-      { at: 7000, p: 55, msg: "بناء التحليل المالي…" },
-      { at: 12000, p: 75, msg: "صياغة التوصيات والخطة…" },
-      { at: 17000, p: 90, msg: "اللمسات الأخيرة…" }
-    ];
-    const timers = stages.map(s => setTimeout(() => { setProgress(s.p); setProgressStage(s.msg); }, s.at));
-
-    try {
-      const cleanBudget = strip(budget);
-      const detailed = {
-        area: area.trim() || null,
-        actual_rent: strip(actualRent) || null,
-        staff_count: staffCount,
-        shop_state: shopState,
-        experience: experience,
-        setup_estimate: strip(setupEstimate) || null,
-        monthly_estimate: strip(monthlyEstimate) || null,
-        avg_ticket: strip(avgTicket) || null,
-        customers_per_day: customersPerDay.trim() || null,
-        main_products: mainProducts.trim() || null,
-        known_competitors: knownCompetitors.trim() || null,
-        differentiation: differentiation.trim() || null,
-        target_audience: targetAudience.trim() || null,
-        marketing_channels: marketingChannels.trim() || null,
-        extra_notes: extraNotes.trim() || null
-      };
-      const fullIdea = details.trim() ? `${idea} - تفاصيل: ${details}` : idea;
-      const fullLocation = neighborhood.trim() ? `${city} - حي ${neighborhood}` : city;
-      const r = await apiCall("analyze-detailed", { idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget, detailed });
-      setProgress(100); setProgressStage("اكتمل التحليل!");
-      const analysis = {...r, idea:fullIdea, sector:sector, city:fullLocation, budget:cleanBudget};
-      let saved = analysis;
-      try { if (user) saved = await saveAnalysisCloud(analysis, user.id); } catch(e) {}
-      onAnalyze(saved);
-      if (onClose) onClose();
-    } catch(e) { setErr(e.message); }
-    finally {
-      timers.forEach(t => clearTimeout(t));
-      setBusy(false); setProgress(0); setProgressStage("");
-    }
-  }
-
-  return (
-    <div style={{padding:`${sp[3]}px ${sp[5]}px ${sp[6]}px`}}>
-      <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[5]}}>
-        {onBack && (
-          <button onClick={onBack} style={{width:34,height:34,borderRadius:10,background:$.F3,border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}><ChevronRight size={18} color={$.L2}/></button>
-        )}
-        <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(145deg,#AF52DE,#5856D6)",display:"flex",alignItems:"center",justifyContent:"center"}}><Layers size={20} color="#fff" strokeWidth={2}/></div>
-        <div>
-          <div style={{fontSize:18,fontWeight:800,color:$.L1}}>تحليل تفصيلي</div>
-          <div style={{fontSize:12,color:$.L3,marginTop:2}}>أدخل كل معلومات مشروعك وهامور يحللها بدقة</div>
-        </div>
-      </div>
-
-      <div style={{background:`${$.purple}0D`,border:`1px solid ${$.purple}22`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[4],display:"flex",gap:sp[2],alignItems:"flex-start"}}>
-        <Info size={15} color={$.purple} style={{flexShrink:0,marginTop:2}}/>
-        <p style={{fontSize:12,color:$.L2,lineHeight:1.6}}>كل ما زوّدت معلومات أكثر، صار التحليل أدق. الحقول التفصيلية اختيارية لكنها ترفع جودة النتيجة بشكل كبير.</p>
-      </div>
-
-      {reachedLimit && (
-        <div style={{background:`${$.orange}10`,border:`1.5px solid ${$.orange}30`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[4],textAlign:"center"}}>
-          <Crown size={24} color={$.orange} style={{marginBottom:sp[2]}}/>
-          <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>وصلت للحد المسموح</div>
-          <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>اشترك للحصول على {PREMIUM_ANALYSES} تحليلات</p>
-        </div>
-      )}
-
-      <FormField label="فكرة المشروع" icon={<Lightbulb size={14} color={$.L4}/>}>
-        <input value={idea} onChange={e=>setIdea(e.target.value)} placeholder="مثال: مطعم برجر مختص" style={iStyle()}/>
-      </FormField>
-      <FormField label="وصف المشروع بالتفصيل" icon={<Sparkles size={14} color={$.L4}/>}>
-        <textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="اشرح فكرتك بالتفصيل: ماذا تقدّم، لمن، وما الذي يميّزك" rows={3} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
-      </FormField>
-      <FormField label="نوع القطاع" icon={<Layers size={14} color={$.L4}/>}>
-        <div style={{position:"relative"}}>
-          <select value={sector} onChange={e=>setSector(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:sector?$.L1:$.L4}}>
-            <option value="" disabled>اختر القطاع المناسب لمشروعك</option>
-            {SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-        </div>
-      </FormField>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-        <FormField label="المدينة" icon={<MapPin size={14} color={$.L4}/>}>
-          <div style={{position:"relative"}}>
-            <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer"}}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
-            <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-          </div>
-        </FormField>
-        <FormField label="الحي (اختياري)" icon={<MapPin size={14} color={$.L4}/>}>
-          <input value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} placeholder="مثال: العليا" style={iStyle()}/>
-        </FormField>
-      </div>
-      <FormField label="الميزانية بالريال السعودي" icon={<Briefcase size={14} color={$.L4}/>}>
-        <div style={{position:"relative"}}>
-          <input value={budget} onChange={onNum(setBudget)} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
-          <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
-        </div>
-      </FormField>
-
-      <div style={{height:1,background:$.sepL,margin:`${sp[4]}px 0`}}/>
-      <div style={{fontSize:12,fontWeight:700,color:$.L3,marginBottom:sp[3]}}>معلومات المحل والتشغيل</div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-        <FormField label="مساحة المحل (م²) — اختياري" icon={<Layers size={14} color={$.L4}/>}>
-          <input value={area} onChange={e=>setArea(e.target.value.replace(/\D/g,""))} placeholder="مثال: 80" inputMode="numeric" style={iStyle()}/>
-        </FormField>
-        <FormField label="الإيجار السنوي الفعلي — اختياري" icon={<Briefcase size={14} color={$.L4}/>}>
-          <input value={actualRent} onChange={onNum(setActualRent)} placeholder="مثال: 90,000" inputMode="numeric" style={{...iStyle(),direction:"ltr",textAlign:"right"}}/>
-        </FormField>
-      </div>
-
-      <FormField label="عدد الموظفين المتوقع" icon={<Users size={14} color={$.L4}/>}>
-        <div style={{position:"relative"}}>
-          <select value={staffCount} onChange={e=>setStaffCount(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:staffCount?$.L1:$.L4}}>
-            <option value="" disabled>اختر العدد</option>
-            <option value="1-2">1-2 موظفين</option>
-            <option value="3-5">3-5 موظفين</option>
-            <option value="6-10">6-10 موظفين</option>
-            <option value="أكثر من 10">أكثر من 10</option>
-          </select>
-          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-        </div>
-      </FormField>
-
-      <FormField label="حالة المحل" icon={<Building2 size={14} color={$.L4}/>}>
-        <div style={{position:"relative"}}>
-          <select value={shopState} onChange={e=>setShopState(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:shopState?$.L1:$.L4}}>
-            <option value="" disabled>اختر حالة المحل</option>
-            <option value="جاهز ومجهّز بالكامل">جاهز ومجهّز بالكامل</option>
-            <option value="يحتاج تجهيز بسيط">يحتاج تجهيز بسيط</option>
-            <option value="يحتاج تشطيب وتجهيز كامل">يحتاج تشطيب وتجهيز كامل</option>
-            <option value="لم أحدد المحل بعد">لم أحدد المحل بعد</option>
-          </select>
-          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-        </div>
-      </FormField>
-
-      <FormField label="خبرتك في هذا المجال" icon={<Award size={14} color={$.L4}/>}>
-        <div style={{position:"relative"}}>
-          <select value={experience} onChange={e=>setExperience(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:experience?$.L1:$.L4}}>
-            <option value="" disabled>اختر مستوى خبرتك</option>
-            <option value="بدون خبرة سابقة">بدون خبرة سابقة</option>
-            <option value="خبرة بسيطة">خبرة بسيطة (أقل من سنتين)</option>
-            <option value="خبرة متوسطة">خبرة متوسطة (2-5 سنوات)</option>
-            <option value="خبرة كبيرة">خبرة كبيرة (أكثر من 5 سنوات)</option>
-          </select>
-          <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-        </div>
-      </FormField>
-
-      <div style={{height:1,background:$.sepL,margin:`${sp[4]}px 0`}}/>
-      <div style={{fontSize:12,fontWeight:700,color:$.L3,marginBottom:sp[3]}}>أرقامك المالية المتوقعة (اختياري — ترفع الدقة)</div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-        <FormField label="تكلفة التأسيس المتوقعة" icon={<DollarSign size={14} color={$.L4}/>}>
-          <input value={setupEstimate} onChange={onNum(setSetupEstimate)} placeholder="مثال: 120,000" inputMode="numeric" style={{...iStyle(),direction:"ltr",textAlign:"right"}}/>
-        </FormField>
-        <FormField label="التكاليف الشهرية المتوقعة" icon={<DollarSign size={14} color={$.L4}/>}>
-          <input value={monthlyEstimate} onChange={onNum(setMonthlyEstimate)} placeholder="مثال: 25,000" inputMode="numeric" style={{...iStyle(),direction:"ltr",textAlign:"right"}}/>
-        </FormField>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-        <FormField label="متوسط سعر المنتج/الخدمة" icon={<DollarSign size={14} color={$.L4}/>}>
-          <input value={avgTicket} onChange={onNum(setAvgTicket)} placeholder="مثال: 35" inputMode="numeric" style={{...iStyle(),direction:"ltr",textAlign:"right"}}/>
-        </FormField>
-        <FormField label="عدد العملاء المتوقع يومياً" icon={<Users size={14} color={$.L4}/>}>
-          <input value={customersPerDay} onChange={e=>setCustomersPerDay(e.target.value.replace(/\D/g,""))} placeholder="مثال: 60" inputMode="numeric" style={iStyle()}/>
-        </FormField>
-      </div>
-
-      <div style={{height:1,background:$.sepL,margin:`${sp[4]}px 0`}}/>
-      <div style={{fontSize:12,fontWeight:700,color:$.L3,marginBottom:sp[3]}}>السوق والمنافسة (اختياري — ترفع الدقة)</div>
-
-      <FormField label="أبرز منتجاتك/خدماتك وأسعارها" icon={<Star size={14} color={$.L4}/>}>
-        <textarea value={mainProducts} onChange={e=>setMainProducts(e.target.value)} placeholder="مثال: برجر لحم 30 ريال، وجبة دجاج 25 ريال، بطاطس 10 ريال" rows={2} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
-      </FormField>
-      <FormField label="المنافسون في منطقتك (بالأسماء)" icon={<Briefcase size={14} color={$.L4}/>}>
-        <textarea value={knownCompetitors} onChange={e=>setKnownCompetitors(e.target.value)} placeholder="مثال: مطعم X في نفس الشارع، سلسلة Y على بُعد كيلو" rows={2} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
-      </FormField>
-      <FormField label="ما الذي يميّز مشروعك عن غيره؟" icon={<Sparkle size={14} color={$.L4}/>}>
-        <textarea value={differentiation} onChange={e=>setDifferentiation(e.target.value)} placeholder="مثال: وصفة خاصة، أسعار أقل، موقع مميز، خدمة أسرع" rows={2} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
-      </FormField>
-      <FormField label="الجمهور المستهدف" icon={<Target size={14} color={$.L4}/>}>
-        <textarea value={targetAudience} onChange={e=>setTargetAudience(e.target.value)} placeholder="مثال: شباب 18-35، موظفو الشركات القريبة، عائلات نهاية الأسبوع" rows={2} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
-      </FormField>
-      <FormField label="قنوات التسويق المخطّط لها — اختياري" icon={<Activity size={14} color={$.L4}/>}>
-        <input value={marketingChannels} onChange={e=>setMarketingChannels(e.target.value)} placeholder="مثال: سناب، تيك توك، تطبيقات التوصيل" style={iStyle()}/>
-      </FormField>
-      <FormField label="ملاحظات إضافية — اختياري" icon={<Info size={14} color={$.L4}/>}>
-        <textarea value={extraNotes} onChange={e=>setExtraNotes(e.target.value)} placeholder="أي معلومة أخرى تريد هامور أن يأخذها بالحسبان" rows={2} style={{...iStyle(),resize:"none",lineHeight:1.5}}/>
-      </FormField>
-
-      {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-      {busy && <GlassProgress progress={progress} progressStage={progressStage}/>}
-      <button onClick={go} disabled={busy||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?"linear-gradient(150deg,#FFB800,#FF9500)":(canGo?"linear-gradient(150deg,#AF52DE,#7C3AED,#5856D6)":$.F3),color:(reachedLimit||canGo)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-        {busy?<><Spinner sz={17}/>جاري التحليل التفصيلي…</>:reachedLimit?<><Crown size={16} strokeWidth={2.2}/>اشترك للمتابعة</>:<><Layers size={16} strokeWidth={2.2}/>حلّل تفصيلياً</>}
-      </button>
-    </div>
-  );
-}
-
 function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, usageCount, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState("quick");
 
   const totalAnalyses = analyses.length;
   const positiveCount = analyses.filter(a => a.decision_type === "positive").length;
@@ -1087,7 +789,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
 
       <div style={{padding:screen.isDesktop?`${sp[6]}px ${sp[10]}px ${sp[16]}px`:`${sp[4]}px ${sp[5]}px ${sp[10]}px`,marginTop:-sp[5]}}>
         <div style={containerStyle}>
-          <Card onClick={()=>{setFormMode("quick");setShowForm(true);}} style={{cursor:"pointer",boxShadow:SH.lift,marginBottom:sp[5],border:`1.5px solid ${$.blue}15`}}>
+          <Card onClick={()=>setShowForm(true)} style={{cursor:"pointer",boxShadow:SH.lift,marginBottom:sp[5],border:`1.5px solid ${$.blue}15`}}>
             <div style={{padding:screen.isDesktop?`${sp[6]}px ${sp[7]}px`:`${sp[5]}px`,display:"flex",alignItems:"center",gap:sp[4]}}>
               <div style={{width:screen.isDesktop?72:56,height:screen.isDesktop?72:56,borderRadius:18,background:"linear-gradient(145deg,#007AFF,#0050C0)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:SH.blue,flexShrink:0}}>
                 <Sparkles size={screen.isDesktop?32:26} color="#fff" strokeWidth={2}/>
@@ -1135,7 +837,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:800,color:"#fff",marginBottom:2}}>اشترك في هامور</div>
-                  <p style={{fontSize:12,color:"rgba(255,255,255,0.9)"}}>{PREMIUM_ANALYSES} تحليلات + كل المقالات مفتوحة</p>
+                  <p style={{fontSize:12,color:"rgba(255,255,255,0.9)"}}>تحليلات بلا حدود + كل المقالات مفتوحة</p>
                 </div>
                 <ChevronRight size={20} color="#fff" style={{transform:"scaleX(-1)"}}/>
               </div>
@@ -1229,9 +931,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
       </div>
 
       <Sheet open={showForm} onClose={()=>setShowForm(false)}>
-        {formMode === "detailed"
-          ? <DetailedAnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} onBack={()=>setFormMode("quick")} user={user} analysesCount={isPremium?0:usageCount} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
-          : <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={isPremium?0:usageCount} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade} onSwitchToDetailed={()=>setFormMode("detailed")}/>}
+        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={isPremium?0:usageCount} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
       </Sheet>
     </div>
   );
@@ -1239,7 +939,125 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
 
 const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير"];
 
-function AnalysisScreen({result}) {
+function EditPanel({result, onUpdated}) {
+  const [open,setOpen]=useState(false);
+  const [rent,setRent]=useState("");
+  const [budget,setBudget]=useState("");
+  const [staff,setStaff]=useState("");
+  const [equip,setEquip]=useState("");
+  const [note,setNote]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+  const [done,setDone]=useState(null);
+
+  const f = result.financial_analysis || {};
+  const mc = f.monthly_costs || {};
+  const sc = f.setup_costs || {};
+  const currentRentYearly = (mc.rent || 0) * 12;
+  const currentEquip = sc.equipment || 0;
+  const currentBudget = parseInt(result.budget) || 0;
+
+  function fmtInput(v, setter) {
+    const raw = v.replace(/\D/g, "");
+    if (raw === "") { setter(""); return; }
+    setter(numWithCommas(parseInt(raw)));
+  }
+
+  const hasChanges = rent.trim() || budget.trim() || staff || equip.trim() || note.trim();
+
+  async function recalc() {
+    if (!hasChanges || busy) return;
+    setBusy(true); setErr(null); setDone(null);
+    try {
+      const edits = {};
+      if (rent.trim()) edits.rent = rent.replace(/,/g,"");
+      if (budget.trim()) edits.budget = budget.replace(/,/g,"");
+      if (staff) edits.staff_count = staff;
+      if (equip.trim()) edits.equipment = equip.replace(/,/g,"");
+      if (note.trim()) edits.note = note.trim();
+
+      const updated = await apiCall("recalc", { original: result, edits });
+      setDone(updated._edit_note || "تم تحديث التحليل");
+      onUpdated(updated);
+      setRent(""); setBudget(""); setStaff(""); setEquip(""); setNote("");
+      setTimeout(()=>{ setOpen(false); setDone(null); }, 2200);
+    } catch(e) {
+      setErr(e.message || "تعذّر إعادة الحساب");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="no-print" style={{marginBottom:sp[4]}}>
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",background:$.surface,color:$.L1,border:`1px solid ${open?$.blue+"66":$.sepL}`,borderRadius:14,padding:`${sp[4]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .25s"}}>
+        <Settings size={16} strokeWidth={2.2} color={$.blue}/>
+        {open ? "إخفاء التعديل" : "عدّل معطياتي وأعد الحساب"}
+      </button>
+
+      {open && (
+        <Card style={{marginTop:sp[3],padding:0,overflow:"hidden"}}>
+          <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[2]}px`}}>
+            <div style={{fontSize:16,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>عدّل الأرقام الفعلية</div>
+            <div style={{fontSize:12,color:$.L3,lineHeight:1.7}}>لقيت محل بسعر مختلف؟ تغيّرت ميزانيتك؟ حدّث ما تعرفه فعلياً — والباقي يبقى كما هو.</div>
+          </div>
+
+          <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`,display:"flex",flexDirection:"column",gap:sp[4]}}>
+            <FormField label="الإيجار السنوي الفعلي">
+              <input value={rent} onChange={e=>fmtInput(e.target.value,setRent)} inputMode="numeric" placeholder={currentRentYearly ? numWithCommas(currentRentYearly) : "90,000"}
+                style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:15,fontFamily:"inherit",outline:"none"}}/>
+              {currentRentYearly>0 && <div style={{fontSize:11,color:$.L4,marginTop:sp[2]}}>التقدير الحالي: {numWithCommas(currentRentYearly)} ريال سنوياً</div>}
+            </FormField>
+
+            <FormField label="الميزانية الفعلية">
+              <input value={budget} onChange={e=>fmtInput(e.target.value,setBudget)} inputMode="numeric" placeholder={currentBudget ? numWithCommas(currentBudget) : "500,000"}
+                style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:15,fontFamily:"inherit",outline:"none"}}/>
+            </FormField>
+
+            <FormField label="عدد الموظفين">
+              <select value={staff} onChange={e=>setStaff(e.target.value)}
+                style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:staff?$.L1:$.L4,fontSize:15,fontFamily:"inherit",outline:"none",appearance:"none"}}>
+                <option value="">بدون تغيير</option>
+                <option value="1-3">1-3</option>
+                <option value="4-5">4-5</option>
+                <option value="6-10">6-10</option>
+                <option value="أكثر من 10">أكثر من 10</option>
+              </select>
+            </FormField>
+
+            <FormField label="تكلفة المعدات الفعلية">
+              <input value={equip} onChange={e=>fmtInput(e.target.value,setEquip)} inputMode="numeric" placeholder={currentEquip ? numWithCommas(currentEquip) : "50,000"}
+                style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:15,fontFamily:"inherit",outline:"none"}}/>
+              {currentEquip>0 && <div style={{fontSize:11,color:$.L4,marginTop:sp[2]}}>التقدير الحالي: {numWithCommas(currentEquip)} ريال</div>}
+            </FormField>
+
+            <FormField label="ملاحظة واحدة (اختياري)">
+              <input value={note} onChange={e=>setNote(e.target.value.substring(0,150))} maxLength={150} placeholder="مثال: المحل جاهز ولا يحتاج ديكور"
+                style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:14,fontFamily:"inherit",outline:"none"}}/>
+              <div style={{fontSize:10,color:$.L4,textAlign:"left",marginTop:sp[2]}}>{note.length}/150</div>
+            </FormField>
+
+            {err && <div style={{background:`${$.red}12`,border:`1px solid ${$.red}33`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.red,fontSize:13}}>{err}</div>}
+
+            {done && (
+              <div style={{background:`${$.green}12`,border:`1px solid ${$.green}33`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,display:"flex",alignItems:"flex-start",gap:8}}>
+                <CheckCircle size={16} color={$.green} strokeWidth={2.2} style={{flexShrink:0,marginTop:2}}/>
+                <div style={{color:$.green,fontSize:13,lineHeight:1.7}}>{done}</div>
+              </div>
+            )}
+
+            <button onClick={recalc} disabled={!hasChanges||busy}
+              style={{width:"100%",background:hasChanges&&!busy?$.blue:$.F4,color:hasChanges&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:800,cursor:hasChanges&&!busy?"pointer":"default",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:hasChanges&&!busy?`0 6px 20px ${$.blue}44`:"none",transition:"all .25s"}}>
+              {busy ? <><Spinner sz={16}/>جاري إعادة الحساب…</> : "أعد الحساب بهذه الأرقام"}
+            </button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function AnalysisScreen({result, onUpdate}) {
   const screen = useScreenSize();
   const [tab,setTab]=useState(0);
   const [printMode,setPrintMode]=useState(false);
@@ -1312,6 +1130,8 @@ function AnalysisScreen({result}) {
           }} className="no-print" style={{width:"100%",background:$.surface,color:$.L2,border:`1px solid ${$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[4]}}>
             <Download size={15}/>تصدير التحليل PDF
           </button>}
+
+          {onUpdate && <EditPanel result={result} onUpdated={onUpdate}/>}
 
           <div className="no-print" style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
             {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:"none",minWidth:screen.isMobile?"23%":"auto",padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none",whiteSpace:"nowrap"}}>{t}</button>))}
@@ -2161,65 +1981,32 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
     </div>
   );
 }
-function SuggestionsScreen({user, isPremium, onNeedUpgrade, suggestionsCount, detailsCount, onSuggestUsed, onDetailUsed}) {
+function SuggestionsScreen({isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [budget,setBudget]=useState("");
   const [city,setCity]=useState("");
   const [sector,setSector]=useState("");
-  const [targetProfit,setTargetProfit]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
   const [result,setResult]=useState(null);
-  // التفاصيل
-  const [detailName,setDetailName]=useState(null);
-  const [detailGuide,setDetailGuide]=useState(null);
-  const [detailBusy,setDetailBusy]=useState(false);
-  const [detailErr,setDetailErr]=useState(null);
-  const [openedNames,setOpenedNames]=useState([]);
-
-  const reachedSuggestLimit = !isPremium && suggestionsCount >= FREE_SUGGESTIONS;
-  const detailsLeft = Math.max(0, PREMIUM_DETAILS - detailsCount);
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
-    setBudget(raw === "" ? "" : numWithCommas(parseInt(raw)));
-  }
-  function handleTargetChange(e) {
-    const raw = e.target.value.replace(/\D/g, "");
-    setTargetProfit(raw === "" ? "" : numWithCommas(parseInt(raw)));
+    if (raw === "") { setBudget(""); return; }
+    setBudget(numWithCommas(parseInt(raw)));
   }
 
   async function go() {
-    if (reachedSuggestLimit) { onNeedUpgrade(); return; }
+    if (!isPremium) { onNeedUpgrade(); return; }
     if (!budget.trim() || busy) return;
     setBusy(true); setErr(null); setResult(null);
     try {
       const cleanBudget = budget.replace(/,/g, "");
-      const cleanTarget = targetProfit.replace(/,/g, "");
-      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null, target_profit:cleanTarget||null });
+      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null });
       setResult(r);
-      if (!isPremium) onSuggestUsed();
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
   }
-
-  async function openDetail(s) {
-    if (!isPremium) { onNeedUpgrade(); return; }
-    setDetailName(s.name); setDetailGuide(null); setDetailErr(null);
-    const already = openedNames.includes(s.name);
-    if (!already && detailsCount >= PREMIUM_DETAILS) {
-      setDetailErr("LIMIT");
-      return;
-    }
-    setDetailBusy(true);
-    try {
-      const r = await apiCall("suggest-detail", { name:s.name, sector:s.sector||sector||null, city:city||null, budget:budget.replace(/,/g,"")||null });
-      setDetailGuide(r);
-      if (!already) { setOpenedNames(prev => [...prev, s.name]); onDetailUsed(); }
-    } catch(e) { setDetailErr(e.message); }
-    finally { setDetailBusy(false); }
-  }
-  function closeDetail() { setDetailName(null); setDetailGuide(null); setDetailErr(null); setDetailBusy(false); }
 
   function typeColor(t) {
     if (t==="آمن") return $.green;
@@ -2244,41 +2031,21 @@ function SuggestionsScreen({user, isPremium, onNeedUpgrade, suggestionsCount, de
           </div>
           <h1 style={{fontSize:screen.isDesktop?38:28,fontWeight:800,color:$.L1,letterSpacing:"-0.6px"}}>اقتراحات المشاريع</h1>
         </div>
-        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>أدخل ميزانيتك والربح الذي تطمح له، واحصل على مشاريع واقعية مدروسة حسب السوق السعودي</p>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>أدخل ميزانيتك واحصل على مشاريع واقعية تناسب قدرتك المالية، مدروسة حسب السوق السعودي</p>
 
-        {!isPremium && !reachedSuggestLimit && (
-          <Card style={{padding:sp[4],border:`1.5px solid ${$.purple}25`,background:`${$.purple}08`,marginBottom:sp[5],display:"flex",gap:sp[3],alignItems:"flex-start"}}>
-            <Sparkles size={18} color={$.purple} style={{flexShrink:0,marginTop:2}}/>
-            <p style={{fontSize:13,color:$.L2,lineHeight:1.7}}>لديك <b style={{color:$.purple}}>تحليل اقتراحات مجاني واحد</b> هذا الشهر. استخدمه بميزانية واضحة لتحصل على أفضل النتائج.</p>
-          </Card>
-        )}
-
-        {!isPremium && reachedSuggestLimit && (
+        {!isPremium && (
           <Card style={{padding:sp[5],border:`1.5px solid ${$.orange}30`,background:`${$.orange}08`,marginBottom:sp[5],textAlign:"center"}}>
             <Crown size={28} color={$.orange} style={{marginBottom:sp[2]}}/>
-            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>استخدمت اقتراحك المجاني هذا الشهر</div>
-            <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات بلا حدود وفتح تفاصيل المشاريع</p>
+            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>قسم خاص بالمشتركين</div>
+            <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات مشاريع مخصصة لميزانيتك ومدينتك</p>
             <button onClick={onNeedUpgrade} style={{background:$.orange,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>اشترك الآن</button>
           </Card>
         )}
 
-        {isPremium && (
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:sp[5]}}>
-            <FileText size={13} color={$.L4}/>
-            <span style={{fontSize:12,color:$.L3}}>تفاصيل المشاريع المتبقية هذا الشهر: <b style={{color:detailsLeft>0?$.green:$.orange}}>{detailsLeft}</b> من {PREMIUM_DETAILS}</span>
-          </div>
-        )}
-
-        <Card style={{padding:sp[5],marginBottom:sp[5],opacity:reachedSuggestLimit?0.55:1,pointerEvents:reachedSuggestLimit?"none":"auto"}}>
+        <Card style={{padding:sp[5],marginBottom:sp[5],opacity:isPremium?1:0.55,pointerEvents:isPremium?"auto":"none"}}>
           <FormField label="الميزانية المتاحة بالريال" icon={<Briefcase size={14} color={$.L4}/>}>
             <div style={{position:"relative"}}>
               <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
-              <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
-            </div>
-          </FormField>
-          <FormField label="الربح الشهري المستهدف (اختياري)" icon={<Target size={14} color={$.L4}/>}>
-            <div style={{position:"relative"}}>
-              <input value={targetProfit} onChange={handleTargetChange} placeholder="مثال: 20,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],direction:"ltr",textAlign:"right"}}/>
               <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
             </div>
           </FormField>
@@ -2303,8 +2070,8 @@ function SuggestionsScreen({user, isPremium, onNeedUpgrade, suggestionsCount, de
             </FormField>
           </div>
           {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-          <button onClick={go} disabled={busy||(!reachedSuggestLimit&&!budget.trim())} style={{width:"100%",marginTop:sp[4],background:reachedSuggestLimit?$.orange:(budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3),color:reachedSuggestLimit||(budget.trim()&&!busy)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:busy?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-            {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:reachedSuggestLimit?<><Crown size={16}/>اشترك للمزيد</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
+          <button onClick={go} disabled={!budget.trim()||busy} style={{width:"100%",marginTop:sp[4],background:budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3,color:budget.trim()&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:budget.trim()&&!busy?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+            {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
           </button>
         </Card>
 
@@ -2359,14 +2126,11 @@ function SuggestionsScreen({user, isPremium, onNeedUpgrade, suggestionsCount, de
                     </div>
                   )}
                   {s.success_tip && (
-                    <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3],marginBottom:sp[3]}}>
+                    <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3]}}>
                       <Lightbulb size={14} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
                       <span style={{fontSize:12.5,color:$.L2,lineHeight:1.6}}>{s.success_tip}</span>
                     </div>
                   )}
-                  <button onClick={()=>openDetail(s)} style={{width:"100%",marginTop:sp[2],background:isPremium?`${$.purple}12`:$.F4,color:isPremium?$.purple:$.L3,border:`1px solid ${isPremium?$.purple+"30":$.sepL}`,borderRadius:12,padding:`${sp[3]}px`,fontSize:13.5,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-                    {isPremium?<><FileText size={15}/>دليل التنفيذ بالتفصيل<ChevronRight size={15}/></>:<><Lock size={14}/>التفاصيل للمشتركين</>}
-                  </button>
                 </Card>
               ))}
             </div>
@@ -2374,145 +2138,6 @@ function SuggestionsScreen({user, isPremium, onNeedUpgrade, suggestionsCount, de
           </>
         )}
       </div>
-
-      <Sheet open={!!detailName} onClose={closeDetail}>
-        <div style={{padding:`${sp[3]}px ${sp[5]}px ${sp[8]}px`}}>
-          {detailErr === "LIMIT" ? (
-            <div style={{textAlign:"center",padding:`${sp[6]}px ${sp[2]}px`}}>
-              <Crown size={32} color={$.orange} style={{marginBottom:sp[3]}}/>
-              <div style={{fontSize:16,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>وصلت حد التفاصيل لهذا الشهر</div>
-              <p style={{fontSize:13,color:$.L3,lineHeight:1.7}}>يمكنك فتح تفاصيل {PREMIUM_DETAILS} مشاريع شهرياً. يتجدد رصيدك تلقائياً بعد شهر.</p>
-            </div>
-          ) : detailBusy ? (
-            <div style={{textAlign:"center",padding:`${sp[8]}px ${sp[2]}px`}}>
-              <Spinner sz={26}/>
-              <div style={{fontSize:14,color:$.L2,marginTop:sp[3],fontWeight:600}}>جاري إعداد دليل التنفيذ…</div>
-              <div style={{fontSize:12,color:$.L4,marginTop:sp[1]}}>دليل مفصّل خطوة بخطوة لهذا المشروع</div>
-            </div>
-          ) : detailErr ? (
-            <div style={{padding:`${sp[6]}px ${sp[2]}px`}}>
-              <div style={{background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[4]}px`,fontSize:14,color:$.red,lineHeight:1.7,textAlign:"center"}}>{detailErr}</div>
-            </div>
-          ) : detailGuide ? (
-            <DetailGuideView guide={detailGuide}/>
-          ) : null}
-        </div>
-      </Sheet>
-    </div>
-  );
-}
-
-// عارض دليل التنفيذ المولّد
-function DetailGuideView({guide}) {
-  const Section = ({icon, title, children}) => (
-    <div style={{marginBottom:sp[5]}}>
-      <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-        {icon}
-        <h3 style={{fontSize:15,fontWeight:800,color:$.L1}}>{title}</h3>
-      </div>
-      {children}
-    </div>
-  );
-  return (
-    <div>
-      <h2 style={{fontSize:20,fontWeight:800,color:$.L1,lineHeight:1.4,marginBottom:sp[3]}}>{guide.title || "دليل التنفيذ"}</h2>
-      {guide.summary && <p style={{fontSize:14,color:$.L2,lineHeight:1.9,marginBottom:sp[5],background:`${$.purple}06`,border:`1px solid ${$.purple}20`,borderRadius:12,padding:`${sp[4]}px`}}>{guide.summary}</p>}
-
-      {Array.isArray(guide.steps) && guide.steps.length>0 && (
-        <Section icon={<ChevronRight size={17} color={$.purple}/>} title="خطوات التنفيذ">
-          {guide.steps.map((st,i)=>(
-            <div key={i} style={{display:"flex",gap:sp[3],marginBottom:sp[3]}}>
-              <div style={{width:26,height:26,borderRadius:8,background:`${$.purple}15`,color:$.purple,fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
-              <div>
-                <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:2}}>{st.title}</div>
-                <div style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{st.detail}</div>
-              </div>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {Array.isArray(guide.costs_breakdown) && guide.costs_breakdown.length>0 && (
-        <Section icon={<DollarSign size={16} color={$.green}/>} title="تفصيل التكاليف">
-          {guide.costs_breakdown.map((c,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",gap:sp[3],padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`}}>
-              <span style={{fontSize:13,color:$.L2}}>{c.item}</span>
-              <span style={{fontSize:13,fontWeight:700,color:$.L1,whiteSpace:"nowrap"}}>{c.amount}</span>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {Array.isArray(guide.licenses) && guide.licenses.length>0 && (
-        <Section icon={<FileText size={16} color={$.blue}/>} title="التراخيص المطلوبة">
-          {guide.licenses.map((l,i)=>(
-            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2]}}>
-              <CheckCircle size={14} color={$.blue} style={{flexShrink:0,marginTop:3}}/>
-              <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}><b style={{color:$.L1}}>{l.name}</b>{l.issuer?` — ${l.issuer}`:""}</span>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {Array.isArray(guide.marketing_plan) && guide.marketing_plan.length>0 && (
-        <Section icon={<Activity size={16} color={$.purple}/>} title="خطة التسويق">
-          {guide.marketing_plan.map((m,i)=>(
-            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2]}}>
-              <div style={{width:5,height:5,borderRadius:"50%",background:$.purple,marginTop:8,flexShrink:0}}/>
-              <span style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{m}</span>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {Array.isArray(guide.tips) && guide.tips.length>0 && (
-        <Section icon={<Lightbulb size={16} color={$.orange}/>} title="نصائح من خبير">
-          {guide.tips.map((t,i)=>(
-            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2],background:`${$.orange}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`}}>
-              <Lightbulb size={13} color={$.orange} style={{flexShrink:0,marginTop:3}}/>
-              <span style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{t}</span>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {Array.isArray(guide.risks) && guide.risks.length>0 && (
-        <Section icon={<AlertTriangle size={16} color={$.red}/>} title="المخاطر وكيف تتعامل معها">
-          {guide.risks.map((r,i)=>(
-            <div key={i} style={{marginBottom:sp[3],background:$.F5,borderRadius:10,padding:`${sp[3]}px`}}>
-              <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:2}}>{r.risk}</div>
-              <div style={{fontSize:12.5,color:$.L3,lineHeight:1.6}}>{r.mitigation}</div>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {guide.first_month_plan && (
-        <Section icon={<Calendar size={16} color={$.blue}/>} title="خطة أول 30 يوم">
-          <p style={{fontSize:13.5,color:$.L2,lineHeight:1.8}}>{guide.first_month_plan}</p>
-        </Section>
-      )}
-
-      {Array.isArray(guide.success_factors) && guide.success_factors.length>0 && (
-        <Section icon={<Award size={16} color={$.green}/>} title="عوامل النجاح الحاسمة">
-          {guide.success_factors.map((f,i)=>(
-            <div key={i} style={{display:"flex",gap:6,marginBottom:sp[2]}}>
-              <CheckCircle size={14} color={$.green} style={{flexShrink:0,marginTop:3}}/>
-              <span style={{fontSize:13,color:$.L2,lineHeight:1.7}}>{f}</span>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {guide.honest_verdict && (
-        <div style={{background:`${$.purple}08`,border:`1.5px solid ${$.purple}25`,borderRadius:14,padding:`${sp[4]}px`,marginTop:sp[2]}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
-            <Info size={15} color={$.purple}/>
-            <span style={{fontSize:13,fontWeight:800,color:$.purple}}>الحكم الصريح</span>
-          </div>
-          <p style={{fontSize:14,color:$.L1,lineHeight:1.8}}>{guide.honest_verdict}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -2804,8 +2429,6 @@ export default function HamourApp() {
   const [isPremium, setIsPremium] = useState(false);
   const [analyses, setAnalyses] = useState([]);
   const [usageCount, setUsageCount] = useState(0);
-  const [suggestionsCount, setSuggestionsCount] = useState(0);
-  const [detailsCount, setDetailsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dark, setDark] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -2832,10 +2455,6 @@ export default function HamourApp() {
     setIsPremium(!!p.is_premium);
     const used = await getUsage(uid);
     setUsageCount(used);
-    const sUsed = await getSuggestionsUsage(uid);
-    setSuggestionsCount(sUsed);
-    const dUsed = await getDetailsUsage(uid);
-    setDetailsCount(dUsed);
   }, []);
 
   const refreshAnalyses = useCallback(async () => {
@@ -2907,17 +2526,12 @@ export default function HamourApp() {
     setTab("analysis");
   }
 
-  function handleSuggestUsed() {
-    if (user && !isPremium) {
-      setSuggestionsCount(c => c + 1);
-      incrementSuggestionsUsage(user.id);
-    }
-  }
-
-  function handleDetailUsed() {
-    if (user && isPremium) {
-      setDetailsCount(c => c + 1);
-      incrementDetailsUsage(user.id);
+  function handleUpdateResult(updated) {
+    const merged = {...updated, id: result?.id, savedAt: result?.savedAt};
+    setResult(merged);
+    setAnalyses(prev => prev.map(a => a.id === merged.id ? merged : a));
+    if (user && merged.id) {
+      updateAnalysisCloud(merged).catch(()=>{});
     }
   }
 
@@ -2986,8 +2600,8 @@ export default function HamourApp() {
 
       <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="analysis" && <AnalysisScreen result={result}/>}
-        {tab==="suggestions" && <SuggestionsScreen user={user} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} suggestionsCount={suggestionsCount} detailsCount={detailsCount} onSuggestUsed={handleSuggestUsed} onDetailUsed={handleDetailUsed}/>}
+        {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult}/>}
+        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
