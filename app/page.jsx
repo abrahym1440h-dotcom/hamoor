@@ -417,7 +417,10 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
         <button disabled style={{width:"100%",background:$.F3,color:$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,fontFamily:"inherit",marginBottom:sp[3],display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
           <Crown size={16}/>الدفع الإلكتروني — قريباً
         </button>
-        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[5],lineHeight:1.6}}>الدفع بالبطاقة و Apple Pay سيتوفّر قريباً</p>
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[3],lineHeight:1.6}}>الدفع بالبطاقة و Apple Pay سيتوفّر قريباً</p>
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[5],lineHeight:1.7}}>
+          بالاشتراك أنت توافق على <a href="/legal" target="_blank" rel="noopener noreferrer" style={{color:$.blue,textDecoration:"none",fontWeight:700}}>الشروط وسياسة الاسترجاع</a>
+        </p>
 
         <div style={{borderTop:`0.5px solid ${$.sepL}`,paddingTop:sp[5]}}>
           {done ? (
@@ -2213,31 +2216,51 @@ function LegalSheet({open, onClose}) {
   return (
     <Sheet open={open} onClose={onClose}>
       <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`,maxHeight:"75vh",overflowY:"auto"}}>
-        <h2 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[4]}}>الخصوصية والشروط</h2>
+        <h2 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[4]}}>الشروط والسياسات</h2>
 
         <div style={{marginBottom:sp[5]}}>
-          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>سياسة الخصوصية</h3>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>طبيعة الخدمة</h3>
           <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
-            يجمع تطبيق هامور الحد الأدنى من البيانات اللازمة لتشغيل الخدمة: بريدك الإلكتروني واسمك لإنشاء حسابك، والتحليلات التي تنشئها لحفظها في حسابك. لا نبيع بياناتك ولا نشاركها مع أطراف خارجية لأغراض تسويقية. تُخزّن بياناتك بشكل آمن، ويمكنك حذف تحليلاتك أو طلب حذف حسابك في أي وقت. عند استخدامك ميزات التحليل، تُرسل تفاصيل مشروعك إلى مزوّد الذكاء الاصطناعي لمعالجتها وإرجاع النتيجة.
+            هامور أداة استرشادية لتحليل المشاريع تعتمد على الذكاء الاصطناعي ونتائج بحث من مصادر عامة. التحليلات والأرقام تقديرية بطبيعتها وقد تختلف عن الواقع، ولا تُعدّ دراسة جدوى ميدانية معتمدة ولا نصيحة استثمارية أو قانونية. أنت وحدك مسؤول عن أي قرار تتخذه بناءً عليها، ونوصي بالرجوع لمختص قبل أي استثمار.
           </p>
         </div>
 
         <div style={{marginBottom:sp[5]}}>
-          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>شروط الاستخدام</h3>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>الباقات والأسعار</h3>
           <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
-            هامور أداة استرشادية لتحليل المشاريع تعتمد على الذكاء الاصطناعي ومتوسطات السوق. التحليلات والأرقام تقديرية بطبيعتها وقد تختلف عن الواقع، ولا تُعدّ دراسة جدوى رسمية ولا نصيحة استثمارية أو قانونية أو مالية. أنت وحدك مسؤول عن أي قرار تتخذه بناءً على المعلومات في التطبيق، ونوصي دائماً بالرجوع لمختص ودراسة جدوى ميدانية قبل أي استثمار. نحرص على دقة المحتوى قدر الإمكان لكننا لا نضمن خلوّه من الأخطاء.
+            الباقة المجانية: تحليلان اثنان مع وصول محدود للمقالات. الاشتراك الشهري: 19.99 ريال لمدة 30 يوماً. الاشتراك السنوي: 199.99 ريال لمدة 365 يوماً. الاشتراك يتيح تحليلات بلا حدود وفتح كامل المقالات وقسم الاقتراحات. الأسعار شاملة ضريبة القيمة المضافة.
           </p>
         </div>
 
-        <div>
-          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>الاشتراك</h3>
+        <div style={{marginBottom:sp[5]}}>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>الاسترجاع والإلغاء</h3>
           <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
-            يوفّر هامور باقة مجانية محدودة وباقة اشتراك مدفوعة بمزايا موسّعة. عند توفّر الدفع الإلكتروني، تُوضّح تفاصيل الأسعار ومدة الاشتراك قبل الدفع. يمكنك إلغاء اشتراكك في أي وقت من صفحة حسابك.
+            الاشتراك لا يُجدَّد تلقائياً، وينتهي بانتهاء مدته دون خصم إضافي. يمكنك طلب استرداد كامل المبلغ خلال 24 ساعة من الاشتراك بشرط ألا تكون قد أجريت تحليلاً جديداً بعد التفعيل. بعد استخدام الخدمة لا يمكن الاسترداد لأن التحليل خدمة رقمية تُستهلك فور تنفيذها. لطلب الاسترجاع راسلنا من بريدك المسجّل.
           </p>
         </div>
 
-        <p style={{fontSize:11,color:$.L4,marginTop:sp[5],lineHeight:1.7}}>
-          باستخدامك تطبيق هامور فإنك توافق على هذه الشروط. قد نحدّث هذه السياسة من وقت لآخر.
+        <div style={{marginBottom:sp[5]}}>
+          <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>الخصوصية</h3>
+          <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
+            نجمع الحد الأدنى من البيانات: بريدك واسمك لإنشاء حسابك، والتحليلات التي تنشئها لحفظها. لا نجمع بيانات بطاقتك البنكية إطلاقاً — الدفع يتم عبر بوابة مرخّصة من البنك المركزي السعودي ولا تمرّ بياناتك المالية عبر خوادمنا. لا نبيع بياناتك ولا نشاركها لأغراض تسويقية. يمكنك حذف تحليلاتك أو طلب حذف حسابك في أي وقت.
+          </p>
+        </div>
+
+        <a href="/legal" target="_blank" rel="noopener noreferrer"
+          style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",background:$.F3,color:$.blue,borderRadius:12,padding:`${sp[3]}px`,fontSize:13,fontWeight:700,textDecoration:"none",marginBottom:sp[4]}}>
+          <FileText size={15}/>عرض النسخة الكاملة
+        </a>
+
+        <div style={{background:$.F3,borderRadius:12,padding:`${sp[4]}px`,display:"flex",alignItems:"center",gap:10}}>
+          <Mail size={16} color={$.blue} style={{flexShrink:0}}/>
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:$.L1,marginBottom:2}}>للتواصل والدعم</div>
+            <a href="mailto:hamoorservice@gmail.com" style={{fontSize:12,color:$.blue,textDecoration:"none"}}>hamoorservice@gmail.com</a>
+          </div>
+        </div>
+
+        <p style={{fontSize:11,color:$.L4,marginTop:sp[5],lineHeight:1.7,textAlign:"center"}}>
+          باستخدامك تطبيق هامور فإنك توافق على هذه الشروط. قد نحدّثها من وقت لآخر.
         </p>
       </div>
     </Sheet>
