@@ -351,6 +351,37 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   const [err, setErr] = useState(null);
   const [done, setDone] = useState(false);
   const [plan, setPlan] = useState("yearly");
+  const [payBusy, setPayBusy] = useState(false);
+  const [payErr, setPayErr] = useState(null);
+
+  async function startPayment() {
+    if (payBusy) return;
+    if (!user) { setPayErr("يجب تسجيل الدخول أولاً"); return; }
+    setPayBusy(true); setPayErr(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, userId: user.id, email: user.email })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.code === "GATEWAY_NOT_CONFIGURED") {
+          setPayErr("الدفع الإلكتروني قيد التفعيل. استخدم كود التفعيل أدناه أو راسلنا على hamoorservice@gmail.com");
+        } else {
+          setPayErr(data.error || "تعذّر بدء عملية الدفع");
+        }
+        setPayBusy(false);
+        return;
+      }
+      if (data.redirectUrl) { window.location.href = data.redirectUrl; return; }
+      setPayErr("تعذّر فتح صفحة الدفع، حاول مرة أخرى");
+      setPayBusy(false);
+    } catch(e) {
+      setPayErr("تعذّر الاتصال، تحقق من الإنترنت وحاول مرة أخرى");
+      setPayBusy(false);
+    }
+  }
 
   async function activate() {
     if (!code.trim() || busy) return;
@@ -414,10 +445,18 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
           </button>
         </div>
 
-        <button disabled style={{width:"100%",background:$.F3,color:$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,fontFamily:"inherit",marginBottom:sp[3],display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-          <Crown size={16}/>الدفع الإلكتروني — قريباً
+        <button onClick={startPayment} disabled={payBusy}
+          style={{width:"100%",background:payBusy?$.F3:$.blue,color:payBusy?$.L4:"#fff",border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:800,fontFamily:"inherit",marginBottom:sp[3],cursor:payBusy?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],boxShadow:payBusy?"none":`0 6px 20px ${$.blue}44`}}>
+          {payBusy ? <><Spinner sz={16}/>جاري التحويل للدفع…</> : <><Crown size={16}/>اشترك الآن — {plan==="monthly"?"19.99":"199.99"} ريال</>}
         </button>
-        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[3],lineHeight:1.6}}>الدفع بالبطاقة و Apple Pay سيتوفّر قريباً</p>
+
+        {payErr && (
+          <div style={{background:`${$.orange}12`,border:`1px solid ${$.orange}33`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3]}}>
+            <div style={{fontSize:13,color:$.orange,lineHeight:1.8}}>{payErr}</div>
+          </div>
+        )}
+
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[3],lineHeight:1.6}}>الدفع بمدى والبطاقات و Apple Pay — آمن ومشفّر</p>
         <p style={{fontSize:11,color:$.L4,textAlign:"center",marginBottom:sp[5],lineHeight:1.7}}>
           بالاشتراك أنت توافق على <a href="/legal" target="_blank" rel="noopener noreferrer" style={{color:$.blue,textDecoration:"none",fontWeight:700}}>الشروط وسياسة الاسترجاع</a>
         </p>
@@ -2216,7 +2255,8 @@ function LegalSheet({open, onClose}) {
   return (
     <Sheet open={open} onClose={onClose}>
       <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`,maxHeight:"75vh",overflowY:"auto"}}>
-        <h2 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[4]}}>الشروط والسياسات</h2>
+        <h2 style={{fontSize:20,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>الشروط والسياسات</h2>
+        <p style={{fontSize:11,color:$.L4,marginBottom:sp[4]}}>آخر تحديث: 2 يوليو 2026</p>
 
         <div style={{marginBottom:sp[5]}}>
           <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>طبيعة الخدمة</h3>
@@ -2404,7 +2444,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
           <LogOut size={17}/>تسجيل الخروج
         </button>
 
-        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[6]}}>هامور · الإصدار 1.0</p>
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[6]}}>هامور · الإصدار 1.1</p>
       </div>
 
       <LegalSheet open={showLegal} onClose={()=>setShowLegal(false)}/>
