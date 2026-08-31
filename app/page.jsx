@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -9,7 +9,7 @@ import {
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
   ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
-  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download
+  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download, Plus
 } from "lucide-react";
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
@@ -239,7 +239,7 @@ function Sheet({open, onClose, children}) {
   return (
     <div style={{position:"fixed",top:0,bottom:0,left:0,right:screen.isDesktop?260:0,zIndex:2000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.40)",backdropFilter:"blur(4px)"}}/>
-      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"92vh",maxWidth:720,margin:"0 auto",width:"100%",overflowY:"auto"}}>
+      <div style={{position:"relative",background:$.surface,borderRadius:"24px 24px 0 0",maxHeight:"92vh",maxHeight:"92dvh",maxWidth:720,margin:"0 auto",width:"100%",overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
         <div style={{display:"flex",justifyContent:"center",padding:`${sp[3]}px 0`,position:"sticky",top:0,background:$.surface,zIndex:10}}><div style={{width:36,height:4,borderRadius:99,background:$.F3}}/></div>
         <button onClick={onClose} style={{position:"sticky",top:sp[3],left:sp[4],background:$.F3,border:"none",borderRadius:99,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",marginLeft:sp[4],zIndex:11}}><X size={16} color={$.L3}/></button>
         {children}
@@ -776,6 +776,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       <button onClick={go} disabled={busy||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?"linear-gradient(150deg,#FFB800,#FF9500)":(canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3),color:(reachedLimit||canGo)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
         {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:reachedLimit?<><Crown size={16} strokeWidth={2.2}/>اشترك للمتابعة</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
       </button>
+      <div style={{height:sp[8]}}/>
     </div>
   );
 }
@@ -979,7 +980,193 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
   );
 }
 
-const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير"];
+const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير","المستشار"];
+
+function AdvisorPanel({result, user}) {
+  const [entries, setEntries] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [revenue, setRevenue] = useState("");
+  const [expenses, setExpenses] = useState("");
+  const [profit, setProfit] = useState("");
+  const [cashBalance, setCashBalance] = useState("");
+  const [note, setNote] = useState("");
+  const [savingEntry, setSavingEntry] = useState(false);
+
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [chatErr, setChatErr] = useState(null);
+  const scrollRef = useRef(null);
+
+  const analysisId = result?.id;
+
+  useEffect(() => {
+    if (!analysisId) { setLoading(false); return; }
+    (async () => {
+      try {
+        const [e, m] = await Promise.all([
+          getFinanceEntries(analysisId),
+          getAdvisorMessages(analysisId)
+        ]);
+        setEntries(e);
+        setMessages(m);
+      } catch(err) {} finally { setLoading(false); }
+    })();
+  }, [analysisId]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  function fmtInput(v, setter) {
+    const raw = v.replace(/[^\d-]/g, "");
+    setter(raw);
+  }
+
+  async function saveEntry() {
+    if (!user || !analysisId || savingEntry) return;
+    if (!revenue.trim() && !expenses.trim() && !profit.trim() && !cashBalance.trim()) return;
+    setSavingEntry(true);
+    try {
+      const entry = await addFinanceEntry(analysisId, user.id, {
+        revenue: parseFloat(revenue) || 0,
+        expenses: parseFloat(expenses) || 0,
+        profit: parseFloat(profit) || (parseFloat(revenue)||0) - (parseFloat(expenses)||0),
+        cashBalance: parseFloat(cashBalance) || 0,
+        note: note.trim()
+      });
+      setEntries(prev => [entry, ...prev]);
+      setRevenue(""); setExpenses(""); setProfit(""); setCashBalance(""); setNote("");
+      setShowForm(false);
+    } catch(e) {} finally { setSavingEntry(false); }
+  }
+
+  async function send() {
+    if (!input.trim() || sending || !user) return;
+    const userMsg = input.trim();
+    setInput(""); setChatErr(null); setSending(true);
+    const optimistic = { role: "user", content: userMsg, id: "tmp-" + Date.now() };
+    setMessages(prev => [...prev, optimistic]);
+    try {
+      const res = await fetch("/api/advisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analysis: result,
+          financeEntries: entries,
+          history: messages.map(m => ({ role: m.role, content: m.content })),
+          message: userMsg
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChatErr(data.error || "تعذّر الوصول للمستشار");
+        return;
+      }
+      setMessages(prev => [...prev, { role: "advisor", content: data.reply, id: "tmp-a-" + Date.now() }]);
+      if (analysisId) {
+        saveAdvisorMessage(analysisId, user.id, "user", userMsg);
+        saveAdvisorMessage(analysisId, user.id, "advisor", data.reply);
+      }
+    } catch(e) {
+      setChatErr("تعذّر الاتصال، تحقق من الإنترنت");
+    } finally { setSending(false); }
+  }
+
+  if (!user) {
+    return <div style={{padding:sp[6],textAlign:"center"}}>
+      <div style={{fontSize:13,color:$.L3}}>سجّل الدخول لاستخدام المستشار وتتبّع أرقامك الفعلية</div>
+    </div>;
+  }
+
+  return (
+    <div>
+      {/* بطاقة إدخال الأرقام الفعلية */}
+      <Card style={{padding:sp[5],marginBottom:sp[4]}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[3]}}>
+          <div style={{fontSize:15,fontWeight:800,color:$.L1}}>أرقامك الفعلية</div>
+          <button onClick={()=>setShowForm(!showForm)} style={{background:$.F4,border:"none",borderRadius:99,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+            <Plus size={16} color={$.blue} style={{transform:showForm?"rotate(45deg)":"none",transition:".2s"}}/>
+          </button>
+        </div>
+
+        {showForm && (
+          <div style={{marginBottom:sp[4],paddingBottom:sp[4],borderBottom:`1px solid ${$.sepL}`}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
+              <div>
+                <div style={{fontSize:11,color:$.L4,marginBottom:sp[2]}}>الإيراد</div>
+                <input value={revenue} onChange={e=>fmtInput(e.target.value,setRevenue)} inputMode="numeric" placeholder="0" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[3]}px`,color:$.L1,fontSize:14,fontFamily:"inherit",outline:"none"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:$.L4,marginBottom:sp[2]}}>المصروفات</div>
+                <input value={expenses} onChange={e=>fmtInput(e.target.value,setExpenses)} inputMode="numeric" placeholder="0" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[3]}px`,color:$.L1,fontSize:14,fontFamily:"inherit",outline:"none"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:$.L4,marginBottom:sp[2]}}>الربح (اختياري)</div>
+                <input value={profit} onChange={e=>fmtInput(e.target.value,setProfit)} inputMode="numeric" placeholder="يُحسب تلقائياً" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[3]}px`,color:$.L1,fontSize:14,fontFamily:"inherit",outline:"none"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:$.L4,marginBottom:sp[2]}}>الرصيد النقدي</div>
+                <input value={cashBalance} onChange={e=>fmtInput(e.target.value,setCashBalance)} inputMode="numeric" placeholder="0" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[3]}px`,color:$.L1,fontSize:14,fontFamily:"inherit",outline:"none"}}/>
+              </div>
+            </div>
+            <input value={note} onChange={e=>setNote(e.target.value.substring(0,150))} placeholder="ملاحظة (اختياري)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[3]}px`,color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
+            <button onClick={saveEntry} disabled={savingEntry} style={{width:"100%",background:$.blue,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              {savingEntry?<Spinner sz={14}/>:"حفظ الإدخال"}
+            </button>
+          </div>
+        )}
+
+        {loading ? <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:sp[3]}}>جاري التحميل…</div> :
+         entries.length === 0 ? <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:sp[3]}}>لا توجد إدخالات بعد — أضف أول رقم فعلي</div> :
+         entries.slice(0,3).map(e => (
+          <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`}}>
+            <div style={{fontSize:11,color:$.L4}}>{e.entry_date}</div>
+            <div style={{fontSize:13,fontWeight:700,color:(e.profit||0)>=0?$.green:$.red}}>
+              {(e.profit||0)>=0?"+":""}{numWithCommas(e.profit||0)} ريال
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      {/* الشات */}
+      <Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:`${sp[4]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:32,height:32,borderRadius:10,background:`linear-gradient(135deg,${$.blue},${$.green})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Sparkles size={15} color="#fff"/>
+          </div>
+          <div style={{fontSize:14,fontWeight:800,color:$.L1}}>المستشار هامور</div>
+        </div>
+
+        <div ref={scrollRef} style={{height:340,overflowY:"auto",padding:`${sp[4]}px ${sp[5]}px`}}>
+          {messages.length === 0 && (
+            <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[6]}px 0`}}>
+              اسأل المستشار عن أرقامك أو مشروعك
+            </div>
+          )}
+          {messages.map((m,i) => (
+            <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:sp[3]}}>
+              <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:13,lineHeight:1.8,background:m.role==="user"?$.F4:`${$.blue}12`,color:$.L1,borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="advisor"?4:14}}>
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {sending && <div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}12`}}><Spinner sz={14}/></div></div>}
+        </div>
+
+        {chatErr && <div style={{padding:`${sp[2]}px ${sp[5]}px`,fontSize:11,color:$.orange}}>{chatErr}</div>}
+
+        <div style={{display:"flex",gap:sp[2],padding:`${sp[3]}px ${sp[4]}px`,borderTop:`1px solid ${$.sepL}`}}>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,background:$.F4,border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+          <button onClick={send} disabled={!input.trim()||sending} style={{width:38,height:38,borderRadius:11,background:input.trim()?$.blue:$.F3,border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:input.trim()?"pointer":"default",flexShrink:0}}>
+            <ArrowRight size={16} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/>
+          </button>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 function EditPanel({result, onUpdated}) {
   const [open,setOpen]=useState(false);
@@ -1099,7 +1286,7 @@ function EditPanel({result, onUpdated}) {
   );
 }
 
-function AnalysisScreen({result, onUpdate}) {
+function AnalysisScreen({result, onUpdate, user}) {
   const screen = useScreenSize();
   const [tab,setTab]=useState(0);
   const [printMode,setPrintMode]=useState(false);
@@ -1539,6 +1726,11 @@ function AnalysisScreen({result, onUpdate}) {
                 </div>
               )}
             </>)}
+            {tab===5 && (
+              <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
+                <AdvisorPanel result={result} user={user}/>
+              </div>
+            )}
           </div>
 
           <div style={{marginTop:sp[5],padding:`${sp[4]}px`,background:$.F5,borderRadius:14,display:"flex",gap:sp[3],alignItems:"flex-start"}}>
@@ -2663,7 +2855,7 @@ export default function HamourApp() {
 
       <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult}/>}
+        {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
