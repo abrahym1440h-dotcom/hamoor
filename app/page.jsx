@@ -980,7 +980,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
   );
 }
 
-const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير","المستشار"];
+const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير"];
 
 function AdvisorPanel({result, user}) {
   const [entries, setEntries] = useState([]);
@@ -1726,11 +1726,6 @@ function AnalysisScreen({result, onUpdate, user}) {
                 </div>
               )}
             </>)}
-            {tab===5 && (
-              <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
-                <AdvisorPanel result={result} user={user}/>
-              </div>
-            )}
           </div>
 
           <div style={{marginTop:sp[5],padding:`${sp[4]}px`,background:$.F5,borderRadius:14,display:"flex",gap:sp[3],alignItems:"flex-start"}}>
@@ -1744,6 +1739,96 @@ function AnalysisScreen({result, onUpdate, user}) {
     </div>
   );
 }
+function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack}) {
+  const screen = useScreenSize();
+  const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : {};
+  const selected = selectedId ? analyses.find(a => a.id === selectedId) : null;
+
+  if (!user) {
+    return (
+      <div style={{padding:`${sp[14]}px ${sp[5]}px`,textAlign:"center"}}>
+        <div style={containerStyle}>
+          <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:sp[8]}}>المستشار</h1>
+          <div style={{width:80,height:80,borderRadius:24,background:`${$.blue}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
+            <Sparkles size={36} color={$.blue} strokeWidth={1.5}/>
+          </div>
+          <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>سجّل الدخول أولاً</h3>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320,margin:"0 auto"}}>المستشار يتابع مشاريعك المحفوظة ويحتاج حسابك ليحفظ محادثتك وأرقامك</p>
+        </div>
+      </div>
+    );
+  }
+
+  // عرض المستشار لمشروع مختار
+  if (selected) {
+    return (
+      <div style={{padding:`${sp[6]}px ${sp[5]}px ${sp[10]}px`}}>
+        <div style={containerStyle}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.blue,marginBottom:sp[5],padding:0}}>
+            <ArrowRight size={16}/><span>كل المشاريع</span>
+          </button>
+          <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[5]}}>
+            <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${$.blue},${$.green})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Sparkles size={20} color="#fff"/>
+            </div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:17,fontWeight:800,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selected.idea}</div>
+              <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{selected.city}</span></div>
+            </div>
+          </div>
+          <AdvisorPanel result={selected} user={user}/>
+        </div>
+      </div>
+    );
+  }
+
+  // قائمة المشاريع
+  if (analyses.length === 0) {
+    return (
+      <div style={{padding:`${sp[14]}px ${sp[5]}px`}}>
+        <div style={containerStyle}>
+          <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:sp[8]}}>المستشار</h1>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:`${sp[12]}px`,textAlign:"center"}}>
+            <div style={{width:80,height:80,borderRadius:24,background:`${$.blue}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:sp[5]}}>
+              <Sparkles size={36} color={$.blue} strokeWidth={1.5}/>
+            </div>
+            <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>حلّل مشروعك أولاً</h3>
+            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320}}>المستشار يتابع معك مشروعاً بعد تحليله. حلّل مشروعك من الرئيسية، وارجع هنا لمتابعته</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
+      <div style={containerStyle}>
+        <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:4}}>المستشار</h1>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>اختر مشروعاً لمتابعته مع المستشار</p>
+
+        <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
+          {analyses.map(a => {
+            const pos = a.decision_type === "positive";
+            const color = pos ? $.green : $.red;
+            return (
+              <Card key={a.id} onClick={()=>onSelect(a.id)} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+                  <ScoreRing value={a.score} size={52} track={5} color={color} noAnim/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
+                    <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{a.city}</span></div>
+                  </div>
+                  <ChevronRight size={18} color={$.L4} style={{transform:"scaleX(-1)",flexShrink:0}}/>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SavedAnalysesScreen({onViewAnalysis, analyses, onRefresh}) {
   const screen = useScreenSize();
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -2378,6 +2463,7 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
 
 const NAV = [
   {id:"home", name:"الرئيسية", Icon:Home},
+  {id:"advisor", name:"المستشار", Icon:Sparkles},
   {id:"suggestions", name:"اقتراحات", Icon:Lightbulb},
   {id:"saved", name:"تحليلاتي", Icon:Archive},
   {id:"sectors", name:"القطاعات", Icon:Grid},
@@ -2678,6 +2764,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
 export default function HamourApp() {
   const screen = useScreenSize();
   const [tab, setTab] = useState("home");
+  const [advisorSelectedId, setAdvisorSelectedId] = useState(null);
   const [result, setResult] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -2857,6 +2944,7 @@ export default function HamourApp() {
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
