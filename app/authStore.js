@@ -189,3 +189,57 @@ function translateError(msg) {
   if (m.includes("email not confirmed")) return "فعّل بريدك أولاً من رسالة التأكيد";
   return "حدث خطأ، حاول مرة أخرى";
 }
+
+// ═══════════════════════════════════════════════════
+// المستشار — البيانات المالية الفعلية + المحادثة
+// ═══════════════════════════════════════════════════
+
+export async function addFinanceEntry(analysisId, userId, entry) {
+  const { data, error } = await supabase.from("advisor_finance").insert({
+    analysis_id: analysisId,
+    user_id: userId,
+    revenue: entry.revenue || 0,
+    expenses: entry.expenses || 0,
+    profit: entry.profit || 0,
+    cash_balance: entry.cashBalance || 0,
+    note: entry.note || "",
+    entry_date: entry.date || new Date().toISOString().split("T")[0]
+  }).select().single();
+  if (error) throw new Error("فشل حفظ البيانات المالية");
+  return data;
+}
+
+export async function getFinanceEntries(analysisId) {
+  const { data, error } = await supabase
+    .from("advisor_finance")
+    .select("*")
+    .eq("analysis_id", analysisId)
+    .order("entry_date", { ascending: false });
+  if (error) return [];
+  return data;
+}
+
+export async function deleteFinanceEntry(entryId) {
+  const { error } = await supabase.from("advisor_finance").delete().eq("id", entryId);
+  if (error) throw new Error("فشل حذف الإدخال");
+}
+
+export async function getAdvisorMessages(analysisId) {
+  const { data, error } = await supabase
+    .from("advisor_messages")
+    .select("*")
+    .eq("analysis_id", analysisId)
+    .order("created_at", { ascending: true });
+  if (error) return [];
+  return data;
+}
+
+export async function saveAdvisorMessage(analysisId, userId, role, content) {
+  const { error } = await supabase.from("advisor_messages").insert({
+    analysis_id: analysisId,
+    user_id: userId,
+    role,
+    content
+  });
+  if (error) console.error("فشل حفظ رسالة المستشار:", error.message);
+}
