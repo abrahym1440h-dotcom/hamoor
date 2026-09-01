@@ -2471,19 +2471,81 @@ const NAV = [
   {id:"settings", name:"حسابي", Icon:Settings}
 ];
 
-function BottomNav({active, onChange, dark, onToggleDark}) {
+function HamburgerNav({active, onChange, user, isPremium, dark, onToggleDark}) {
+  const [open, setOpen] = useState(false);
+  const current = NAV.find(n => n.id === active);
+
+  const ICON_BG = {
+    home: $.blue, advisor: $.green, suggestions: $.purple,
+    saved: $.orange, sectors: $.red, learning: $.blue, settings: $.L4
+  };
+
+  function go(id) {
+    onChange(id);
+    setTimeout(() => setOpen(false), 180);
+  }
+
   return (
-    <div className="no-print" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:$.surface,borderTop:`0.5px solid ${$.sep}`,display:"flex",padding:`8px 4px max(8px,env(safe-area-inset-bottom))`,boxShadow:"0 -2px 16px rgba(0,0,0,0.06)"}}>
-      {NAV.map(n => {
-        const on = active === n.id;
-        return (
-          <button key={n.id} onClick={()=>onChange(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit"}}>
-            <n.Icon size={21} color={on?$.blue:$.L4} strokeWidth={on?2.4:2}/>
-            <span style={{fontSize:9.5,fontWeight:on?700:500,color:on?$.blue:$.L4}}>{n.name}</span>
+    <>
+      {/* الشريط العلوي الثابت */}
+      <div className="no-print" style={{position:"fixed",top:0,left:0,right:0,zIndex:90,background:$.surface,borderBottom:`0.5px solid ${$.sep}`,display:"flex",alignItems:"center",justifyContent:"space-between",padding:`max(${sp[3]}px,env(safe-area-inset-top)) ${sp[4]}px ${sp[3]}px`}}>
+        <button onClick={()=>setOpen(true)} aria-label="القائمة" style={{width:38,height:38,borderRadius:11,background:$.F4,border:"none",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
+          <span style={{width:17,height:2,background:$.L1,borderRadius:2}}/>
+          <span style={{width:17,height:2,background:$.L1,borderRadius:2}}/>
+          <span style={{width:17,height:2,background:$.L1,borderRadius:2}}/>
+        </button>
+        <div style={{fontSize:15,fontWeight:800,color:$.L1}}>{current?.name || "هامور"}</div>
+        {isPremium ? (
+          <div style={{width:34,height:34,borderRadius:"50%",background:`${$.orange}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Crown size={16} color={$.orange}/>
+          </div>
+        ) : (
+          <button onClick={()=>go("settings")} style={{width:34,height:34,borderRadius:"50%",background:`linear-gradient(135deg,${$.blue},${$.purple})`,border:"none",cursor:"pointer"}}/>
+        )}
+      </div>
+
+      {/* الخلفية المعتمة */}
+      <div onClick={()=>setOpen(false)} style={{position:"fixed",inset:0,background:"rgba(11,19,32,0.45)",opacity:open?1:0,pointerEvents:open?"auto":"none",transition:".3s",zIndex:98}}/>
+
+      {/* الشريط الجانبي */}
+      <div className="no-print" style={{position:"fixed",top:0,bottom:0,right:0,width:"78%",maxWidth:290,background:$.surface,zIndex:99,transform:open?"translateX(0)":"translateX(100%)",transition:".35s cubic-bezier(.32,.72,0,1)",boxShadow:"-8px 0 24px rgba(0,0,0,0.12)",display:"flex",flexDirection:"column",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)"}}>
+
+        <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[4]}px`,borderBottom:`0.5px solid ${$.sepL}`,display:"flex",alignItems:"center",gap:sp[3]}}>
+          <div style={{width:46,height:46,borderRadius:14,background:`linear-gradient(135deg,${$.blue},${$.purple})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:17,fontWeight:800,flexShrink:0}}>
+            {(user?.email?.[0] || "ه").toUpperCase()}
+          </div>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:700,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email || "زائر"}</div>
+            <div style={{fontSize:11,color:isPremium?$.orange:$.L4,display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+              {isPremium && <Crown size={11}/>}
+              <span>{isPremium ? "مشترك · حسابك نشط" : "الباقة المجانية"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{flex:1,overflowY:"auto",padding:`${sp[3]}px`}}>
+          {NAV.map(n => {
+            const on = active === n.id;
+            return (
+              <button key={n.id} onClick={()=>go(n.id)} style={{width:"100%",display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[3]}px`,borderRadius:13,border:"none",cursor:"pointer",fontFamily:"inherit",background:on?`${$.blue}14`:"transparent",marginBottom:2}}>
+                <div style={{width:34,height:34,borderRadius:10,background:`${ICON_BG[n.id]}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <n.Icon size={16} color={ICON_BG[n.id]} strokeWidth={2.2}/>
+                </div>
+                <span style={{fontSize:14,fontWeight:on?700:500,color:on?$.blue:$.L1}}>{n.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{padding:`${sp[3]}px ${sp[4]}px`,borderTop:`0.5px solid ${$.sepL}`,display:"flex",flexDirection:"column",gap:sp[1]}}>
+          <button onClick={onToggleDark} style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[2]}px ${sp[3]}px`,borderRadius:11,border:"none",cursor:"pointer",fontFamily:"inherit",background:"transparent"}}>
+            {dark ? <Sun size={16} color={$.L3}/> : <Moon size={16} color={$.L3}/>}
+            <span style={{fontSize:12.5,fontWeight:500,color:$.L2}}>{dark?"الوضع النهاري":"الوضع الليلي"}</span>
           </button>
-        );
-      })}
-    </div>
+          <button onClick={()=>setOpen(false)} style={{width:"100%",padding:`${sp[2]}px`,background:$.F4,border:"none",borderRadius:11,fontFamily:"inherit",fontSize:12,fontWeight:600,color:$.L3,cursor:"pointer"}}>إغلاق</button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -2940,7 +3002,7 @@ export default function HamourApp() {
       <div className="_spark" style={{width:4,height:4,top:"78%",left:"80%",animation:"_float1 11s infinite"}}/>
       <div className="_spark" style={{width:5,height:5,top:"48%",left:"55%",animation:"_float2 8.5s infinite"}}/>
 
-      <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingBottom:screen.isDesktop?0:80}}>
+      <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingTop:screen.isDesktop?0:`calc(52px + env(safe-area-inset-top))`}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
@@ -2953,7 +3015,7 @@ export default function HamourApp() {
 
       {screen.isDesktop
         ? <SideNav active={tab} onChange={setTab} user={user} dark={dark} onToggleDark={toggleDark} isPremium={isPremium}/>
-        : <BottomNav active={tab} onChange={setTab} dark={dark} onToggleDark={toggleDark}/>}
+        : <HamburgerNav active={tab} onChange={setTab} user={user} isPremium={isPremium} dark={dark} onToggleDark={toggleDark}/>}
 
       <UpgradeSheet open={showUpgrade} onClose={()=>setShowUpgrade(false)} user={user} onActivated={handleActivated}/>
     </div>
