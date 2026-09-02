@@ -243,3 +243,74 @@ export async function saveAdvisorMessage(analysisId, userId, role, content) {
   });
   if (error) console.error("فشل حفظ رسالة المستشار:", error.message);
 }
+
+// ═══════════════════════════════════════════════════
+// خطة التنفيذ — إنجاز المهام
+// ═══════════════════════════════════════════════════
+
+export async function getDoneTasks(analysisId) {
+  const { data, error } = await supabase.from("advisor_tasks").select("phase_index,task_index").eq("analysis_id", analysisId);
+  if (error) return [];
+  return data;
+}
+
+export async function toggleTask(analysisId, userId, phaseIndex, taskIndex, taskText, done) {
+  if (done) {
+    const { error } = await supabase.from("advisor_tasks").insert({
+      analysis_id: analysisId, user_id: userId, phase_index: phaseIndex, task_index: taskIndex, task_text: taskText
+    });
+    if (error && !error.message.includes("duplicate")) throw new Error("فشل تحديث المهمة");
+  } else {
+    const { error } = await supabase.from("advisor_tasks").delete()
+      .eq("analysis_id", analysisId).eq("phase_index", phaseIndex).eq("task_index", taskIndex);
+    if (error) throw new Error("فشل تحديث المهمة");
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// المؤشرات المخصصة
+// ═══════════════════════════════════════════════════
+
+export async function getMetrics(analysisId) {
+  const { data, error } = await supabase.from("advisor_metrics").select("*, advisor_metric_entries(*)").eq("analysis_id", analysisId).order("created_at");
+  if (error) return [];
+  return data.map(m => ({ ...m, entries: (m.advisor_metric_entries||[]).sort((a,b)=>new Date(a.entry_date)-new Date(b.entry_date)) }));
+}
+
+export async function addMetric(analysisId, userId, name, unit) {
+  const { data, error } = await supabase.from("advisor_metrics").insert({ analysis_id: analysisId, user_id: userId, name, unit }).select().single();
+  if (error) throw new Error("فشل إضافة المؤشر");
+  return { ...data, entries: [] };
+}
+
+export async function addMetricEntry(metricId, userId, value) {
+  const { data, error } = await supabase.from("advisor_metric_entries").insert({ metric_id: metricId, user_id: userId, value }).select().single();
+  if (error) throw new Error("فشل حفظ القيمة");
+  return data;
+}
+
+export async function deleteMetric(metricId) {
+  const { error } = await supabase.from("advisor_metrics").delete().eq("id", metricId);
+  if (error) throw new Error("فشل حذف المؤشر");
+}
+
+// ═══════════════════════════════════════════════════
+// المستندات
+// ═══════════════════════════════════════════════════
+
+export async function getDocuments(analysisId) {
+  const { data, error } = await supabase.from("advisor_documents").select("*").eq("analysis_id", analysisId).order("created_at");
+  if (error) return [];
+  return data;
+}
+
+export async function addDocument(analysisId, userId, name) {
+  const { data, error } = await supabase.from("advisor_documents").insert({ analysis_id: analysisId, user_id: userId, name }).select().single();
+  if (error) throw new Error("فشل إضافة المستند");
+  return data;
+}
+
+export async function updateDocumentStatus(docId, status) {
+  const { error } = await supabase.from("advisor_documents").update({ status }).eq("id", docId);
+  if (error) throw new Error("فشل تحديث الحالة");
+}
