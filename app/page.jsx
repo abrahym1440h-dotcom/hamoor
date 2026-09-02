@@ -1077,7 +1077,7 @@ function AdvisorDashboard({result, user}) {
       <AdvisorIsland active={section} onChange={setSection}/>
 
       {section === "overview" && (
-        <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} monthlyTotal={monthlyTotal} budget={budget} budgetRemaining={budgetRemaining} progressPct={progressPct} totalProfit={totalProfit}/>
+        <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} monthlyTotal={monthlyTotal} budget={budget} budgetRemaining={budgetRemaining} progressPct={progressPct} totalProfit={totalProfit} onGoFinance={()=>setSection("finance")}/>
       )}
       {section === "finance" && (
         <FinanceSection result={result} entries={sortedEntries} user={user} analysisId={analysisId} onEntryAdded={(e)=>setEntries(prev=>[...prev,e])} budget={budget} totalSpent={totalSpent} budgetRemaining={budgetRemaining} budgetUsedPct={budgetUsedPct}/>
@@ -1113,36 +1113,45 @@ function AdvisorDashboard({result, user}) {
 }
 
 // ═══ نظرة عامة ═══
-function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, budget, budgetRemaining, progressPct, totalProfit}) {
+function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, budget, budgetRemaining, progressPct, totalProfit, onGoFinance}) {
   const delta = latest && prevEntry ? (latest.profit||0) - (prevEntry.profit||0) : null;
   const hasData = entries.length > 0;
 
   return (
     <div>
+      {!hasData && (
+        <div onClick={onGoFinance} style={{display:"flex",alignItems:"center",gap:sp[3],background:`${$.blue}0F`,border:`1px solid ${$.blue}30`,borderRadius:14,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3],cursor:"pointer"}}>
+          <div style={{width:32,height:32,borderRadius:10,background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <TrendingUp size={15} color={$.blue}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700,color:$.L1}}>ابدأ بإدخال أرقامك الفعلية</div>
+            <div style={{fontSize:10.5,color:$.L3,marginTop:1}}>البطاقات تحتك جاهزة، وتُملأ فور أول إدخال من "المالية"</div>
+          </div>
+          <ChevronRight size={16} color={$.blue} style={{transform:"scaleX(-1)",flexShrink:0}}/>
+        </div>
+      )}
+
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
-        <StatCard label="آخر ربح مسجّل" value={hasData?`${numWithCommas(latest?.profit||0)} ريال`:"—"} sub={hasData?fmtDate(latest.entry_date):"لا توجد إدخالات"} delta={delta} deltaGoodUp/>
-        <StatCard label="إجمالي الربح المسجّل" value={hasData?`${numWithCommas(totalProfit)} ريال`:"—"} sub={`${entries.length} إدخال`}/>
+        <StatCard label="آخر ربح مسجّل" value={hasData?`${numWithCommas(latest?.profit||0)} ريال`:"٠ ريال"} sub={hasData?fmtDate(latest.entry_date):"بانتظار أول إدخال"} delta={delta} deltaGoodUp empty={!hasData}/>
+        <StatCard label="إجمالي الربح المسجّل" value={hasData?`${numWithCommas(totalProfit)} ريال`:"٠ ريال"} sub={hasData?`${entries.length} إدخال`:"بانتظار أول إدخال"} empty={!hasData}/>
         <StatCard label="الميزانية المتبقية" value={`${numWithCommas(budgetRemaining)} ريال`} sub={`من ${numWithCommas(budget)}`}/>
-        <StatCard label="إنجاز خطة التنفيذ" value={`${progressPct}%`} sub="من المهام"/>
+        <StatCard label="إنجاز خطة التنفيذ" value={`${progressPct}%`} sub="من المهام" empty={progressPct===0}/>
       </div>
 
       <Card style={{padding:sp[5]}}>
         <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>الربح عبر الزمن</div>
-        {!hasData ? (
-          <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:sp[6]}}>أضف أول إدخال مالي من قسم "المالية" ليظهر هنا</div>
-        ) : (
-          <MiniLineChart values={entries.map(e=>e.profit||0)} color={$.blue}/>
-        )}
+        <MiniLineChart values={entries.map(e=>e.profit||0)} color={$.blue}/>
       </Card>
     </div>
   );
 }
 
-function StatCard({label, value, sub, delta, deltaGoodUp=true}) {
+function StatCard({label, value, sub, delta, deltaGoodUp=true, empty=false}) {
   return (
-    <Card style={{padding:`${sp[4]}px ${sp[4]}px`}}>
+    <Card style={{padding:`${sp[4]}px ${sp[4]}px`,opacity:empty?0.55:1}}>
       <div style={{fontSize:10.5,color:$.L4,marginBottom:sp[2]}}>{label}</div>
-      <div style={{fontSize:18,fontWeight:600,color:$.L1,fontFamily:"inherit"}}>{value}</div>
+      <div style={{fontSize:18,fontWeight:600,color:empty?$.L4:$.L1,fontFamily:"inherit"}}>{value}</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}>
         <div style={{fontSize:9.5,color:$.L4}}>{sub}</div>
         {delta !== null && delta !== undefined && (
@@ -1156,12 +1165,26 @@ function StatCard({label, value, sub, delta, deltaGoodUp=true}) {
 }
 
 function MiniLineChart({values, color}) {
-  if (values.length === 0) return null;
-  if (values.length === 1) return <div style={{fontSize:12,color:$.L4}}>إدخال واحد فقط — أضف المزيد لعرض الاتجاه</div>;
+  const w = 300, h = 90;
+  if (values.length < 2) {
+    // هيكل رسم بياني ثابت حتى بدون بيانات كافية — خط متوسط منقّط بدل فراغ كامل
+    return (
+      <div style={{position:"relative"}}>
+        <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:100,opacity:0.35}}>
+          <line x1="0" y1={h/2} x2={w} y2={h/2} stroke={$.L4} strokeWidth="1.5" strokeDasharray="5 5"/>
+          {values.length===1 && <circle cx={w/2} cy={h/2} r="4" fill={color}/>}
+        </svg>
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`}}>
+            {values.length===0 ? "الرسم يظهر بعد أول إدخالين" : "أضف إدخالاً آخر ليظهر الاتجاه"}
+          </div>
+        </div>
+      </div>
+    );
+  }
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = max - min || 1;
-  const w = 300, h = 90;
   const pts = values.map((v,i) => `${(i/(values.length-1))*w},${h - ((v-min)/range)*h}`).join(" ");
   return (
     <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:100}}>
@@ -1229,7 +1252,13 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
 
       <Card style={{padding:0,overflow:"hidden"}}>
         <div style={{padding:`${sp[3]}px ${sp[5]}px`,fontSize:12,fontWeight:700,color:$.L1,borderBottom:`1px solid ${$.sepL}`}}>سجل الإدخالات</div>
-        {entries.length===0 ? <div style={{padding:sp[5],textAlign:"center",fontSize:12,color:$.L4}}>لا توجد إدخالات بعد</div> :
+        {entries.length===0 ? (
+          <div style={{padding:`${sp[6]}px ${sp[5]}px`,textAlign:"center"}}>
+            <TrendingUp size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
+            <div style={{fontSize:12,color:$.L3}}>لسا ما أضفت أي إدخال</div>
+            <div style={{fontSize:10.5,color:$.L4,marginTop:2}}>استخدم النموذج فوق لتسجيل أول رقم فعلي</div>
+          </div>
+        ) :
          [...entries].reverse().map(e=>(
           <div key={e.id} style={{display:"flex",justifyContent:"space-between",padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
             <div style={{fontSize:11,color:$.L4}}>{fmtDate(e.entry_date)}{e.note?` · ${e.note}`:""}</div>
@@ -1244,7 +1273,13 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
 // ═══ خطة التنفيذ ═══
 function ProgressSection({actionPlan, doneSet, onToggle}) {
   if (!actionPlan || actionPlan.length===0) {
-    return <Card style={{padding:sp[6],textAlign:"center"}}><div style={{fontSize:12,color:$.L4}}>لا توجد خطة تنفيذية محفوظة لهذا التحليل</div></Card>;
+    return (
+      <Card style={{padding:sp[7],textAlign:"center"}}>
+        <CheckCircle size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
+        <div style={{fontSize:12,color:$.L3}}>لا توجد خطة تنفيذية محفوظة لهذا التحليل</div>
+        <div style={{fontSize:10.5,color:$.L4,marginTop:2}}>الخطة تُنشأ تلقائياً مع التحليلات الجديدة</div>
+      </Card>
+    );
   }
   return (
     <Card style={{padding:sp[5]}}>
@@ -1345,34 +1380,39 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
 // ═══ المقارنات ═══
 function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
   const hasComparison = latest && prevEntry;
+  const needMore = 2 - entries.length;
+
   return (
     <div>
       <Card style={{padding:sp[5],marginBottom:sp[3]}}>
-        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>هذا الإدخال مقابل السابق</div>
-        {!hasComparison ? (
-          <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:sp[5]}}>يحتاج إدخالين على الأقل للمقارنة</div>
-        ) : (
-          [["الإيراد","revenue"],["المصروفات","expenses"],["الربح","profit"]].map(([lbl,key])=>{
-            const cur = latest[key]||0, old = prevEntry[key]||0;
-            const diff = cur-old;
-            const pct = old!==0 ? Math.round((diff/Math.abs(old))*100) : null;
-            return (
-              <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`}}>
-                <div style={{fontSize:12,color:$.L2}}>{lbl}</div>
-                <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
-                  <span style={{fontSize:11,color:$.L4}}>{numWithCommas(old)} ← {numWithCommas(cur)}</span>
-                  {pct!==null && <span style={{fontSize:10,fontWeight:700,color:diff>=0?$.green:$.red}}>{diff>=0?"+":""}{pct}%</span>}
-                </div>
-              </div>
-            );
-          })
+        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>هذا الإدخال مقابل السابق</div>
+        {!hasComparison && (
+          <div style={{fontSize:10.5,color:$.blue,marginBottom:sp[3]}}>
+            {needMore>0 ? `يحتاج ${needMore} إدخال${needMore>1?"ات":""} إضافي${needMore>1?"ة":""} من "المالية"` : "جاهز — سيظهر بعد الإدخال التالي"}
+          </div>
         )}
+        {["الإيراد","المصروفات","الربح"].map((lbl,i)=>{
+          const key = ["revenue","expenses","profit"][i];
+          const cur = hasComparison ? (latest[key]||0) : 0;
+          const old = hasComparison ? (prevEntry[key]||0) : 0;
+          const diff = cur-old;
+          const pct = hasComparison && old!==0 ? Math.round((diff/Math.abs(old))*100) : null;
+          return (
+            <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`,opacity:hasComparison?1:0.45}}>
+              <div style={{fontSize:12,color:$.L2}}>{lbl}</div>
+              <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                <span style={{fontSize:11,color:$.L4}}>{hasComparison?`${numWithCommas(old)} ← ${numWithCommas(cur)}`:"— ← —"}</span>
+                {pct!==null && <span style={{fontSize:10,fontWeight:700,color:diff>=0?$.green:$.red}}>{diff>=0?"+":""}{pct}%</span>}
+              </div>
+            </div>
+          );
+        })}
       </Card>
 
       <Card style={{padding:sp[5]}}>
         <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>الإنفاق مقابل التأسيس المقدّر</div>
         <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2]}}>
-          <div style={{height:"100%",width:`${setupTotal>0?Math.min(100,(totalSpent/setupTotal)*100):0}%`,background:totalSpent>setupTotal?$.red:$.blue,borderRadius:99}}/>
+          <div style={{height:"100%",width:`${setupTotal>0?Math.min(100,(totalSpent/setupTotal)*100):0}%`,background:totalSpent>setupTotal?$.red:$.blue,borderRadius:99,transition:".3s"}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:$.L4}}>
           <span>أنفقت: {numWithCommas(totalSpent)}</span>
@@ -1398,7 +1438,13 @@ function DocsSection({documents, onAdd, onStatusChange}) {
   return (
     <div>
       <Card style={{padding:0,overflow:"hidden",marginBottom:sp[3]}}>
-        {documents.length===0 ? <div style={{padding:sp[6],textAlign:"center",fontSize:12,color:$.L4}}>لا توجد مستندات مضافة</div> :
+        {documents.length===0 ? (
+          <div style={{padding:`${sp[6]}px ${sp[5]}px`,textAlign:"center"}}>
+            <FileText size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
+            <div style={{fontSize:12,color:$.L3,marginBottom:sp[1]}}>لا توجد مستندات بعد</div>
+            <div style={{fontSize:10.5,color:$.L4}}>مثال: عقد الإيجار، السجل التجاري، الرخصة البلدية</div>
+          </div>
+        ) :
          documents.map(d=>(
           <div key={d.id} style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
             <FileText size={16} color={$.L4}/>
@@ -1482,7 +1528,13 @@ function LogSection({entries, messages, documents, metrics}) {
     ...metrics.flatMap(m=>m.entries.map(e=>({date:e.created_at, text:`${m.name}: ${numWithCommas(e.value)}`, color:$.purple})))
   ].filter(e=>e.date).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  if (events.length===0) return <Card style={{padding:sp[6],textAlign:"center"}}><div style={{fontSize:12,color:$.L4}}>لا يوجد نشاط مسجّل بعد</div></Card>;
+  if (events.length===0) return (
+    <Card style={{padding:sp[7],textAlign:"center"}}>
+      <Clock size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
+      <div style={{fontSize:12,color:$.L3}}>لا يوجد نشاط مسجّل بعد</div>
+      <div style={{fontSize:10.5,color:$.L4,marginTop:2}}>كل إدخال أو مستند أو مؤشر يظهر هنا تلقائياً بالترتيب الزمني</div>
+    </Card>
+  );
 
   return (
     <Card style={{padding:sp[5]}}>
