@@ -986,6 +986,14 @@ const TABS=["نظرة عامة","تحليل السوق","التحليل الما
 // المستشار — لوحة كاملة: جزيرة تنقّل + 8 أقسام + بيانات حقيقية
 // ═══════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════
+// المستشار — نقل حرفي لتصميم المعاينة (advisor-v2) بألوان هامور
+// ═══════════════════════════════════════════════════════════
+
+const numFont = {fontFamily:"'Inter','IBM Plex Sans Arabic',sans-serif", fontVariantNumeric:"tabular-nums"};
+const AD_SHADOW_SM = "0 1px 2px rgba(11,19,32,0.04), 0 6px 14px -6px rgba(11,19,32,0.08)";
+const AD_SHADOW = "0 1px 2px rgba(11,19,32,0.04), 0 14px 32px -14px rgba(11,19,32,0.12)";
+
 const ADVISOR_SECTIONS = [
   {id:"overview", name:"نظرة عامة", Icon:Grid},
   {id:"finance", name:"المالية", Icon:TrendingUp},
@@ -997,15 +1005,36 @@ const ADVISOR_SECTIONS = [
   {id:"log", name:"السجل", Icon:Clock}
 ];
 
+function AdvisorHeader({result, aiScore}) {
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[4],flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"center",gap:sp[2],flex:1,minWidth:0}}>
+        <div style={{width:28,height:28,borderRadius:9,border:`1.3px solid ${$.blue}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <Sparkles size={13} color={$.blue}/>
+        </div>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{result?.idea || "مشروعك"}</div>
+          <div style={{fontSize:9.5,color:$.L4,fontWeight:300}}>{result?.city || ""}</div>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:99,background:$.surface,boxShadow:AD_SHADOW_SM,fontSize:10.5,color:$.L3,flexShrink:0}}>
+        <span style={{width:5,height:5,borderRadius:"50%",background:$.green,animation:"advPulse 2.4s infinite"}}/>
+        مؤشر الذكاء الاصطناعي <b style={{...numFont,color:$.blue,fontWeight:600}}>{aiScore}</b>
+      </div>
+      <style>{`@keyframes advPulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+    </div>
+  );
+}
+
 function AdvisorIsland({active, onChange}) {
   return (
-    <div style={{display:"flex",justifyContent:"center",marginBottom:sp[3]}}>
-      <div style={{display:"flex",gap:2,background:$.surface,borderRadius:99,padding:4,boxShadow:SH.card,overflowX:"auto",maxWidth:"100%"}}>
+    <div style={{display:"flex",justifyContent:"center",marginBottom:sp[4]}}>
+      <div style={{display:"flex",gap:2,background:$.surface,borderRadius:99,padding:4,boxShadow:AD_SHADOW_SM,overflowX:"auto",maxWidth:"100%"}}>
         {ADVISOR_SECTIONS.map(s => {
           const on = active === s.id;
           return (
-            <button key={s.id} onClick={()=>onChange(s.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"8px 13px",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:on?700:400,whiteSpace:"nowrap",flexShrink:0,background:on?$.blue:"transparent",color:on?"#fff":$.L4,transition:".2s"}}>
-              <s.Icon size={13} strokeWidth={2}/>{s.name}
+            <button key={s.id} onClick={()=>onChange(s.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 15px",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11.5,fontWeight:on?600:400,whiteSpace:"nowrap",flexShrink:0,background:on?$.blue:"transparent",color:on?"#fff":$.L4,transition:".2s"}}>
+              <s.Icon size={13.5} strokeWidth={1.8} style={{opacity:on?1:0.75}}/>{s.name}
             </button>
           );
         })}
@@ -1015,7 +1044,7 @@ function AdvisorIsland({active, onChange}) {
 }
 
 function fmtDate(d) {
-  try { return new Date(d).toLocaleDateString ? new Date(d).toISOString().split("T")[0] : d; } catch(e) { return d; }
+  try { return new Date(d).toISOString().split("T")[0]; } catch(e) { return d; }
 }
 
 function AdvisorDashboard({result, user}) {
@@ -1038,18 +1067,14 @@ function AdvisorDashboard({result, user}) {
     (async () => {
       try {
         const [e, t, m, d, msg] = await Promise.all([
-          getFinanceEntries(analysisId),
-          getDoneTasks(analysisId),
-          getMetrics(analysisId),
-          getDocuments(analysisId),
-          getAdvisorMessages(analysisId)
+          getFinanceEntries(analysisId), getDoneTasks(analysisId), getMetrics(analysisId),
+          getDocuments(analysisId), getAdvisorMessages(analysisId)
         ]);
         setEntries(e); setDoneTasks(t); setMetrics(m); setDocuments(d); setMessages(msg);
       } catch(err) {} finally { setLoading(false); }
     })();
   }, [analysisId]);
 
-  // ═══ حسابات مشتقّة من الإدخالات الفعلية ═══
   const sortedEntries = [...entries].sort((a,b)=>new Date(a.entry_date)-new Date(b.entry_date));
   const latest = sortedEntries[sortedEntries.length-1];
   const prevEntry = sortedEntries[sortedEntries.length-2];
@@ -1065,22 +1090,33 @@ function AdvisorDashboard({result, user}) {
   const doneCount = doneTasks.length;
   const progressPct = totalTasks>0 ? Math.round((doneCount/totalTasks)*100) : 0;
 
-  if (!user) {
-    return <div style={{padding:sp[8],textAlign:"center",fontSize:13,color:$.L3}}>سجّل الدخول لاستخدام المستشار</div>;
-  }
-  if (loading) {
-    return <div style={{padding:sp[8],textAlign:"center"}}><Spinner sz={20}/></div>;
-  }
+  const risks = result?.risk_analysis || [];
+  const riskScoreMap = {"منخفض":1,"طفيف":1,"متوسط":2,"عالي":3,"شديد":3};
+  const riskAvg = risks.length>0
+    ? risks.reduce((s,r)=>s+((riskScoreMap[r.probability]||2)+(riskScoreMap[r.impact]||2))/2,0)/risks.length
+    : 2;
+  const riskPct = Math.round((riskAvg/3)*100);
+
+  const liquidityPct = budget>0 ? Math.max(0,Math.min(100,Math.round((budgetRemaining/budget)*100))) : 50;
+  const aiScore = Math.round((liquidityPct*0.35) + (progressPct*0.35) + ((100-riskPct)*0.3));
+
+  if (!user) return <div style={{padding:sp[8],textAlign:"center",fontSize:13,color:$.L3}}>سجّل الدخول لاستخدام المستشار</div>;
+  if (loading) return <div style={{padding:sp[8],textAlign:"center"}}><Spinner sz={20}/></div>;
 
   return (
     <div>
+      <AdvisorHeader result={result} aiScore={aiScore}/>
       <AdvisorIsland active={section} onChange={setSection}/>
 
       {section === "overview" && (
-        <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} monthlyTotal={monthlyTotal} budget={budget} budgetRemaining={budgetRemaining} progressPct={progressPct} totalProfit={totalProfit} onGoFinance={()=>setSection("finance")}/>
+        <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} monthlyTotal={monthlyTotal}
+          budget={budget} budgetRemaining={budgetRemaining} progressPct={progressPct} totalProfit={totalProfit} totalRevenue={totalRevenue}
+          totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa}
+          onGoFinance={()=>setSection("finance")}/>
       )}
       {section === "finance" && (
-        <FinanceSection result={result} entries={sortedEntries} user={user} analysisId={analysisId} onEntryAdded={(e)=>setEntries(prev=>[...prev,e])} budget={budget} totalSpent={totalSpent} budgetRemaining={budgetRemaining} budgetUsedPct={budgetUsedPct}/>
+        <FinanceSection result={result} entries={sortedEntries} user={user} analysisId={analysisId} onEntryAdded={(e)=>setEntries(prev=>[...prev,e])}
+          budget={budget} totalSpent={totalSpent} budgetRemaining={budgetRemaining} budgetUsedPct={budgetUsedPct} monthlyTotal={monthlyTotal}/>
       )}
       {section === "progress" && (
         <ProgressSection actionPlan={actionPlan} doneSet={doneSet} analysisId={analysisId} user={user} onToggle={async (pi,ti,text,val)=>{
@@ -1112,10 +1148,33 @@ function AdvisorDashboard({result, user}) {
   );
 }
 
-// ═══ نظرة عامة ═══
-function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, budget, budgetRemaining, progressPct, totalProfit, onGoFinance}) {
+// ═══════════════ نظرة عامة ═══════════════
+function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, budget, budgetRemaining, progressPct, totalProfit, totalRevenue, totalSpent, liquidityPct, riskPct, fa, onGoFinance}) {
   const delta = latest && prevEntry ? (latest.profit||0) - (prevEntry.profit||0) : null;
   const hasData = entries.length > 0;
+
+  const sc = fa.setup_costs || {};
+  const donutItems = [
+    {label:"معدات وتجهيز", value:sc.equipment||0, color:$.blue},
+    {label:"رأس مال تشغيلي", value:sc.working_capital||0, color:$.green},
+    {label:"تسويق الإطلاق", value:sc.marketing_launch||0, color:$.purple},
+    {label:"ضمان الإيجار", value:sc.rent_deposit||0, color:$.orange},
+    {label:"أخرى", value:(sc.licenses||0)+(sc.initial_inventory||0)+(sc.renovation||0), color:$.L4}
+  ].filter(d=>d.value>0);
+  const donutTotal = donutItems.reduce((s,d)=>s+d.value,0);
+
+  const insights = [];
+  if (hasData) {
+    if (delta !== null) {
+      insights.push({type: delta>=0?"tip":"risk", text: delta>=0
+        ? `ربحك تحسّن ${numWithCommas(Math.abs(delta))} ريال عن الإدخال السابق.`
+        : `ربحك انخفض ${numWithCommas(Math.abs(delta))} ريال عن الإدخال السابق — راجع المصروفات مع المستشار.`});
+    }
+    const usedPct = budget>0 ? (totalSpent/budget)*100 : 0;
+    if (usedPct > 80) insights.push({type:"risk", text:`استهلكت ${Math.round(usedPct)}% من ميزانيتك — راقب الإنفاق المتبقي.`});
+    else if (usedPct > 0) insights.push({type:"predict", text:`بمعدّل إنفاقك الحالي، ميزانيتك تكفي لفترة إضافية معقولة قبل نفادها.`});
+  }
+  if (riskPct >= 60) insights.push({type:"risk", text:"مستوى المخاطر المقدّرة لمشروعك مرتفع نسبياً — راجع قسم المخاطر في تحليلك الأصلي."});
 
   return (
     <div>
@@ -1125,37 +1184,74 @@ function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, 
             <TrendingUp size={15} color={$.blue}/>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:12,fontWeight:700,color:$.L1}}>ابدأ بإدخال أرقامك الفعلية</div>
-            <div style={{fontSize:10.5,color:$.L3,marginTop:1}}>البطاقات تحتك جاهزة، وتُملأ فور أول إدخال من "المالية"</div>
+            <div style={{fontSize:12,fontWeight:600,color:$.L1}}>ابدأ بإدخال أرقامك الفعلية</div>
+            <div style={{fontSize:10.5,color:$.L3,marginTop:1,fontWeight:300}}>البطاقات تحتك جاهزة، وتُملأ فور أول إدخال من "المالية"</div>
           </div>
           <ChevronRight size={16} color={$.blue} style={{transform:"scaleX(-1)",flexShrink:0}}/>
         </div>
       )}
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
-        <StatCard label="آخر ربح مسجّل" value={hasData?`${numWithCommas(latest?.profit||0)} ريال`:"٠ ريال"} sub={hasData?fmtDate(latest.entry_date):"بانتظار أول إدخال"} delta={delta} deltaGoodUp empty={!hasData}/>
-        <StatCard label="إجمالي الربح المسجّل" value={hasData?`${numWithCommas(totalProfit)} ريال`:"٠ ريال"} sub={hasData?`${entries.length} إدخال`:"بانتظار أول إدخال"} empty={!hasData}/>
-        <StatCard label="الميزانية المتبقية" value={`${numWithCommas(budgetRemaining)} ريال`} sub={`من ${numWithCommas(budget)}`}/>
-        <StatCard label="إنجاز خطة التنفيذ" value={`${progressPct}%`} sub="من المهام" empty={progressPct===0}/>
+        <StatCard label="آخر ربح مسجّل" value={hasData?`${numWithCommas(latest?.profit||0)}`:"٠"} unit="ريال" sub={hasData?fmtDate(latest.entry_date):"بانتظار أول إدخال"} delta={delta} deltaGoodUp empty={!hasData}/>
+        <StatCard label="إجمالي الإيراد" value={hasData?`${numWithCommas(totalRevenue)}`:"٠"} unit="ريال" sub={hasData?`${entries.length} إدخال`:"بانتظار أول إدخال"} empty={!hasData}/>
+        <StatCard label="الميزانية المتبقية" value={numWithCommas(budgetRemaining)} unit="ريال" sub={`من ${numWithCommas(budget)}`}/>
+        <StatCard label="إنجاز خطة التنفيذ" value={`${progressPct}`} unit="%" sub="من المهام" empty={progressPct===0}/>
       </div>
 
-      <Card style={{padding:sp[5]}}>
-        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>الربح عبر الزمن</div>
+      <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
+        <div style={{display:"flex",gap:14,marginBottom:sp[3]}}>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1}}>الربح عبر الزمن</div>
+        </div>
         <MiniLineChart values={entries.map(e=>e.profit||0)} color={$.blue}/>
+      </Card>
+
+      <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
+        <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>توزيع الميزانية</div>
+          {donutTotal===0 ? (
+            <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[6]}px 0`}}>بيانات التأسيس غير متوفرة في هذا التحليل</div>
+          ) : (
+            <BudgetDonut items={donutItems} total={donutTotal}/>
+          )}
+        </Card>
+
+        <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>صحة المشروع</div>
+          <HealthRow icon={<TrendingUp size={14}/>} label="السيولة المالية" pct={liquidityPct} good={liquidityPct>=50}/>
+          <HealthRow icon={<CheckCircle size={14}/>} label="الالتزام بالخطة" pct={progressPct} good={progressPct>=40}/>
+          <HealthRow icon={<AlertTriangle size={14}/>} label="مخاطر السوق" pct={100-riskPct} good={riskPct<50} invert/>
+        </Card>
+      </div>
+
+      <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
+        <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>رؤى مبنية على أرقامك</div>
+        {insights.length===0 ? (
+          <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[5]}px 0`}}>تظهر رؤى تلقائية هنا بعد أول إدخال مالي</div>
+        ) : insights.map((ins,i)=>{
+          const cfg = {predict:{bg:`${$.purple}14`,color:$.purple,label:"توقّع"}, tip:{bg:`${$.green}14`,color:$.green,label:"إيجابي"}, risk:{bg:`${$.red}14`,color:$.red,label:"تنبيه"}}[ins.type];
+          return (
+            <div key={i} style={{display:"flex",gap:sp[3],padding:`${sp[2]}px 0`,borderTop:i>0?`1px solid ${$.sepL}`:"none"}}>
+              <span style={{fontSize:9,fontWeight:600,padding:"3px 9px",borderRadius:20,background:cfg.bg,color:cfg.color,flexShrink:0,height:"fit-content"}}>{cfg.label}</span>
+              <span style={{fontSize:11.5,color:$.L2,lineHeight:1.75,fontWeight:300}}>{ins.text}</span>
+            </div>
+          );
+        })}
       </Card>
     </div>
   );
 }
 
-function StatCard({label, value, sub, delta, deltaGoodUp=true, empty=false}) {
+function StatCard({label, value, unit, sub, delta, deltaGoodUp=true, empty=false}) {
   return (
-    <Card style={{padding:`${sp[4]}px ${sp[4]}px`,opacity:empty?0.55:1}}>
-      <div style={{fontSize:10.5,color:$.L4,marginBottom:sp[2]}}>{label}</div>
-      <div style={{fontSize:18,fontWeight:600,color:empty?$.L4:$.L1,fontFamily:"inherit"}}>{value}</div>
+    <Card style={{padding:`${sp[4]}px ${sp[4]}px`,opacity:empty?0.55:1,boxShadow:AD_SHADOW_SM}}>
+      <div style={{fontSize:10,color:$.L3,marginBottom:sp[2],fontWeight:400}}>{label}</div>
+      <div style={{...numFont,fontSize:19,fontWeight:500,color:empty?$.L4:$.L1,letterSpacing:"-.2px"}}>
+        {value}{unit && <span style={{fontSize:11,fontWeight:400,color:$.L4}}> {unit}</span>}
+      </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}>
-        <div style={{fontSize:9.5,color:$.L4}}>{sub}</div>
+        <div style={{fontSize:9,color:$.L4,fontWeight:300}}>{sub}</div>
         {delta !== null && delta !== undefined && (
-          <div style={{fontSize:9.5,fontWeight:700,color:(delta>=0)===deltaGoodUp?$.green:$.red}}>
+          <div style={{...numFont,fontSize:9.5,fontWeight:600,color:(delta>=0)===deltaGoodUp?$.green:$.red}}>
             {delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}
           </div>
         )}
@@ -1164,10 +1260,54 @@ function StatCard({label, value, sub, delta, deltaGoodUp=true, empty=false}) {
   );
 }
 
+function HealthRow({icon, label, pct, good, invert=false}) {
+  const color = good ? $.green : $.red;
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[2]}px 0`}}>
+      <div style={{width:30,height:30,borderRadius:9,background:good?`${$.green}14`:`${$.red}14`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color}}>{icon}</div>
+      <div style={{flex:1}}>
+        <div style={{fontSize:11,fontWeight:400,color:$.L1,marginBottom:4}}>{label}</div>
+        <div style={{height:5,background:$.F3,borderRadius:99,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${Math.max(4,pct)}%`,background:color,borderRadius:99,transition:".3s"}}/>
+        </div>
+      </div>
+      <div style={{...numFont,fontSize:10,fontWeight:600,color,flexShrink:0}}>{good?"جيد":"راجعها"}</div>
+    </div>
+  );
+}
+
+function BudgetDonut({items, total}) {
+  let cum = 0;
+  const stops = items.map(it => {
+    const pct = (it.value/total)*100;
+    const s = `${it.color} ${cum}% ${cum+pct}%`;
+    cum += pct;
+    return s;
+  }).join(", ");
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+      <div style={{width:96,height:96,borderRadius:"50%",flexShrink:0,background:`conic-gradient(${stops})`,position:"relative"}}>
+        <div style={{position:"absolute",inset:16,background:$.surface,borderRadius:"50%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+          <b style={{...numFont,fontSize:13,fontWeight:600,color:$.L1}}>{total>=1000?`${Math.round(total/1000)}K`:total}</b>
+          <span style={{fontSize:8,color:$.L4}}>ريال</span>
+        </div>
+      </div>
+      <div style={{flex:1}}>
+        {items.map((it,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 0",fontSize:10.5}}>
+            <span style={{width:7,height:7,borderRadius:3,background:it.color,flexShrink:0}}/>
+            <span style={{flex:1,color:$.L2,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.label}</span>
+            <span style={{...numFont,fontWeight:600,color:$.L1}}>{Math.round((it.value/total)*100)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MiniLineChart({values, color}) {
   const w = 300, h = 90;
   if (values.length < 2) {
-    // هيكل رسم بياني ثابت حتى بدون بيانات كافية — خط متوسط منقّط بدل فراغ كامل
     return (
       <div style={{position:"relative"}}>
         <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:100,opacity:0.35}}>
@@ -1175,19 +1315,20 @@ function MiniLineChart({values, color}) {
           {values.length===1 && <circle cx={w/2} cy={h/2} r="4" fill={color}/>}
         </svg>
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`}}>
+          <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`,fontWeight:300}}>
             {values.length===0 ? "الرسم يظهر بعد أول إدخالين" : "أضف إدخالاً آخر ليظهر الاتجاه"}
           </div>
         </div>
       </div>
     );
   }
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = max - min || 1;
+  const max = Math.max(...values, 1), min = Math.min(...values, 0), range = max-min || 1;
   const pts = values.map((v,i) => `${(i/(values.length-1))*w},${h - ((v-min)/range)*h}`).join(" ");
+  const areaPts = `0,${h} ${pts} ${w},${h}`;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:100}}>
+      <defs><linearGradient id="advGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.22"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+      <polygon points={areaPts} fill="url(#advGrad)"/>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       {values.map((v,i) => {
         const x = (i/(values.length-1))*w, y = h - ((v-min)/range)*h;
@@ -1197,8 +1338,8 @@ function MiniLineChart({values, color}) {
   );
 }
 
-// ═══ المالية ═══
-function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget, totalSpent, budgetRemaining, budgetUsedPct}) {
+// ═══════════════ المالية ═══════════════
+function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal}) {
   const [showForm, setShowForm] = useState(false);
   const [revenue, setRevenue] = useState(""); const [expenses, setExpenses] = useState("");
   const [profit, setProfit] = useState(""); const [cashBalance, setCashBalance] = useState("");
@@ -1222,14 +1363,27 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
 
   return (
     <div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
-        <StatCard label="مصروف من الميزانية" value={`${budgetUsedPct}%`} sub={`${numWithCommas(totalSpent)} من ${numWithCommas(budget)}`}/>
-        <StatCard label="الميزانية المتبقية" value={`${numWithCommas(budgetRemaining)} ريال`} sub=" "/>
+      <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:sp[3],marginBottom:sp[3]}}>
+        <Card style={{padding:sp[4],display:"flex",alignItems:"center",gap:14,boxShadow:AD_SHADOW_SM}}>
+          <div style={{width:64,height:64,borderRadius:"50%",flexShrink:0,background:`conic-gradient(${$.blue} 0% ${budgetUsedPct}%, ${$.F3} ${budgetUsedPct}% 100%)`,position:"relative"}}>
+            <div style={{position:"absolute",inset:9,background:$.surface,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <b style={{...numFont,fontSize:12,fontWeight:600,color:$.L1}}>{budgetUsedPct}%</b>
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:10,color:$.L4}}>الميزانية المتبقية</div>
+            <div style={{...numFont,fontSize:15,fontWeight:500,color:$.L1,marginTop:2}}>{numWithCommas(budgetRemaining)}</div>
+          </div>
+        </Card>
+        <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
+          <div style={{fontSize:10,color:$.L4,marginBottom:6}}>معدّل الحرق الشهري المقدّر</div>
+          <div style={{...numFont,fontSize:16,fontWeight:500,color:$.L1}}>{numWithCommas(monthlyTotal)} <span style={{fontSize:10,color:$.L4,fontWeight:400}}>ريال/شهر</span></div>
+        </Card>
       </div>
 
-      <Card style={{padding:sp[5],marginBottom:sp[3]}}>
+      <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[3]}}>
-          <div style={{fontSize:13,fontWeight:700,color:$.L1}}>إدخال جديد</div>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1}}>إدخال جديد</div>
           <button onClick={()=>setShowForm(!showForm)} style={{background:$.F4,border:"none",borderRadius:99,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Plus size={15} color={$.blue} style={{transform:showForm?"rotate(45deg)":"none",transition:".2s"}}/>
           </button>
@@ -1245,24 +1399,23 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
               ))}
             </div>
             <input value={note} onChange={e=>setNote(e.target.value.substring(0,150))} placeholder="ملاحظة (اختياري)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
-            <button onClick={save} disabled={saving} style={{width:"100%",background:$.blue,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>{saving?<Spinner sz={14}/>:"حفظ"}</button>
+            <button onClick={save} disabled={saving} style={{width:"100%",background:$.blue,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>{saving?<Spinner sz={14}/>:"حفظ"}</button>
           </div>
         )}
       </Card>
 
-      <Card style={{padding:0,overflow:"hidden"}}>
-        <div style={{padding:`${sp[3]}px ${sp[5]}px`,fontSize:12,fontWeight:700,color:$.L1,borderBottom:`1px solid ${$.sepL}`}}>سجل الإدخالات</div>
+      <Card style={{padding:0,overflow:"hidden",boxShadow:AD_SHADOW}}>
+        <div style={{padding:`${sp[3]}px ${sp[5]}px`,fontSize:12,fontWeight:600,color:$.L1,borderBottom:`1px solid ${$.sepL}`}}>سجل الإدخالات</div>
         {entries.length===0 ? (
           <div style={{padding:`${sp[6]}px ${sp[5]}px`,textAlign:"center"}}>
             <TrendingUp size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
             <div style={{fontSize:12,color:$.L3}}>لسا ما أضفت أي إدخال</div>
-            <div style={{fontSize:10.5,color:$.L4,marginTop:2}}>استخدم النموذج فوق لتسجيل أول رقم فعلي</div>
+            <div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>استخدم النموذج فوق لتسجيل أول رقم فعلي</div>
           </div>
-        ) :
-         [...entries].reverse().map(e=>(
+        ) : [...entries].reverse().map(e=>(
           <div key={e.id} style={{display:"flex",justifyContent:"space-between",padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
-            <div style={{fontSize:11,color:$.L4}}>{fmtDate(e.entry_date)}{e.note?` · ${e.note}`:""}</div>
-            <div style={{fontSize:13,fontWeight:700,color:(e.profit||0)>=0?$.green:$.red}}>{(e.profit||0)>=0?"+":""}{numWithCommas(e.profit||0)}</div>
+            <div style={{fontSize:11,color:$.L4,fontWeight:300}}>{fmtDate(e.entry_date)}{e.note?` · ${e.note}`:""}</div>
+            <div style={{...numFont,fontSize:13,fontWeight:600,color:(e.profit||0)>=0?$.green:$.red}}>{(e.profit||0)>=0?"+":""}{numWithCommas(e.profit||0)}</div>
           </div>
         ))}
       </Card>
@@ -1270,19 +1423,19 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
   );
 }
 
-// ═══ خطة التنفيذ ═══
+// ═══════════════ خطة التنفيذ ═══════════════
 function ProgressSection({actionPlan, doneSet, onToggle}) {
   if (!actionPlan || actionPlan.length===0) {
     return (
-      <Card style={{padding:sp[7],textAlign:"center"}}>
+      <Card style={{padding:sp[7],textAlign:"center",boxShadow:AD_SHADOW}}>
         <CheckCircle size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
         <div style={{fontSize:12,color:$.L3}}>لا توجد خطة تنفيذية محفوظة لهذا التحليل</div>
-        <div style={{fontSize:10.5,color:$.L4,marginTop:2}}>الخطة تُنشأ تلقائياً مع التحليلات الجديدة</div>
+        <div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>الخطة تُنشأ تلقائياً مع التحليلات الجديدة</div>
       </Card>
     );
   }
   return (
-    <Card style={{padding:sp[5]}}>
+    <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
       {actionPlan.map((phase, pi) => {
         const tasks = phase.tasks || [];
         const doneInPhase = tasks.filter((_,ti)=>doneSet.has(`${pi}-${ti}`)).length;
@@ -1290,11 +1443,11 @@ function ProgressSection({actionPlan, doneSet, onToggle}) {
         return (
           <div key={pi} style={{marginBottom:sp[4],paddingBottom:sp[4],borderBottom:pi<actionPlan.length-1?`1px solid ${$.sepL}`:"none"}}>
             <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
-              <div style={{width:22,height:22,borderRadius:7,background:allDone?$.green:`${$.blue}18`,color:allDone?"#fff":$.blue,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,flexShrink:0}}>
+              <div style={{width:22,height:22,borderRadius:7,background:allDone?$.green:`${$.blue}14`,color:allDone?"#fff":$.blue,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:600,flexShrink:0}}>
                 {allDone?<Check size={12}/>:pi+1}
               </div>
-              <div style={{fontSize:12.5,fontWeight:700,color:$.L1,flex:1}}>{phase.title || phase.phase}</div>
-              <div style={{fontSize:9.5,color:$.L4}}>{doneInPhase}/{tasks.length}</div>
+              <div style={{fontSize:12.5,fontWeight:600,color:$.L1,flex:1}}>{phase.title || phase.phase}</div>
+              <div style={{...numFont,fontSize:9.5,color:$.L4}}>{doneInPhase}/{tasks.length}</div>
             </div>
             {tasks.map((task,ti)=>{
               const done = doneSet.has(`${pi}-${ti}`);
@@ -1303,7 +1456,7 @@ function ProgressSection({actionPlan, doneSet, onToggle}) {
                   <div style={{width:16,height:16,borderRadius:5,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:done?$.green:"transparent",border:done?"none":`1.3px solid ${$.sepL}`}}>
                     {done && <Check size={10} color="#fff"/>}
                   </div>
-                  <span style={{color:done?$.L4:$.L2,textDecoration:done?"line-through":"none"}}>{task}</span>
+                  <span style={{color:done?$.L4:$.L2,textDecoration:done?"line-through":"none",fontWeight:300}}>{task}</span>
                 </div>
               );
             })}
@@ -1314,23 +1467,14 @@ function ProgressSection({actionPlan, doneSet, onToggle}) {
   );
 }
 
-// ═══ مؤشراتي ═══
+// ═══════════════ مؤشراتي ═══════════════
 function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState(""); const [unit, setUnit] = useState("");
   const [entryInputs, setEntryInputs] = useState({});
 
-  async function submitAdd() {
-    if (!name.trim()) return;
-    await onAdd(name.trim(), unit.trim());
-    setName(""); setUnit(""); setAdding(false);
-  }
-  async function submitEntry(metricId) {
-    const v = entryInputs[metricId];
-    if (!v || !v.trim()) return;
-    await onAddEntry(metricId, parseFloat(v));
-    setEntryInputs(prev=>({...prev,[metricId]:""}));
-  }
+  async function submitAdd() { if (!name.trim()) return; await onAdd(name.trim(), unit.trim()); setName(""); setUnit(""); setAdding(false); }
+  async function submitEntry(metricId) { const v = entryInputs[metricId]; if (!v || !v.trim()) return; await onAddEntry(metricId, parseFloat(v)); setEntryInputs(prev=>({...prev,[metricId]:""})); }
 
   return (
     <div>
@@ -1339,33 +1483,33 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
         const prev = m.entries[m.entries.length-2];
         const delta = last && prev ? last.value - prev.value : null;
         return (
-          <Card key={m.id} style={{padding:sp[4],marginBottom:sp[3]}}>
+          <Card key={m.id} style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[2]}}>
               <div>
-                <div style={{fontSize:12.5,fontWeight:700,color:$.L1}}>{m.name}</div>
-                <div style={{fontSize:9.5,color:$.L4,marginTop:2}}>مؤشر مخصّص{m.unit?` · ${m.unit}`:""}</div>
+                <div style={{fontSize:12.5,fontWeight:600,color:$.L1}}>{m.name}</div>
+                <div style={{fontSize:9.5,color:$.L4,marginTop:2,fontWeight:300}}>مؤشر مخصّص{m.unit?` · ${m.unit}`:""}</div>
               </div>
               <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><X size={14} color={$.L4}/></button>
             </div>
             <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:sp[3]}}>
-              <div style={{fontSize:19,fontWeight:600,color:$.L1}}>{last?numWithCommas(last.value):"—"}</div>
-              {delta!==null && <div style={{fontSize:10,fontWeight:700,color:delta>=0?$.green:$.red}}>{delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}</div>}
+              <div style={{...numFont,fontSize:19,fontWeight:500,color:$.L1}}>{last?numWithCommas(last.value):"—"}</div>
+              {delta!==null && <div style={{...numFont,fontSize:10,fontWeight:600,color:delta>=0?$.green:$.red}}>{delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}</div>}
             </div>
             <div style={{display:"flex",gap:sp[2]}}>
               <input value={entryInputs[m.id]||""} onChange={e=>setEntryInputs(prev=>({...prev,[m.id]:e.target.value.replace(/[^\d.-]/g,"")}))} placeholder="قيمة جديدة" inputMode="decimal" style={{flex:1,background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
-              <button onClick={()=>submitEntry(m.id)} style={{background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:`0 ${sp[3]}px`,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>إضافة</button>
+              <button onClick={()=>submitEntry(m.id)} style={{background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:`0 ${sp[3]}px`,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>إضافة</button>
             </div>
           </Card>
         );
       })}
 
       {adding ? (
-        <Card style={{padding:sp[4]}}>
+        <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
           <input value={name} onChange={e=>setName(e.target.value.substring(0,60))} placeholder="اسم المؤشر (مثال: زيارات أسبوعية)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[2]}}/>
           <input value={unit} onChange={e=>setUnit(e.target.value.substring(0,20))} placeholder="الوحدة (اختياري، مثال: زيارة)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
           <div style={{display:"flex",gap:sp[2]}}>
-            <button onClick={submitAdd} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>حفظ</button>
-            <button onClick={()=>setAdding(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
+            <button onClick={submitAdd} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>حفظ</button>
+            <button onClick={()=>setAdding(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
           </div>
         </Card>
       ) : (
@@ -1377,17 +1521,17 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
   );
 }
 
-// ═══ المقارنات ═══
+// ═══════════════ المقارنات ═══════════════
 function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
   const hasComparison = latest && prevEntry;
   const needMore = 2 - entries.length;
 
   return (
     <div>
-      <Card style={{padding:sp[5],marginBottom:sp[3]}}>
-        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>هذا الإدخال مقابل السابق</div>
+      <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
+        <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[1]}}>هذا الإدخال مقابل السابق</div>
         {!hasComparison && (
-          <div style={{fontSize:10.5,color:$.blue,marginBottom:sp[3]}}>
+          <div style={{fontSize:10.5,color:$.blue,marginBottom:sp[3],fontWeight:300}}>
             {needMore>0 ? `يحتاج ${needMore} إدخال${needMore>1?"ات":""} إضافي${needMore>1?"ة":""} من "المالية"` : "جاهز — سيظهر بعد الإدخال التالي"}
           </div>
         )}
@@ -1399,57 +1543,52 @@ function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
           const pct = hasComparison && old!==0 ? Math.round((diff/Math.abs(old))*100) : null;
           return (
             <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`,opacity:hasComparison?1:0.45}}>
-              <div style={{fontSize:12,color:$.L2}}>{lbl}</div>
+              <div style={{fontSize:12,color:$.L2,fontWeight:400}}>{lbl}</div>
               <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
-                <span style={{fontSize:11,color:$.L4}}>{hasComparison?`${numWithCommas(old)} ← ${numWithCommas(cur)}`:"— ← —"}</span>
-                {pct!==null && <span style={{fontSize:10,fontWeight:700,color:diff>=0?$.green:$.red}}>{diff>=0?"+":""}{pct}%</span>}
+                <span style={{...numFont,fontSize:11,color:$.L4}}>{hasComparison?`${numWithCommas(old)} ← ${numWithCommas(cur)}`:"— ← —"}</span>
+                {pct!==null && <span style={{...numFont,fontSize:10,fontWeight:600,color:diff>=0?$.green:$.red}}>{diff>=0?"+":""}{pct}%</span>}
               </div>
             </div>
           );
         })}
       </Card>
 
-      <Card style={{padding:sp[5]}}>
-        <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>الإنفاق مقابل التأسيس المقدّر</div>
-        <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2]}}>
+      <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
+        <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>الإنفاق مقابل التأسيس المقدّر</div>
+        <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2],position:"relative"}}>
           <div style={{height:"100%",width:`${setupTotal>0?Math.min(100,(totalSpent/setupTotal)*100):0}%`,background:totalSpent>setupTotal?$.red:$.blue,borderRadius:99,transition:".3s"}}/>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:$.L4}}>
-          <span>أنفقت: {numWithCommas(totalSpent)}</span>
-          <span>التقدير: {numWithCommas(setupTotal)}</span>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:$.L4,fontWeight:300}}>
+          <span>أنفقت: <b style={numFont}>{numWithCommas(totalSpent)}</b></span>
+          <span>التقدير: <b style={numFont}>{numWithCommas(setupTotal)}</b></span>
         </div>
       </Card>
     </div>
   );
 }
 
-// ═══ المستندات ═══
+// ═══════════════ المستندات ═══════════════
 function DocsSection({documents, onAdd, onStatusChange}) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const STATUS = {required:{label:"مطلوب",color:$.red},pending:{label:"قيد المراجعة",color:$.orange},uploaded:{label:"مكتمل",color:$.green}};
 
-  async function submit() {
-    if (!name.trim()) return;
-    await onAdd(name.trim());
-    setName(""); setAdding(false);
-  }
+  async function submit() { if (!name.trim()) return; await onAdd(name.trim()); setName(""); setAdding(false); }
 
   return (
     <div>
-      <Card style={{padding:0,overflow:"hidden",marginBottom:sp[3]}}>
+      <Card style={{padding:0,overflow:"hidden",marginBottom:sp[3],boxShadow:AD_SHADOW}}>
         {documents.length===0 ? (
           <div style={{padding:`${sp[6]}px ${sp[5]}px`,textAlign:"center"}}>
             <FileText size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
             <div style={{fontSize:12,color:$.L3,marginBottom:sp[1]}}>لا توجد مستندات بعد</div>
-            <div style={{fontSize:10.5,color:$.L4}}>مثال: عقد الإيجار، السجل التجاري، الرخصة البلدية</div>
+            <div style={{fontSize:10.5,color:$.L4,fontWeight:300}}>مثال: عقد الإيجار، السجل التجاري، الرخصة البلدية</div>
           </div>
-        ) :
-         documents.map(d=>(
+        ) : documents.map(d=>(
           <div key={d.id} style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
             <FileText size={16} color={$.L4}/>
-            <div style={{flex:1,fontSize:12.5,color:$.L1}}>{d.name}</div>
-            <select value={d.status} onChange={e=>onStatusChange(d.id,e.target.value)} style={{fontSize:10.5,fontWeight:700,color:STATUS[d.status].color,background:`${STATUS[d.status].color}14`,border:"none",borderRadius:20,padding:"5px 10px",fontFamily:"inherit"}}>
+            <div style={{flex:1,fontSize:12.5,color:$.L1,fontWeight:400}}>{d.name}</div>
+            <select value={d.status} onChange={e=>onStatusChange(d.id,e.target.value)} style={{fontSize:10.5,fontWeight:600,color:STATUS[d.status].color,background:`${STATUS[d.status].color}14`,border:"none",borderRadius:20,padding:"5px 10px",fontFamily:"inherit"}}>
               {Object.entries(STATUS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
@@ -1457,11 +1596,11 @@ function DocsSection({documents, onAdd, onStatusChange}) {
       </Card>
 
       {adding ? (
-        <Card style={{padding:sp[4]}}>
+        <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
           <input value={name} onChange={e=>setName(e.target.value.substring(0,80))} placeholder="اسم المستند (مثال: عقد الإيجار)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
           <div style={{display:"flex",gap:sp[2]}}>
-            <button onClick={submit} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>حفظ</button>
-            <button onClick={()=>setAdding(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
+            <button onClick={submit} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>حفظ</button>
+            <button onClick={()=>setAdding(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
           </div>
         </Card>
       ) : (
@@ -1473,7 +1612,7 @@ function DocsSection({documents, onAdd, onStatusChange}) {
   );
 }
 
-// ═══ المستشار (الشات) ═══
+// ═══════════════ المستشار (الشات) ═══════════════
 function ChatSection({result, entries, messages, setMessages, user, analysisId}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
@@ -1499,15 +1638,15 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId})
   }
 
   return (
-    <Card style={{padding:0,overflow:"hidden"}}>
+    <Card style={{padding:0,overflow:"hidden",boxShadow:AD_SHADOW}}>
       <div ref={scrollRef} style={{height:380,overflowY:"auto",padding:`${sp[4]}px ${sp[5]}px`}}>
-        {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[8]}px 0`}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
+        {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[8]}px 0`,fontWeight:300}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
         {messages.map((m,i)=>(
           <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:sp[3]}}>
-            <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:13,lineHeight:1.8,background:m.role==="user"?$.F4:`${$.blue}12`,color:$.L1}}>{m.content}</div>
+            <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,background:m.role==="user"?$.F4:`${$.blue}0F`,border:m.role==="advisor"?`1px solid ${$.blue}22`:"none",color:$.L1}}>{m.content}</div>
           </div>
         ))}
-        {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}12`}}><Spinner sz={14}/></div></div>}
+        {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}0F`}}><Spinner sz={14}/></div></div>}
       </div>
       {err && <div style={{padding:`${sp[2]}px ${sp[5]}px`,fontSize:11,color:$.orange}}>{err}</div>}
       <div style={{display:"flex",gap:sp[2],padding:`${sp[3]}px ${sp[4]}px`,borderTop:`1px solid ${$.sepL}`}}>
@@ -1520,7 +1659,7 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId})
   );
 }
 
-// ═══ السجل ═══
+// ═══════════════ السجل ═══════════════
 function LogSection({entries, messages, documents, metrics}) {
   const events = [
     ...entries.map(e=>({date:e.created_at||e.entry_date, text:`إدخال مالي جديد — ربح ${numWithCommas(e.profit||0)} ريال`, color:$.blue})),
@@ -1529,21 +1668,21 @@ function LogSection({entries, messages, documents, metrics}) {
   ].filter(e=>e.date).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   if (events.length===0) return (
-    <Card style={{padding:sp[7],textAlign:"center"}}>
+    <Card style={{padding:sp[7],textAlign:"center",boxShadow:AD_SHADOW}}>
       <Clock size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
       <div style={{fontSize:12,color:$.L3}}>لا يوجد نشاط مسجّل بعد</div>
-      <div style={{fontSize:10.5,color:$.L4,marginTop:2}}>كل إدخال أو مستند أو مؤشر يظهر هنا تلقائياً بالترتيب الزمني</div>
+      <div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>كل إدخال أو مستند أو مؤشر يظهر هنا تلقائياً بالترتيب الزمني</div>
     </Card>
   );
 
   return (
-    <Card style={{padding:sp[5]}}>
+    <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
       {events.slice(0,30).map((e,i)=>(
         <div key={i} style={{display:"flex",gap:sp[3],padding:`${sp[2]}px 0`,borderBottom:i<events.length-1?`1px solid ${$.sepL}`:"none"}}>
           <div style={{width:6,height:6,borderRadius:"50%",background:e.color,marginTop:6,flexShrink:0}}/>
           <div>
-            <div style={{fontSize:10,color:$.L4}}>{fmtDate(e.date)}</div>
-            <div style={{fontSize:12,color:$.L2,marginTop:2}}>{e.text}</div>
+            <div style={{...numFont,fontSize:9.5,color:$.L4}}>{fmtDate(e.date)}</div>
+            <div style={{fontSize:11.5,color:$.L2,marginTop:2,fontWeight:300}}>{e.text}</div>
           </div>
         </div>
       ))}
