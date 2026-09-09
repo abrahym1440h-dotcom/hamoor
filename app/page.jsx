@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -994,10 +994,18 @@ const numFont = {fontFamily:"'Inter','IBM Plex Sans Arabic',sans-serif", fontVar
 const AD_SHADOW_SM = "0 1px 2px rgba(11,19,32,0.04), 0 6px 14px -6px rgba(11,19,32,0.08)";
 const AD_SHADOW = "0 1px 2px rgba(11,19,32,0.04), 0 14px 32px -14px rgba(11,19,32,0.12)";
 
+// ═══════════════════════════════════════════════════════════
+// المستشار — مرآة تعكس وضع العميل من بياناته هو، ويديرها هو بالكامل
+// ═══════════════════════════════════════════════════════════
+
+const numFont = {fontFamily:"'Inter','IBM Plex Sans Arabic',sans-serif", fontVariantNumeric:"tabular-nums"};
+const AD_SHADOW_SM = "0 1px 2px rgba(11,19,32,0.04), 0 6px 14px -6px rgba(11,19,32,0.08)";
+const AD_SHADOW = "0 1px 2px rgba(11,19,32,0.04), 0 14px 32px -14px rgba(11,19,32,0.12)";
+
 const ADVISOR_SECTIONS = [
   {id:"overview", name:"نظرة عامة", Icon:Grid},
   {id:"finance", name:"المالية", Icon:TrendingUp},
-  {id:"progress", name:"خطة التنفيذ", Icon:CheckCircle},
+  {id:"progress", name:"خططي", Icon:CheckCircle},
   {id:"metrics", name:"مؤشراتي", Icon:Target},
   {id:"compare", name:"المقارنات", Icon:BarChart2},
   {id:"docs", name:"المستندات", Icon:FileText},
@@ -1005,7 +1013,7 @@ const ADVISOR_SECTIONS = [
   {id:"log", name:"السجل", Icon:Clock}
 ];
 
-function AdvisorHeader({result, aiScore}) {
+function AdvisorHeader({result, healthScore}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[4],flexWrap:"wrap"}}>
       <div style={{display:"flex",alignItems:"center",gap:sp[2],flex:1,minWidth:0}}>
@@ -1019,7 +1027,7 @@ function AdvisorHeader({result, aiScore}) {
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:99,background:$.surface,boxShadow:AD_SHADOW_SM,fontSize:10.5,color:$.L3,flexShrink:0}}>
         <span style={{width:5,height:5,borderRadius:"50%",background:$.green,animation:"advPulse 2.4s infinite"}}/>
-        مؤشر الذكاء الاصطناعي <b style={{...numFont,color:$.blue,fontWeight:600}}>{aiScore}</b>
+        وضعك العام <b style={{...numFont,color:$.blue,fontWeight:600}}>{healthScore}</b>
       </div>
       <style>{`@keyframes advPulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>
@@ -1043,8 +1051,18 @@ function AdvisorIsland({active, onChange}) {
   );
 }
 
-function fmtDate(d) {
-  try { return new Date(d).toISOString().split("T")[0]; } catch(e) { return d; }
+function fmtDate(d) { try { return new Date(d).toISOString().split("T")[0]; } catch(e) { return d; } }
+function todayStr() { return new Date().toISOString().split("T")[0]; }
+
+// تنبيه صغير عابر — يؤكد إن الحفظ صار فعلاً (يخفف إحساس الضياع)
+function useSavedFlash() {
+  const [flash, setFlash] = useState(false);
+  const fire = () => { setFlash(true); setTimeout(()=>setFlash(false), 1600); };
+  return [flash, fire];
+}
+function SavedBadge({show}) {
+  if (!show) return null;
+  return <span style={{fontSize:10.5,color:$.green,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}><Check size={12}/>تم الحفظ</span>;
 }
 
 function AdvisorDashboard({result, user}) {
@@ -1053,6 +1071,7 @@ function AdvisorDashboard({result, user}) {
   const [doneTasks, setDoneTasks] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [planItems, setPlanItems] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1066,11 +1085,11 @@ function AdvisorDashboard({result, user}) {
     if (!analysisId) { setLoading(false); return; }
     (async () => {
       try {
-        const [e, t, m, d, msg] = await Promise.all([
+        const [e, t, m, d, p, msg] = await Promise.all([
           getFinanceEntries(analysisId), getDoneTasks(analysisId), getMetrics(analysisId),
-          getDocuments(analysisId), getAdvisorMessages(analysisId)
+          getDocuments(analysisId), getPlanItems(analysisId), getAdvisorMessages(analysisId)
         ]);
-        setEntries(e); setDoneTasks(t); setMetrics(m); setDocuments(d); setMessages(msg);
+        setEntries(e); setDoneTasks(t); setMetrics(m); setDocuments(d); setPlanItems(p); setMessages(msg);
       } catch(err) {} finally { setLoading(false); }
     })();
   }, [analysisId]);
@@ -1086,9 +1105,24 @@ function AdvisorDashboard({result, user}) {
 
   const doneSet = new Set(doneTasks.map(t=>`${t.phase_index}-${t.task_index}`));
   const actionPlan = result?.action_plan || [];
-  const totalTasks = actionPlan.reduce((s,p)=>s+(p.tasks?.length||0),0);
-  const doneCount = doneTasks.length;
-  const progressPct = totalTasks>0 ? Math.round((doneCount/totalTasks)*100) : 0;
+  const aiTotalTasks = actionPlan.reduce((s,p)=>s+(p.tasks?.length||0),0);
+  const aiDoneCount = doneTasks.length;
+  const customTotal = planItems.length;
+  const customDone = planItems.filter(p=>p.done).length;
+  const totalAllTasks = aiTotalTasks + customTotal;
+  const totalAllDone = aiDoneCount + customDone;
+  const progressPct = totalAllTasks>0 ? Math.round((totalAllDone/totalAllTasks)*100) : 0;
+
+  // أول مهمة غير منجزة — تُستخدم لربط "الخطوة الجاية" بين الأقسام
+  let nextTask = null;
+  for (let pi=0; pi<actionPlan.length; pi++) {
+    const tasks = actionPlan[pi].tasks || [];
+    for (let ti=0; ti<tasks.length; ti++) {
+      if (!doneSet.has(`${pi}-${ti}`)) { nextTask = {text:tasks[ti], phase:actionPlan[pi].title||actionPlan[pi].phase}; break; }
+    }
+    if (nextTask) break;
+  }
+  if (!nextTask) { const p = planItems.find(x=>!x.done); if (p) nextTask = {text:p.task_text, phase:p.plan_name}; }
 
   const risks = result?.risk_analysis || [];
   const riskScoreMap = {"منخفض":1,"طفيف":1,"متوسط":2,"عالي":3,"شديد":3};
@@ -1096,38 +1130,47 @@ function AdvisorDashboard({result, user}) {
     ? risks.reduce((s,r)=>s+((riskScoreMap[r.probability]||2)+(riskScoreMap[r.impact]||2))/2,0)/risks.length
     : 2;
   const riskPct = Math.round((riskAvg/3)*100);
-
   const liquidityPct = budget>0 ? Math.max(0,Math.min(100,Math.round((budgetRemaining/budget)*100))) : 50;
-  const aiScore = Math.round((liquidityPct*0.35) + (progressPct*0.35) + ((100-riskPct)*0.3));
+  const healthScore = Math.round((liquidityPct*0.35) + (progressPct*0.35) + ((100-riskPct)*0.3));
 
-  if (!user) return <div style={{padding:sp[8],textAlign:"center",fontSize:13,color:$.L3}}>سجّل الدخول لاستخدام المستشار</div>;
+  if (!user) return <div style={{padding:sp[8],textAlign:"center",fontSize:13,color:$.L3}}>سجّل الدخول لمتابعة مشروعك</div>;
   if (loading) return <div style={{padding:sp[8],textAlign:"center"}}><Spinner sz={20}/></div>;
+
+  const go = (id) => setSection(id);
 
   return (
     <div>
-      <AdvisorHeader result={result} aiScore={aiScore}/>
+      <AdvisorHeader result={result} healthScore={healthScore}/>
       <AdvisorIsland active={section} onChange={setSection}/>
 
       {section === "overview" && (
-        <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} monthlyTotal={monthlyTotal}
+        <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal}
           budget={budget} budgetRemaining={budgetRemaining} progressPct={progressPct} totalProfit={totalProfit} totalRevenue={totalRevenue}
-          totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa}
-          onGoFinance={()=>setSection("finance")}/>
+          totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa} nextTask={nextTask} go={go}/>
       )}
       {section === "finance" && (
-        <FinanceSection result={result} entries={sortedEntries} user={user} analysisId={analysisId} onEntryAdded={(e)=>setEntries(prev=>[...prev,e])}
+        <FinanceSection entries={sortedEntries} user={user} analysisId={analysisId}
+          onAdd={(e)=>setEntries(prev=>[...prev,e])}
+          onUpdate={(e)=>setEntries(prev=>prev.map(x=>x.id===e.id?e:x))}
+          onDelete={(id)=>setEntries(prev=>prev.filter(x=>x.id!==id))}
           budget={budget} totalSpent={totalSpent} budgetRemaining={budgetRemaining} budgetUsedPct={budgetUsedPct} monthlyTotal={monthlyTotal}/>
       )}
       {section === "progress" && (
-        <ProgressSection actionPlan={actionPlan} doneSet={doneSet} analysisId={analysisId} user={user} onToggle={async (pi,ti,text,val)=>{
-          await toggleTask(analysisId,user.id,pi,ti,text,val);
-          setDoneTasks(prev => val ? [...prev,{phase_index:pi,task_index:ti}] : prev.filter(t=>!(t.phase_index===pi&&t.task_index===ti)));
-        }}/>
+        <ProgressSection actionPlan={actionPlan} doneSet={doneSet} analysisId={analysisId} user={user} planItems={planItems}
+          onToggle={async (pi,ti,text,val)=>{
+            await toggleTask(analysisId,user.id,pi,ti,text,val);
+            setDoneTasks(prev => val ? [...prev,{phase_index:pi,task_index:ti}] : prev.filter(t=>!(t.phase_index===pi&&t.task_index===ti)));
+          }}
+          onAddPlanItem={async (planName,taskText)=>{ const it = await addPlanItem(analysisId,user.id,planName,taskText); setPlanItems(prev=>[...prev,it]); }}
+          onTogglePlanItem={async (id,done)=>{ await togglePlanItem(id,done); setPlanItems(prev=>prev.map(p=>p.id===id?{...p,done}:p)); }}
+          onDeletePlanItem={async (id)=>{ await deletePlanItem(id); setPlanItems(prev=>prev.filter(p=>p.id!==id)); }}
+          onDeletePlan={async (planName)=>{ await deletePlan(analysisId,planName); setPlanItems(prev=>prev.filter(p=>p.plan_name!==planName)); }}/>
       )}
       {section === "metrics" && (
         <MetricsSection metrics={metrics} analysisId={analysisId} user={user}
           onAdd={async (name,unit)=>{ const m = await addMetric(analysisId,user.id,name,unit); setMetrics(prev=>[...prev,m]); }}
           onAddEntry={async (metricId,value)=>{ const e = await addMetricEntry(metricId,user.id,value); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:[...m.entries,e]}:m)); }}
+          onDeleteEntry={async (metricId,entryId)=>{ await deleteMetricEntry(entryId); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:m.entries.filter(e=>e.id!==entryId)}:m)); }}
           onDelete={async (metricId)=>{ await deleteMetric(metricId); setMetrics(prev=>prev.filter(m=>m.id!==metricId)); }}/>
       )}
       {section === "compare" && (
@@ -1136,10 +1179,11 @@ function AdvisorDashboard({result, user}) {
       {section === "docs" && (
         <DocsSection documents={documents} analysisId={analysisId} user={user}
           onAdd={async (name)=>{ const d = await addDocument(analysisId,user.id,name); setDocuments(prev=>[...prev,d]); }}
-          onStatusChange={async (docId,status)=>{ await updateDocumentStatus(docId,status); setDocuments(prev=>prev.map(d=>d.id===docId?{...d,status}:d)); }}/>
+          onStatusChange={async (docId,status)=>{ await updateDocumentStatus(docId,status); setDocuments(prev=>prev.map(d=>d.id===docId?{...d,status}:d)); }}
+          onDelete={async (docId)=>{ await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
       )}
       {section === "chat" && (
-        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId}/>
+        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask}/>
       )}
       {section === "log" && (
         <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics}/>
@@ -1148,8 +1192,8 @@ function AdvisorDashboard({result, user}) {
   );
 }
 
-// ═══════════════ نظرة عامة ═══════════════
-function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, budget, budgetRemaining, progressPct, totalProfit, totalRevenue, totalSpent, liquidityPct, riskPct, fa, onGoFinance}) {
+// ═══════════════ نظرة عامة — المرآة الرئيسية ═══════════════
+function OverviewSection({entries, latest, prevEntry, setupTotal, budget, budgetRemaining, progressPct, totalProfit, totalRevenue, totalSpent, liquidityPct, riskPct, fa, nextTask, go}) {
   const delta = latest && prevEntry ? (latest.profit||0) - (prevEntry.profit||0) : null;
   const hasData = entries.length > 0;
 
@@ -1163,87 +1207,89 @@ function OverviewSection({entries, latest, prevEntry, setupTotal, monthlyTotal, 
   ].filter(d=>d.value>0);
   const donutTotal = donutItems.reduce((s,d)=>s+d.value,0);
 
-  const insights = [];
+  // ملاحظات مبنية على أرقامه هو فقط (مرآة، مو توصيات إدارية)
+  const notes = [];
   if (hasData) {
-    if (delta !== null) {
-      insights.push({type: delta>=0?"tip":"risk", text: delta>=0
-        ? `ربحك تحسّن ${numWithCommas(Math.abs(delta))} ريال عن الإدخال السابق.`
-        : `ربحك انخفض ${numWithCommas(Math.abs(delta))} ريال عن الإدخال السابق — راجع المصروفات مع المستشار.`});
-    }
+    if (delta !== null) notes.push({type: delta>=0?"good":"watch", text: delta>=0
+      ? `ربحك تحسّن ${numWithCommas(Math.abs(delta))} ريال عن آخر إدخال.`
+      : `ربحك انخفض ${numWithCommas(Math.abs(delta))} ريال عن آخر إدخال — قد يستحق مراجعة.`});
     const usedPct = budget>0 ? (totalSpent/budget)*100 : 0;
-    if (usedPct > 80) insights.push({type:"risk", text:`استهلكت ${Math.round(usedPct)}% من ميزانيتك — راقب الإنفاق المتبقي.`});
-    else if (usedPct > 0) insights.push({type:"predict", text:`بمعدّل إنفاقك الحالي، ميزانيتك تكفي لفترة إضافية معقولة قبل نفادها.`});
+    if (usedPct > 80) notes.push({type:"watch", text:`أنت عند ${Math.round(usedPct)}% من ميزانيتك.`});
   }
-  if (riskPct >= 60) insights.push({type:"risk", text:"مستوى المخاطر المقدّرة لمشروعك مرتفع نسبياً — راجع قسم المخاطر في تحليلك الأصلي."});
+  if (riskPct >= 60) notes.push({type:"watch", text:"مستوى المخاطر في تحليلك الأصلي مرتفع نسبياً."});
 
   return (
     <div>
-      {!hasData && (
-        <div onClick={onGoFinance} style={{display:"flex",alignItems:"center",gap:sp[3],background:`${$.blue}0F`,border:`1px solid ${$.blue}30`,borderRadius:14,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3],cursor:"pointer"}}>
+      {nextTask && (
+        <div onClick={()=>go("progress")} style={{display:"flex",alignItems:"center",gap:sp[3],background:`${$.blue}0F`,border:`1px solid ${$.blue}30`,borderRadius:14,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3],cursor:"pointer"}}>
           <div style={{width:32,height:32,borderRadius:10,background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <TrendingUp size={15} color={$.blue}/>
+            <CheckCircle size={15} color={$.blue}/>
           </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:12,fontWeight:600,color:$.L1}}>ابدأ بإدخال أرقامك الفعلية</div>
-            <div style={{fontSize:10.5,color:$.L3,marginTop:1,fontWeight:300}}>البطاقات تحتك جاهزة، وتُملأ فور أول إدخال من "المالية"</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:9.5,color:$.L4,fontWeight:400}}>خطوتك القادمة · {nextTask.phase}</div>
+            <div style={{fontSize:12,fontWeight:500,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nextTask.text}</div>
           </div>
           <ChevronRight size={16} color={$.blue} style={{transform:"scaleX(-1)",flexShrink:0}}/>
         </div>
       )}
 
+      {!hasData && (
+        <div onClick={()=>go("finance")} style={{display:"flex",alignItems:"center",gap:sp[3],background:$.F4,borderRadius:14,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3],cursor:"pointer"}}>
+          <TrendingUp size={15} color={$.L3} style={{flexShrink:0}}/>
+          <div style={{flex:1,fontSize:11.5,color:$.L2}}>سجّل أول رقم فعلي في "المالية" لتبدأ هذه اللوحة تعكس وضعك</div>
+          <ChevronRight size={16} color={$.L4} style={{transform:"scaleX(-1)",flexShrink:0}}/>
+        </div>
+      )}
+
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
-        <StatCard label="آخر ربح مسجّل" value={hasData?`${numWithCommas(latest?.profit||0)}`:"٠"} unit="ريال" sub={hasData?fmtDate(latest.entry_date):"بانتظار أول إدخال"} delta={delta} deltaGoodUp empty={!hasData}/>
-        <StatCard label="إجمالي الإيراد" value={hasData?`${numWithCommas(totalRevenue)}`:"٠"} unit="ريال" sub={hasData?`${entries.length} إدخال`:"بانتظار أول إدخال"} empty={!hasData}/>
-        <StatCard label="الميزانية المتبقية" value={numWithCommas(budgetRemaining)} unit="ريال" sub={`من ${numWithCommas(budget)}`}/>
-        <StatCard label="إنجاز خطة التنفيذ" value={`${progressPct}`} unit="%" sub="من المهام" empty={progressPct===0}/>
+        <div onClick={()=>go("finance")}><StatCard label="آخر ربح مسجّل" value={hasData?`${numWithCommas(latest?.profit||0)}`:"٠"} unit="ريال" sub={hasData?fmtDate(latest.entry_date):"بانتظار أول إدخال"} delta={delta} deltaGoodUp empty={!hasData} clickable/></div>
+        <div onClick={()=>go("finance")}><StatCard label="إجمالي الإيراد" value={hasData?`${numWithCommas(totalRevenue)}`:"٠"} unit="ريال" sub={hasData?`${entries.length} إدخال`:"بانتظار أول إدخال"} empty={!hasData} clickable/></div>
+        <div onClick={()=>go("finance")}><StatCard label="الميزانية المتبقية" value={numWithCommas(budgetRemaining)} unit="ريال" sub={`من ${numWithCommas(budget)}`} clickable/></div>
+        <div onClick={()=>go("progress")}><StatCard label="إنجاز خططك" value={`${progressPct}`} unit="%" sub="اضغط للمتابعة" empty={progressPct===0} clickable/></div>
       </div>
 
       <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
-        <div style={{display:"flex",gap:14,marginBottom:sp[3]}}>
-          <div style={{fontSize:13,fontWeight:600,color:$.L1}}>الربح عبر الزمن</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[3]}}>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1}}>أداؤك المالي عبر الزمن</div>
+          <span onClick={()=>go("finance")} style={{fontSize:10.5,color:$.blue,cursor:"pointer",fontWeight:500}}>التفاصيل ←</span>
         </div>
-        <MiniLineChart values={entries.map(e=>e.profit||0)} color={$.blue}/>
+        <MultiLineChart entries={entries}/>
       </Card>
 
       <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
         <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
-          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>توزيع الميزانية</div>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>أين تذهب ميزانيتك</div>
           {donutTotal===0 ? (
             <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[6]}px 0`}}>بيانات التأسيس غير متوفرة في هذا التحليل</div>
-          ) : (
-            <BudgetDonut items={donutItems} total={donutTotal}/>
-          )}
+          ) : <BudgetDonut items={donutItems} total={donutTotal}/>}
         </Card>
 
         <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
-          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>صحة المشروع</div>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>وضعك الآن</div>
           <HealthRow icon={<TrendingUp size={14}/>} label="السيولة المالية" pct={liquidityPct} good={liquidityPct>=50}/>
-          <HealthRow icon={<CheckCircle size={14}/>} label="الالتزام بالخطة" pct={progressPct} good={progressPct>=40}/>
-          <HealthRow icon={<AlertTriangle size={14}/>} label="مخاطر السوق" pct={100-riskPct} good={riskPct<50} invert/>
+          <HealthRow icon={<CheckCircle size={14}/>} label="التزامك بخططك" pct={progressPct} good={progressPct>=40}/>
+          <HealthRow icon={<AlertTriangle size={14}/>} label="مخاطر مشروعك" pct={100-riskPct} good={riskPct<50}/>
         </Card>
       </div>
 
       <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
-        <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>رؤى مبنية على أرقامك</div>
-        {insights.length===0 ? (
-          <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[5]}px 0`}}>تظهر رؤى تلقائية هنا بعد أول إدخال مالي</div>
-        ) : insights.map((ins,i)=>{
-          const cfg = {predict:{bg:`${$.purple}14`,color:$.purple,label:"توقّع"}, tip:{bg:`${$.green}14`,color:$.green,label:"إيجابي"}, risk:{bg:`${$.red}14`,color:$.red,label:"تنبيه"}}[ins.type];
-          return (
-            <div key={i} style={{display:"flex",gap:sp[3],padding:`${sp[2]}px 0`,borderTop:i>0?`1px solid ${$.sepL}`:"none"}}>
-              <span style={{fontSize:9,fontWeight:600,padding:"3px 9px",borderRadius:20,background:cfg.bg,color:cfg.color,flexShrink:0,height:"fit-content"}}>{cfg.label}</span>
-              <span style={{fontSize:11.5,color:$.L2,lineHeight:1.75,fontWeight:300}}>{ins.text}</span>
-            </div>
-          );
-        })}
+        <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>ملاحظات على وضعك</div>
+        {notes.length===0 ? (
+          <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[5]}px 0`}}>تظهر ملاحظات هنا بمجرد ما تسجّل أرقامك</div>
+        ) : notes.map((n,i)=>(
+          <div key={i} style={{display:"flex",gap:sp[3],padding:`${sp[2]}px 0`,borderTop:i>0?`1px solid ${$.sepL}`:"none"}}>
+            <span style={{fontSize:9,fontWeight:600,padding:"3px 9px",borderRadius:20,background:n.type==="good"?`${$.green}14`:`${$.orange}14`,color:n.type==="good"?$.green:$.orange,flexShrink:0,height:"fit-content"}}>{n.type==="good"?"إيجابي":"انتبه"}</span>
+            <span style={{fontSize:11.5,color:$.L2,lineHeight:1.75,fontWeight:300}}>{n.text}</span>
+          </div>
+        ))}
       </Card>
     </div>
   );
 }
 
-function StatCard({label, value, unit, sub, delta, deltaGoodUp=true, empty=false}) {
+function StatCard({label, value, unit, sub, delta, deltaGoodUp=true, empty=false, clickable=false}) {
   return (
-    <Card style={{padding:`${sp[4]}px ${sp[4]}px`,opacity:empty?0.55:1,boxShadow:AD_SHADOW_SM}}>
+    <Card style={{padding:`${sp[4]}px ${sp[4]}px`,opacity:empty?0.55:1,boxShadow:AD_SHADOW_SM,cursor:clickable?"pointer":"default"}}>
       <div style={{fontSize:10,color:$.L3,marginBottom:sp[2],fontWeight:400}}>{label}</div>
       <div style={{...numFont,fontSize:19,fontWeight:500,color:empty?$.L4:$.L1,letterSpacing:"-.2px"}}>
         {value}{unit && <span style={{fontSize:11,fontWeight:400,color:$.L4}}> {unit}</span>}
@@ -1251,25 +1297,21 @@ function StatCard({label, value, unit, sub, delta, deltaGoodUp=true, empty=false
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:sp[2]}}>
         <div style={{fontSize:9,color:$.L4,fontWeight:300}}>{sub}</div>
         {delta !== null && delta !== undefined && (
-          <div style={{...numFont,fontSize:9.5,fontWeight:600,color:(delta>=0)===deltaGoodUp?$.green:$.red}}>
-            {delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}
-          </div>
+          <div style={{...numFont,fontSize:9.5,fontWeight:600,color:(delta>=0)===deltaGoodUp?$.green:$.red}}>{delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}</div>
         )}
       </div>
     </Card>
   );
 }
 
-function HealthRow({icon, label, pct, good, invert=false}) {
+function HealthRow({icon, label, pct, good}) {
   const color = good ? $.green : $.red;
   return (
     <div style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[2]}px 0`}}>
       <div style={{width:30,height:30,borderRadius:9,background:good?`${$.green}14`:`${$.red}14`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color}}>{icon}</div>
       <div style={{flex:1}}>
         <div style={{fontSize:11,fontWeight:400,color:$.L1,marginBottom:4}}>{label}</div>
-        <div style={{height:5,background:$.F3,borderRadius:99,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${Math.max(4,pct)}%`,background:color,borderRadius:99,transition:".3s"}}/>
-        </div>
+        <div style={{height:5,background:$.F3,borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(4,pct)}%`,background:color,borderRadius:99,transition:".3s"}}/></div>
       </div>
       <div style={{...numFont,fontSize:10,fontWeight:600,color,flexShrink:0}}>{good?"جيد":"راجعها"}</div>
     </div>
@@ -1278,18 +1320,12 @@ function HealthRow({icon, label, pct, good, invert=false}) {
 
 function BudgetDonut({items, total}) {
   let cum = 0;
-  const stops = items.map(it => {
-    const pct = (it.value/total)*100;
-    const s = `${it.color} ${cum}% ${cum+pct}%`;
-    cum += pct;
-    return s;
-  }).join(", ");
+  const stops = items.map(it => { const pct=(it.value/total)*100; const s=`${it.color} ${cum}% ${cum+pct}%`; cum+=pct; return s; }).join(", ");
   return (
     <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
       <div style={{width:96,height:96,borderRadius:"50%",flexShrink:0,background:`conic-gradient(${stops})`,position:"relative"}}>
         <div style={{position:"absolute",inset:16,background:$.surface,borderRadius:"50%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-          <b style={{...numFont,fontSize:13,fontWeight:600,color:$.L1}}>{total>=1000?`${Math.round(total/1000)}K`:total}</b>
-          <span style={{fontSize:8,color:$.L4}}>ريال</span>
+          <b style={{...numFont,fontSize:13,fontWeight:600,color:$.L1}}>{total>=1000?`${Math.round(total/1000)}K`:total}</b><span style={{fontSize:8,color:$.L4}}>ريال</span>
         </div>
       </div>
       <div style={{flex:1}}>
@@ -1305,75 +1341,91 @@ function BudgetDonut({items, total}) {
   );
 }
 
-function MiniLineChart({values, color}) {
-  const w = 300, h = 90;
-  if (values.length < 2) {
+// رسم مفصّل: ٣ خطوط (إيراد/مصروف/ربح) + Legend — يلبي طلب "تفصيل كامل"
+function MultiLineChart({entries}) {
+  const w = 300, h = 100;
+  if (entries.length < 2) {
     return (
       <div style={{position:"relative"}}>
-        <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:100,opacity:0.35}}>
+        <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:110,opacity:0.3}}>
           <line x1="0" y1={h/2} x2={w} y2={h/2} stroke={$.L4} strokeWidth="1.5" strokeDasharray="5 5"/>
-          {values.length===1 && <circle cx={w/2} cy={h/2} r="4" fill={color}/>}
         </svg>
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`,fontWeight:300}}>
-            {values.length===0 ? "الرسم يظهر بعد أول إدخالين" : "أضف إدخالاً آخر ليظهر الاتجاه"}
-          </div>
+          <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`,fontWeight:300}}>{entries.length===0?"يظهر بعد أول إدخالين":"أضف إدخالاً آخر ليظهر الاتجاه"}</div>
         </div>
       </div>
     );
   }
-  const max = Math.max(...values, 1), min = Math.min(...values, 0), range = max-min || 1;
-  const pts = values.map((v,i) => `${(i/(values.length-1))*w},${h - ((v-min)/range)*h}`).join(" ");
-  const areaPts = `0,${h} ${pts} ${w},${h}`;
+  const series = [{key:"revenue",color:$.green,label:"الإيراد"},{key:"expenses",color:$.orange,label:"المصروفات"},{key:"profit",color:$.blue,label:"الربح"}];
+  const allVals = entries.flatMap(e=>series.map(s=>e[s.key]||0));
+  const max = Math.max(...allVals,1), min = Math.min(...allVals,0), range = max-min||1;
+  const pt = (v,i) => `${(i/(entries.length-1))*w},${h-((v-min)/range)*h}`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:100}}>
-      <defs><linearGradient id="advGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.22"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
-      <polygon points={areaPts} fill="url(#advGrad)"/>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      {values.map((v,i) => {
-        const x = (i/(values.length-1))*w, y = h - ((v-min)/range)*h;
-        return <circle key={i} cx={x} cy={y} r="3" fill={color}/>;
-      })}
-    </svg>
+    <div>
+      <div style={{display:"flex",gap:14,marginBottom:sp[3]}}>
+        {series.map(s=><div key={s.key} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:$.L3,fontWeight:400}}><span style={{width:8,height:8,borderRadius:"50%",background:s.color}}/>{s.label}</div>)}
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:110}}>
+        {series.map(s=>{
+          const pts = entries.map((e,i)=>pt(e[s.key]||0,i)).join(" ");
+          return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
+        })}
+      </svg>
+      {/* جدول أرقام دقيق تحت الرسم — التفصيل الكامل */}
+      <div style={{marginTop:sp[3],borderTop:`1px solid ${$.sepL}`,paddingTop:sp[2]}}>
+        {[...entries].reverse().slice(0,5).map((e,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"4px 0",color:$.L3}}>
+            <span style={{fontWeight:300}}>{fmtDate(e.entry_date)}</span>
+            <span style={{...numFont}}><span style={{color:$.green}}>{numWithCommas(e.revenue||0)}</span> · <span style={{color:$.orange}}>{numWithCommas(e.expenses||0)}</span> · <span style={{color:$.blue,fontWeight:600}}>{numWithCommas(e.profit||0)}</span></span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
-// ═══════════════ المالية ═══════════════
-function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal}) {
+// ═══════════════ المالية — إدارة كاملة (إضافة/تعديل/حذف) ═══════════════
+function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal}) {
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [revenue, setRevenue] = useState(""); const [expenses, setExpenses] = useState("");
   const [profit, setProfit] = useState(""); const [cashBalance, setCashBalance] = useState("");
-  const [note, setNote] = useState(""); const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState(""); const [date, setDate] = useState(todayStr());
+  const [saving, setSaving] = useState(false);
+  const [savedFlash, fireSaved] = useSavedFlash();
 
   function num(v, setter) { setter(v.replace(/[^\d-]/g,"")); }
+  function resetForm() { setRevenue("");setExpenses("");setProfit("");setCashBalance("");setNote("");setDate(todayStr());setEditId(null);setShowForm(false); }
+
+  function startEdit(e) {
+    setEditId(e.id); setRevenue(String(e.revenue||"")); setExpenses(String(e.expenses||""));
+    setProfit(String(e.profit||"")); setCashBalance(String(e.cash_balance||"")); setNote(e.note||""); setDate(e.entry_date||todayStr());
+    setShowForm(true);
+  }
 
   async function save() {
     if (!revenue.trim() && !expenses.trim() && !profit.trim() && !cashBalance.trim()) return;
     setSaving(true);
     try {
-      const e = await addFinanceEntry(analysisId, user.id, {
-        revenue: parseFloat(revenue)||0, expenses: parseFloat(expenses)||0,
+      const payload = { revenue: parseFloat(revenue)||0, expenses: parseFloat(expenses)||0,
         profit: parseFloat(profit) || (parseFloat(revenue)||0)-(parseFloat(expenses)||0),
-        cashBalance: parseFloat(cashBalance)||0, note: note.trim()
-      });
-      onEntryAdded(e);
-      setRevenue("");setExpenses("");setProfit("");setCashBalance("");setNote("");setShowForm(false);
+        cashBalance: parseFloat(cashBalance)||0, note: note.trim(), date };
+      if (editId) { const updated = await updateFinanceEntry(editId, payload); onUpdate(updated); }
+      else { const e = await addFinanceEntry(analysisId, user.id, payload); onAdd(e); }
+      fireSaved(); resetForm();
     } catch(err){} finally { setSaving(false); }
   }
+
+  async function remove(id) { if (!confirm("حذف هذا الإدخال؟")) return; await deleteFinanceEntry(id); onDelete(id); }
 
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:sp[3],marginBottom:sp[3]}}>
         <Card style={{padding:sp[4],display:"flex",alignItems:"center",gap:14,boxShadow:AD_SHADOW_SM}}>
           <div style={{width:64,height:64,borderRadius:"50%",flexShrink:0,background:`conic-gradient(${$.blue} 0% ${budgetUsedPct}%, ${$.F3} ${budgetUsedPct}% 100%)`,position:"relative"}}>
-            <div style={{position:"absolute",inset:9,background:$.surface,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <b style={{...numFont,fontSize:12,fontWeight:600,color:$.L1}}>{budgetUsedPct}%</b>
-            </div>
+            <div style={{position:"absolute",inset:9,background:$.surface,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}><b style={{...numFont,fontSize:12,fontWeight:600,color:$.L1}}>{budgetUsedPct}%</b></div>
           </div>
-          <div>
-            <div style={{fontSize:10,color:$.L4}}>الميزانية المتبقية</div>
-            <div style={{...numFont,fontSize:15,fontWeight:500,color:$.L1,marginTop:2}}>{numWithCommas(budgetRemaining)}</div>
-          </div>
+          <div><div style={{fontSize:10,color:$.L4}}>الميزانية المتبقية</div><div style={{...numFont,fontSize:15,fontWeight:500,color:$.L1,marginTop:2}}>{numWithCommas(budgetRemaining)}</div></div>
         </Card>
         <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
           <div style={{fontSize:10,color:$.L4,marginBottom:6}}>معدّل الحرق الشهري المقدّر</div>
@@ -1383,13 +1435,20 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
 
       <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[3]}}>
-          <div style={{fontSize:13,fontWeight:600,color:$.L1}}>إدخال جديد</div>
-          <button onClick={()=>setShowForm(!showForm)} style={{background:$.F4,border:"none",borderRadius:99,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <Plus size={15} color={$.blue} style={{transform:showForm?"rotate(45deg)":"none",transition:".2s"}}/>
-          </button>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1}}>{editId?"تعديل الإدخال":"إدخال جديد"}</div>
+          <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+            <SavedBadge show={savedFlash}/>
+            <button onClick={()=>showForm?resetForm():setShowForm(true)} style={{background:$.F4,border:"none",borderRadius:99,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Plus size={15} color={$.blue} style={{transform:showForm?"rotate(45deg)":"none",transition:".2s"}}/>
+            </button>
+          </div>
         </div>
         {showForm && (
           <div>
+            <div style={{marginBottom:sp[3]}}>
+              <div style={{fontSize:10.5,color:$.L4,marginBottom:sp[1]}}>التاريخ</div>
+              <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
               {[["الإيراد",revenue,setRevenue],["المصروفات",expenses,setExpenses],["الربح (اختياري)",profit,setProfit],["الرصيد النقدي",cashBalance,setCashBalance]].map(([lbl,val,setter],i)=>(
                 <div key={i}>
@@ -1399,7 +1458,10 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
               ))}
             </div>
             <input value={note} onChange={e=>setNote(e.target.value.substring(0,150))} placeholder="ملاحظة (اختياري)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
-            <button onClick={save} disabled={saving} style={{width:"100%",background:$.blue,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>{saving?<Spinner sz={14}/>:"حفظ"}</button>
+            <div style={{display:"flex",gap:sp[2]}}>
+              <button onClick={save} disabled={saving} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>{saving?<Spinner sz={14}/>:(editId?"حفظ التعديل":"حفظ")}</button>
+              {editId && <button onClick={resetForm} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:12,padding:sp[3],fontSize:14,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>}
+            </div>
           </div>
         )}
       </Card>
@@ -1413,9 +1475,12 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
             <div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>استخدم النموذج فوق لتسجيل أول رقم فعلي</div>
           </div>
         ) : [...entries].reverse().map(e=>(
-          <div key={e.id} style={{display:"flex",justifyContent:"space-between",padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
-            <div style={{fontSize:11,color:$.L4,fontWeight:300}}>{fmtDate(e.entry_date)}{e.note?` · ${e.note}`:""}</div>
-            <div style={{...numFont,fontSize:13,fontWeight:600,color:(e.profit||0)>=0?$.green:$.red}}>{(e.profit||0)>=0?"+":""}{numWithCommas(e.profit||0)}</div>
+          <div key={e.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
+            <div onClick={()=>startEdit(e)} style={{flex:1,cursor:"pointer"}}>
+              <div style={{fontSize:11,color:$.L4,fontWeight:300}}>{fmtDate(e.entry_date)}{e.note?` · ${e.note}`:""}</div>
+              <div style={{...numFont,fontSize:13,fontWeight:600,color:(e.profit||0)>=0?$.green:$.red,marginTop:2}}>{(e.profit||0)>=0?"+":""}{numWithCommas(e.profit||0)}</div>
+            </div>
+            <button onClick={()=>remove(e.id)} style={{background:"none",border:"none",cursor:"pointer",padding:6,flexShrink:0}}><Trash2 size={14} color={$.L4}/></button>
           </div>
         ))}
       </Card>
@@ -1423,55 +1488,120 @@ function FinanceSection({result, entries, user, analysisId, onEntryAdded, budget
   );
 }
 
-// ═══════════════ خطة التنفيذ ═══════════════
-function ProgressSection({actionPlan, doneSet, onToggle}) {
-  if (!actionPlan || actionPlan.length===0) {
-    return (
-      <Card style={{padding:sp[7],textAlign:"center",boxShadow:AD_SHADOW}}>
-        <CheckCircle size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
-        <div style={{fontSize:12,color:$.L3}}>لا توجد خطة تنفيذية محفوظة لهذا التحليل</div>
-        <div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>الخطة تُنشأ تلقائياً مع التحليلات الجديدة</div>
-      </Card>
-    );
+// ═══════════════ خططي — الافتراضية + خططه الخاصة (إدارة كاملة) ═══════════════
+function ProgressSection({actionPlan, doneSet, onToggle, planItems, onAddPlanItem, onTogglePlanItem, onDeletePlanItem, onDeletePlan}) {
+  const [newPlanName, setNewPlanName] = useState("");
+  const [addingPlan, setAddingPlan] = useState(false);
+  const [taskInputs, setTaskInputs] = useState({});
+
+  const customPlans = {};
+  planItems.forEach(p => { (customPlans[p.plan_name] = customPlans[p.plan_name]||[]).push(p); });
+
+  async function createPlan() {
+    if (!newPlanName.trim()) return;
+    // ننشئ الخطة بإضافة أول مهمة فارغة placeholder؟ لا — ننتظر أول مهمة فعلية من المستخدم
+    setAddingPlan(false);
+    setTaskInputs(prev=>({...prev, [`__new__${newPlanName.trim()}`]: ""}));
+    // نضيف اسم الخطة مباشرة كمجموعة فاضية بالعرض حتى يضيف أول مهمة
+    if (!customPlans[newPlanName.trim()]) customPlans[newPlanName.trim()] = [];
+    setPendingPlanNames(prev=>[...prev, newPlanName.trim()]);
+    setNewPlanName("");
   }
+  const [pendingPlanNames, setPendingPlanNames] = useState([]);
+
+  async function addTask(planName) {
+    const text = taskInputs[planName];
+    if (!text || !text.trim()) return;
+    await onAddPlanItem(planName, text.trim());
+    setTaskInputs(prev=>({...prev,[planName]:""}));
+    setPendingPlanNames(prev=>prev.filter(p=>p!==planName));
+  }
+
+  const allPlanNames = [...new Set([...Object.keys(customPlans), ...pendingPlanNames])];
+
   return (
-    <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
-      {actionPlan.map((phase, pi) => {
-        const tasks = phase.tasks || [];
-        const doneInPhase = tasks.filter((_,ti)=>doneSet.has(`${pi}-${ti}`)).length;
-        const allDone = doneInPhase === tasks.length && tasks.length>0;
-        return (
-          <div key={pi} style={{marginBottom:sp[4],paddingBottom:sp[4],borderBottom:pi<actionPlan.length-1?`1px solid ${$.sepL}`:"none"}}>
-            <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
-              <div style={{width:22,height:22,borderRadius:7,background:allDone?$.green:`${$.blue}14`,color:allDone?"#fff":$.blue,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:600,flexShrink:0}}>
-                {allDone?<Check size={12}/>:pi+1}
-              </div>
-              <div style={{fontSize:12.5,fontWeight:600,color:$.L1,flex:1}}>{phase.title || phase.phase}</div>
-              <div style={{...numFont,fontSize:9.5,color:$.L4}}>{doneInPhase}/{tasks.length}</div>
-            </div>
-            {tasks.map((task,ti)=>{
-              const done = doneSet.has(`${pi}-${ti}`);
-              return (
-                <div key={ti} onClick={()=>onToggle(pi,ti,task,!done)} style={{display:"flex",alignItems:"center",gap:sp[2],padding:`${sp[2]}px 0 ${sp[2]}px 30px`,fontSize:12,cursor:"pointer"}}>
-                  <div style={{width:16,height:16,borderRadius:5,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:done?$.green:"transparent",border:done?"none":`1.3px solid ${$.sepL}`}}>
-                    {done && <Check size={10} color="#fff"/>}
-                  </div>
-                  <span style={{color:done?$.L4:$.L2,textDecoration:done?"line-through":"none",fontWeight:300}}>{task}</span>
+    <div>
+      {(!actionPlan || actionPlan.length===0) ? null : (
+        <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
+          <div style={{fontSize:11,color:$.L4,marginBottom:sp[3],fontWeight:500}}>الخطة المقترحة من تحليلك</div>
+          {actionPlan.map((phase, pi) => {
+            const tasks = phase.tasks || [];
+            const doneInPhase = tasks.filter((_,ti)=>doneSet.has(`${pi}-${ti}`)).length;
+            const allDone = doneInPhase === tasks.length && tasks.length>0;
+            return (
+              <div key={pi} style={{marginBottom:sp[4],paddingBottom:sp[4],borderBottom:pi<actionPlan.length-1?`1px solid ${$.sepL}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[2]}}>
+                  <div style={{width:22,height:22,borderRadius:7,background:allDone?$.green:`${$.blue}14`,color:allDone?"#fff":$.blue,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:600,flexShrink:0}}>{allDone?<Check size={12}/>:pi+1}</div>
+                  <div style={{fontSize:12.5,fontWeight:600,color:$.L1,flex:1}}>{phase.title || phase.phase}</div>
+                  <div style={{...numFont,fontSize:9.5,color:$.L4}}>{doneInPhase}/{tasks.length}</div>
                 </div>
-              );
-            })}
-          </div>
+                {tasks.map((task,ti)=>{
+                  const done = doneSet.has(`${pi}-${ti}`);
+                  return (
+                    <div key={ti} onClick={()=>onToggle(pi,ti,task,!done)} style={{display:"flex",alignItems:"center",gap:sp[2],padding:`${sp[2]}px 0 ${sp[2]}px 30px`,fontSize:12,cursor:"pointer"}}>
+                      <div style={{width:16,height:16,borderRadius:5,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:done?$.green:"transparent",border:done?"none":`1.3px solid ${$.sepL}`}}>{done && <Check size={10} color="#fff"/>}</div>
+                      <span style={{color:done?$.L4:$.L2,textDecoration:done?"line-through":"none",fontWeight:300}}>{task}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
+      <div style={{fontSize:11,color:$.L4,marginBottom:sp[2],fontWeight:500,paddingRight:2}}>خططك الخاصة</div>
+
+      {allPlanNames.map(planName => {
+        const items = customPlans[planName] || [];
+        const doneCount = items.filter(p=>p.done).length;
+        return (
+          <Card key={planName} style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:sp[2]}}>
+              <div style={{fontSize:12.5,fontWeight:600,color:$.L1}}>{planName}</div>
+              <div style={{display:"flex",alignItems:"center",gap:sp[2]}}>
+                {items.length>0 && <span style={{...numFont,fontSize:9.5,color:$.L4}}>{doneCount}/{items.length}</span>}
+                {items.length>0 && <button onClick={()=>onDeletePlan(planName)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><Trash2 size={13} color={$.L4}/></button>}
+              </div>
+            </div>
+            {items.map(item => (
+              <div key={item.id} style={{display:"flex",alignItems:"center",gap:sp[2],padding:`${sp[2]}px 0`}}>
+                <div onClick={()=>onTogglePlanItem(item.id,!item.done)} style={{width:16,height:16,borderRadius:5,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",background:item.done?$.green:"transparent",border:item.done?"none":`1.3px solid ${$.sepL}`}}>{item.done && <Check size={10} color="#fff"/>}</div>
+                <span style={{flex:1,fontSize:12,color:item.done?$.L4:$.L2,textDecoration:item.done?"line-through":"none",fontWeight:300}}>{item.task_text}</span>
+                <button onClick={()=>onDeletePlanItem(item.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><X size={13} color={$.L4}/></button>
+              </div>
+            ))}
+            <div style={{display:"flex",gap:sp[2],marginTop:sp[2]}}>
+              <input value={taskInputs[planName]||""} onChange={e=>setTaskInputs(prev=>({...prev,[planName]:e.target.value.substring(0,150)}))} onKeyDown={e=>e.key==="Enter"&&addTask(planName)} placeholder="أضف مهمة…" style={{flex:1,background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:9,padding:`${sp[2]}px ${sp[3]}px`,color:$.L1,fontSize:12,fontFamily:"inherit",outline:"none"}}/>
+              <button onClick={()=>addTask(planName)} style={{background:$.blue,color:"#fff",border:"none",borderRadius:9,padding:`0 ${sp[3]}px`,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>إضافة</button>
+            </div>
+          </Card>
         );
       })}
-    </Card>
+
+      {addingPlan ? (
+        <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
+          <input value={newPlanName} onChange={e=>setNewPlanName(e.target.value.substring(0,60))} onKeyDown={e=>e.key==="Enter"&&createPlan()} placeholder="اسم الخطة (مثال: خطة التسويق)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
+          <div style={{display:"flex",gap:sp[2]}}>
+            <button onClick={createPlan} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>إنشاء</button>
+            <button onClick={()=>setAddingPlan(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
+          </div>
+        </Card>
+      ) : (
+        <div onClick={()=>setAddingPlan(true)} style={{border:`1.3px dashed ${$.sepL}`,borderRadius:15,display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:sp[6],color:$.L4,fontSize:12,cursor:"pointer"}}>
+          <Plus size={16}/>إنشاء خطة جديدة باسمك
+        </div>
+      )}
+    </div>
   );
 }
 
-// ═══════════════ مؤشراتي ═══════════════
-function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
+// ═══════════════ مؤشراتي — إدارة كاملة مع سجل القيم ═══════════════
+function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete}) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState(""); const [unit, setUnit] = useState("");
   const [entryInputs, setEntryInputs] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
 
   async function submitAdd() { if (!name.trim()) return; await onAdd(name.trim(), unit.trim()); setName(""); setUnit(""); setAdding(false); }
   async function submitEntry(metricId) { const v = entryInputs[metricId]; if (!v || !v.trim()) return; await onAddEntry(metricId, parseFloat(v)); setEntryInputs(prev=>({...prev,[metricId]:""})); }
@@ -1479,22 +1609,36 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
   return (
     <div>
       {metrics.map(m => {
-        const last = m.entries[m.entries.length-1];
-        const prev = m.entries[m.entries.length-2];
+        const sorted = [...m.entries].sort((a,b)=>new Date(b.entry_date)-new Date(a.entry_date));
+        const last = sorted[0]; const prev = sorted[1];
         const delta = last && prev ? last.value - prev.value : null;
+        const expanded = expandedId === m.id;
         return (
           <Card key={m.id} style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[2]}}>
-              <div>
-                <div style={{fontSize:12.5,fontWeight:600,color:$.L1}}>{m.name}</div>
-                <div style={{fontSize:9.5,color:$.L4,marginTop:2,fontWeight:300}}>مؤشر مخصّص{m.unit?` · ${m.unit}`:""}</div>
-              </div>
-              <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><X size={14} color={$.L4}/></button>
+              <div><div style={{fontSize:12.5,fontWeight:600,color:$.L1}}>{m.name}</div><div style={{fontSize:9.5,color:$.L4,marginTop:2,fontWeight:300}}>مؤشر مخصّص{m.unit?` · ${m.unit}`:""}</div></div>
+              <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><Trash2 size={14} color={$.L4}/></button>
             </div>
-            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:sp[3]}}>
+            <div onClick={()=>setExpandedId(expanded?null:m.id)} style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:sp[3],cursor:m.entries.length>0?"pointer":"default"}}>
               <div style={{...numFont,fontSize:19,fontWeight:500,color:$.L1}}>{last?numWithCommas(last.value):"—"}</div>
-              {delta!==null && <div style={{...numFont,fontSize:10,fontWeight:600,color:delta>=0?$.green:$.red}}>{delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}</div>}
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {delta!==null && <div style={{...numFont,fontSize:10,fontWeight:600,color:delta>=0?$.green:$.red}}>{delta>=0?"↑":"↓"} {numWithCommas(Math.abs(delta))}</div>}
+                {m.entries.length>0 && <ChevronDown size={13} color={$.L4} style={{transform:expanded?"rotate(180deg)":"none",transition:".2s"}}/>}
+              </div>
             </div>
+            {expanded && (
+              <div style={{marginBottom:sp[3],borderTop:`1px solid ${$.sepL}`,paddingTop:sp[2]}}>
+                {sorted.map(e=>(
+                  <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}>
+                    <span style={{fontSize:10,color:$.L4,fontWeight:300}}>{fmtDate(e.entry_date)}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{...numFont,fontSize:11,color:$.L2}}>{numWithCommas(e.value)}</span>
+                      <button onClick={()=>onDeleteEntry(m.id,e.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><X size={11} color={$.L4}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{display:"flex",gap:sp[2]}}>
               <input value={entryInputs[m.id]||""} onChange={e=>setEntryInputs(prev=>({...prev,[m.id]:e.target.value.replace(/[^\d.-]/g,"")}))} placeholder="قيمة جديدة" inputMode="decimal" style={{flex:1,background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
               <button onClick={()=>submitEntry(m.id)} style={{background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:`0 ${sp[3]}px`,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>إضافة</button>
@@ -1506,16 +1650,14 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
       {adding ? (
         <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
           <input value={name} onChange={e=>setName(e.target.value.substring(0,60))} placeholder="اسم المؤشر (مثال: زيارات أسبوعية)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[2]}}/>
-          <input value={unit} onChange={e=>setUnit(e.target.value.substring(0,20))} placeholder="الوحدة (اختياري، مثال: زيارة)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
+          <input value={unit} onChange={e=>setUnit(e.target.value.substring(0,20))} placeholder="الوحدة (اختياري)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
           <div style={{display:"flex",gap:sp[2]}}>
             <button onClick={submitAdd} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>حفظ</button>
             <button onClick={()=>setAdding(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
           </div>
         </Card>
       ) : (
-        <div onClick={()=>setAdding(true)} style={{border:`1.3px dashed ${$.sepL}`,borderRadius:15,display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:sp[6],color:$.L4,fontSize:12,cursor:"pointer"}}>
-          <Plus size={16}/>إضافة مؤشر جديد للمتابعة
-        </div>
+        <div onClick={()=>setAdding(true)} style={{border:`1.3px dashed ${$.sepL}`,borderRadius:15,display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:sp[6],color:$.L4,fontSize:12,cursor:"pointer"}}><Plus size={16}/>إضافة مؤشر جديد للمتابعة</div>
       )}
     </div>
   );
@@ -1525,21 +1667,14 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDelete}) {
 function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
   const hasComparison = latest && prevEntry;
   const needMore = 2 - entries.length;
-
   return (
     <div>
       <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
         <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[1]}}>هذا الإدخال مقابل السابق</div>
-        {!hasComparison && (
-          <div style={{fontSize:10.5,color:$.blue,marginBottom:sp[3],fontWeight:300}}>
-            {needMore>0 ? `يحتاج ${needMore} إدخال${needMore>1?"ات":""} إضافي${needMore>1?"ة":""} من "المالية"` : "جاهز — سيظهر بعد الإدخال التالي"}
-          </div>
-        )}
+        {!hasComparison && <div style={{fontSize:10.5,color:$.blue,marginBottom:sp[3],fontWeight:300}}>{needMore>0?`يحتاج ${needMore} إدخال${needMore>1?"ات":""} إضافي${needMore>1?"ة":""} من "المالية"`:"جاهز — سيظهر بعد الإدخال التالي"}</div>}
         {["الإيراد","المصروفات","الربح"].map((lbl,i)=>{
           const key = ["revenue","expenses","profit"][i];
-          const cur = hasComparison ? (latest[key]||0) : 0;
-          const old = hasComparison ? (prevEntry[key]||0) : 0;
-          const diff = cur-old;
+          const cur = hasComparison?(latest[key]||0):0, old = hasComparison?(prevEntry[key]||0):0, diff = cur-old;
           const pct = hasComparison && old!==0 ? Math.round((diff/Math.abs(old))*100) : null;
           return (
             <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${sp[2]}px 0`,borderBottom:`1px solid ${$.sepL}`,opacity:hasComparison?1:0.45}}>
@@ -1552,38 +1687,26 @@ function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
           );
         })}
       </Card>
-
       <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
         <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>الإنفاق مقابل التأسيس المقدّر</div>
-        <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2],position:"relative"}}>
-          <div style={{height:"100%",width:`${setupTotal>0?Math.min(100,(totalSpent/setupTotal)*100):0}%`,background:totalSpent>setupTotal?$.red:$.blue,borderRadius:99,transition:".3s"}}/>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:$.L4,fontWeight:300}}>
-          <span>أنفقت: <b style={numFont}>{numWithCommas(totalSpent)}</b></span>
-          <span>التقدير: <b style={numFont}>{numWithCommas(setupTotal)}</b></span>
-        </div>
+        <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2]}}><div style={{height:"100%",width:`${setupTotal>0?Math.min(100,(totalSpent/setupTotal)*100):0}%`,background:totalSpent>setupTotal?$.red:$.blue,borderRadius:99,transition:".3s"}}/></div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:$.L4,fontWeight:300}}><span>أنفقت: <b style={numFont}>{numWithCommas(totalSpent)}</b></span><span>التقدير: <b style={numFont}>{numWithCommas(setupTotal)}</b></span></div>
       </Card>
     </div>
   );
 }
 
-// ═══════════════ المستندات ═══════════════
-function DocsSection({documents, onAdd, onStatusChange}) {
+// ═══════════════ المستندات — إدارة كاملة ═══════════════
+function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const STATUS = {required:{label:"مطلوب",color:$.red},pending:{label:"قيد المراجعة",color:$.orange},uploaded:{label:"مكتمل",color:$.green}};
-
   async function submit() { if (!name.trim()) return; await onAdd(name.trim()); setName(""); setAdding(false); }
-
   return (
     <div>
       <Card style={{padding:0,overflow:"hidden",marginBottom:sp[3],boxShadow:AD_SHADOW}}>
         {documents.length===0 ? (
-          <div style={{padding:`${sp[6]}px ${sp[5]}px`,textAlign:"center"}}>
-            <FileText size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
-            <div style={{fontSize:12,color:$.L3,marginBottom:sp[1]}}>لا توجد مستندات بعد</div>
-            <div style={{fontSize:10.5,color:$.L4,fontWeight:300}}>مثال: عقد الإيجار، السجل التجاري، الرخصة البلدية</div>
-          </div>
+          <div style={{padding:`${sp[6]}px ${sp[5]}px`,textAlign:"center"}}><FileText size={22} color={$.L4} style={{marginBottom:sp[2]}}/><div style={{fontSize:12,color:$.L3,marginBottom:sp[1]}}>لا توجد مستندات بعد</div><div style={{fontSize:10.5,color:$.L4,fontWeight:300}}>مثال: عقد الإيجار، السجل التجاري، الرخصة البلدية</div></div>
         ) : documents.map(d=>(
           <div key={d.id} style={{display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[5]}px`,borderBottom:`1px solid ${$.sepL}`}}>
             <FileText size={16} color={$.L4}/>
@@ -1591,10 +1714,10 @@ function DocsSection({documents, onAdd, onStatusChange}) {
             <select value={d.status} onChange={e=>onStatusChange(d.id,e.target.value)} style={{fontSize:10.5,fontWeight:600,color:STATUS[d.status].color,background:`${STATUS[d.status].color}14`,border:"none",borderRadius:20,padding:"5px 10px",fontFamily:"inherit"}}>
               {Object.entries(STATUS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
             </select>
+            <button onClick={()=>onDelete(d.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><Trash2 size={13} color={$.L4}/></button>
           </div>
         ))}
       </Card>
-
       {adding ? (
         <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
           <input value={name} onChange={e=>setName(e.target.value.substring(0,80))} placeholder="اسم المستند (مثال: عقد الإيجار)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
@@ -1604,43 +1727,41 @@ function DocsSection({documents, onAdd, onStatusChange}) {
           </div>
         </Card>
       ) : (
-        <div onClick={()=>setAdding(true)} style={{border:`1.3px dashed ${$.sepL}`,borderRadius:15,display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:sp[5],color:$.L4,fontSize:12,cursor:"pointer"}}>
-          <Plus size={16}/>إضافة مستند
-        </div>
+        <div onClick={()=>setAdding(true)} style={{border:`1.3px dashed ${$.sepL}`,borderRadius:15,display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:sp[5],color:$.L4,fontSize:12,cursor:"pointer"}}><Plus size={16}/>إضافة مستند</div>
       )}
     </div>
   );
 }
 
-// ═══════════════ المستشار (الشات) ═══════════════
-function ChatSection({result, entries, messages, setMessages, user, analysisId}) {
+// ═══════════════ المستشار — رفيق يمشي معه خطوة بخطوة ═══════════════
+function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
   const scrollRef = useRef(null);
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
 
-  async function send() {
-    if (!input.trim() || sending) return;
-    const userMsg = input.trim();
+  async function send(overrideText) {
+    const text = (overrideText !== undefined ? overrideText : input).trim();
+    if (!text || sending) return;
     setInput(""); setErr(null); setSending(true);
-    setMessages(prev => [...prev, { role:"user", content:userMsg, id:"tmp-"+Date.now() }]);
+    setMessages(prev => [...prev, { role:"user", content:text, id:"tmp-"+Date.now() }]);
     try {
       const res = await fetch("/api/advisor", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ analysis: result, financeEntries: entries, history: messages.map(m=>({role:m.role,content:m.content})), message: userMsg })
+        body: JSON.stringify({ analysis: result, financeEntries: entries, history: messages.map(m=>({role:m.role,content:m.content})), message: text })
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error || "تعذّر الوصول للمستشار"); return; }
       setMessages(prev => [...prev, { role:"advisor", content:data.reply, id:"tmp-a-"+Date.now() }]);
-      if (analysisId) { saveAdvisorMessage(analysisId,user.id,"user",userMsg); saveAdvisorMessage(analysisId,user.id,"advisor",data.reply); }
+      if (analysisId) { saveAdvisorMessage(analysisId,user.id,"user",text); saveAdvisorMessage(analysisId,user.id,"advisor",data.reply); }
     } catch(e) { setErr("تعذّر الاتصال، تحقق من الإنترنت"); } finally { setSending(false); }
   }
 
   return (
     <Card style={{padding:0,overflow:"hidden",boxShadow:AD_SHADOW}}>
-      <div ref={scrollRef} style={{height:380,overflowY:"auto",padding:`${sp[4]}px ${sp[5]}px`}}>
-        {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[8]}px 0`,fontWeight:300}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
+      <div ref={scrollRef} style={{height:360,overflowY:"auto",padding:`${sp[4]}px ${sp[5]}px`}}>
+        {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[7]}px 0`,fontWeight:300}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
         {messages.map((m,i)=>(
           <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:sp[3]}}>
             <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,background:m.role==="user"?$.F4:`${$.blue}0F`,border:m.role==="advisor"?`1px solid ${$.blue}22`:"none",color:$.L1}}>{m.content}</div>
@@ -1649,11 +1770,14 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId})
         {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}0F`}}><Spinner sz={14}/></div></div>}
       </div>
       {err && <div style={{padding:`${sp[2]}px ${sp[5]}px`,fontSize:11,color:$.orange}}>{err}</div>}
+      {nextTask && messages.length===0 && (
+        <div onClick={()=>send(`أبي أناقش الخطوة الجاية: ${nextTask.text}`)} style={{margin:`0 ${sp[4]}px ${sp[2]}px`,padding:`${sp[2]}px ${sp[3]}px`,background:`${$.blue}0F`,border:`1px solid ${$.blue}25`,borderRadius:10,fontSize:11,color:$.blue,cursor:"pointer"}}>
+          ناقش معي: {nextTask.text}
+        </div>
+      )}
       <div style={{display:"flex",gap:sp[2],padding:`${sp[3]}px ${sp[4]}px`,borderTop:`1px solid ${$.sepL}`}}>
         <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,background:$.F4,border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
-        <button onClick={send} disabled={!input.trim()||sending} style={{width:38,height:38,borderRadius:11,background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0}}>
-          <ArrowRight size={16} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/>
-        </button>
+        <button onClick={()=>send()} disabled={!input.trim()||sending} style={{width:38,height:38,borderRadius:11,background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0}}><ArrowRight size={16} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
       </div>
     </Card>
   );
@@ -1667,23 +1791,14 @@ function LogSection({entries, messages, documents, metrics}) {
     ...metrics.flatMap(m=>m.entries.map(e=>({date:e.created_at, text:`${m.name}: ${numWithCommas(e.value)}`, color:$.purple})))
   ].filter(e=>e.date).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  if (events.length===0) return (
-    <Card style={{padding:sp[7],textAlign:"center",boxShadow:AD_SHADOW}}>
-      <Clock size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
-      <div style={{fontSize:12,color:$.L3}}>لا يوجد نشاط مسجّل بعد</div>
-      <div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>كل إدخال أو مستند أو مؤشر يظهر هنا تلقائياً بالترتيب الزمني</div>
-    </Card>
-  );
+  if (events.length===0) return <Card style={{padding:sp[7],textAlign:"center",boxShadow:AD_SHADOW}}><Clock size={22} color={$.L4} style={{marginBottom:sp[2]}}/><div style={{fontSize:12,color:$.L3}}>لا يوجد نشاط مسجّل بعد</div><div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>كل إدخال أو مستند أو مؤشر يظهر هنا تلقائياً بالترتيب الزمني</div></Card>;
 
   return (
     <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
       {events.slice(0,30).map((e,i)=>(
         <div key={i} style={{display:"flex",gap:sp[3],padding:`${sp[2]}px 0`,borderBottom:i<events.length-1?`1px solid ${$.sepL}`:"none"}}>
           <div style={{width:6,height:6,borderRadius:"50%",background:e.color,marginTop:6,flexShrink:0}}/>
-          <div>
-            <div style={{...numFont,fontSize:9.5,color:$.L4}}>{fmtDate(e.date)}</div>
-            <div style={{fontSize:11.5,color:$.L2,marginTop:2,fontWeight:300}}>{e.text}</div>
-          </div>
+          <div><div style={{...numFont,fontSize:9.5,color:$.L4}}>{fmtDate(e.date)}</div><div style={{fontSize:11.5,color:$.L2,marginTop:2,fontWeight:300}}>{e.text}</div></div>
         </div>
       ))}
     </Card>
