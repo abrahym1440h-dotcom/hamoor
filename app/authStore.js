@@ -314,3 +314,65 @@ export async function updateDocumentStatus(docId, status) {
   const { error } = await supabase.from("advisor_documents").update({ status }).eq("id", docId);
   if (error) throw new Error("فشل تحديث الحالة");
 }
+
+export async function deleteDocument(docId) {
+  const { error } = await supabase.from("advisor_documents").delete().eq("id", docId);
+  if (error) throw new Error("فشل حذف المستند");
+}
+
+// ═══════════════════════════════════════════════════
+// إدارة كاملة — تعديل وحذف الإدخالات المالية
+// ═══════════════════════════════════════════════════
+
+export async function updateFinanceEntry(entryId, entry) {
+  const { data, error } = await supabase.from("advisor_finance").update({
+    revenue: entry.revenue || 0, expenses: entry.expenses || 0,
+    profit: entry.profit || 0, cash_balance: entry.cashBalance || 0,
+    note: entry.note || "", entry_date: entry.date
+  }).eq("id", entryId).select().single();
+  if (error) throw new Error("فشل تعديل الإدخال");
+  return data;
+}
+
+export async function deleteFinanceEntry(entryId) {
+  const { error } = await supabase.from("advisor_finance").delete().eq("id", entryId);
+  if (error) throw new Error("فشل حذف الإدخال");
+}
+
+export async function deleteMetricEntry(entryId) {
+  const { error } = await supabase.from("advisor_metric_entries").delete().eq("id", entryId);
+  if (error) throw new Error("فشل حذف القيمة");
+}
+
+// ═══════════════════════════════════════════════════
+// خططك الخاصة — يضيف الشخص اسم خطة ومهام تحتها، إدارة كاملة
+// ═══════════════════════════════════════════════════
+
+export async function getPlanItems(analysisId) {
+  const { data, error } = await supabase.from("advisor_plan_items").select("*").eq("analysis_id", analysisId).order("sort_order");
+  if (error) return [];
+  return data;
+}
+
+export async function addPlanItem(analysisId, userId, planName, taskText) {
+  const { data, error } = await supabase.from("advisor_plan_items").insert({
+    analysis_id: analysisId, user_id: userId, plan_name: planName, task_text: taskText
+  }).select().single();
+  if (error) throw new Error("فشل إضافة المهمة");
+  return data;
+}
+
+export async function togglePlanItem(itemId, done) {
+  const { error } = await supabase.from("advisor_plan_items").update({ done }).eq("id", itemId);
+  if (error) throw new Error("فشل تحديث المهمة");
+}
+
+export async function deletePlanItem(itemId) {
+  const { error } = await supabase.from("advisor_plan_items").delete().eq("id", itemId);
+  if (error) throw new Error("فشل حذف المهمة");
+}
+
+export async function deletePlan(analysisId, planName) {
+  const { error } = await supabase.from("advisor_plan_items").delete().eq("analysis_id", analysisId).eq("plan_name", planName);
+  if (error) throw new Error("فشل حذف الخطة");
+}
