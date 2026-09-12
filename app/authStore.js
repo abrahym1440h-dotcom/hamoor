@@ -219,11 +219,6 @@ export async function getFinanceEntries(analysisId) {
   return data;
 }
 
-export async function deleteFinanceEntry(entryId) {
-  const { error } = await supabase.from("advisor_finance").delete().eq("id", entryId);
-  if (error) throw new Error("فشل حذف الإدخال");
-}
-
 export async function getAdvisorMessages(analysisId) {
   const { data, error } = await supabase
     .from("advisor_messages")
