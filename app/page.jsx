@@ -11,6 +11,7 @@ import {
   ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
   LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download, Plus
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
 
@@ -1397,28 +1398,14 @@ function MultiLineChart({entries}) {
 
   if (entries.length < 2) {
     return (
-      <div style={{position:"relative"}}>
-        <svg viewBox="0 0 300 100" style={{width:"100%",height:110,opacity:0.3}}>
-          <line x1="0" y1="50" x2="300" y2="50" stroke={$.L4} strokeWidth="1.5" strokeDasharray="5 5"/>
-        </svg>
-        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`,fontWeight:300}}>{entries.length===0?"يظهر بعد أول إدخالين":"أضف إدخالاً آخر ليظهر الاتجاه"}</div>
-        </div>
+      <div style={{height:200,display:"flex",alignItems:"center",justifyContent:"center",background:$.F5,borderRadius:12}}>
+        <div style={{fontSize:11,color:$.L4,fontWeight:300}}>{entries.length===0?"يظهر بعد أول إدخالين":"أضف إدخالاً آخر ليظهر الاتجاه"}</div>
       </div>
     );
   }
 
   const data = aggregateForChart(entries, granularity);
-  const w=320, h=170, padLeft=46, padRight=8, padTop=8, padBottom=24;
-  const chartW = w-padLeft-padRight, chartH = h-padTop-padBottom;
   const visibleSeries = CHART_SERIES.filter(s=>active.includes(s.key));
-  const allVals = visibleSeries.length>0 ? data.flatMap(d=>visibleSeries.map(s=>d[s.key]||0)) : [0];
-  const max = Math.max(...allVals,1), min = Math.min(...allVals,0);
-  const range = (max-min)||1;
-  const xAt = i => data.length>1 ? padLeft + (i/(data.length-1))*chartW : padLeft+chartW/2;
-  const yAt = v => padTop + chartH - ((v-min)/range)*chartH;
-  const yTicks = [max, (max+min)/2, min];
-  const labelStep = Math.max(1, Math.ceil(data.length/5));
 
   return (
     <div>
@@ -1442,24 +1429,26 @@ function MultiLineChart({entries}) {
       {visibleSeries.length===0 ? (
         <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[6]}px 0`}}>اختر مؤشراً واحداً على الأقل لعرضه</div>
       ) : (
-        <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:150}}>
-          {yTicks.map((v,i)=>{
-            const y = yAt(v);
-            return (
-              <g key={i}>
-                <line x1={padLeft} y1={y} x2={w-padRight} y2={y} stroke={$.sepL} strokeWidth="1"/>
-                <text x={padLeft-6} y={y+3} fontSize="7.5" fill={$.L4} textAnchor="end">{numWithCommas(Math.round(v))}</text>
-              </g>
-            );
-          })}
-          {visibleSeries.map(s=>{
-            const pts = data.map((d,i)=>`${xAt(i)},${yAt(d[s.key]||0)}`).join(" ");
-            return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
-          })}
-          {data.map((d,i)=> (i%labelStep===0 || i===data.length-1) && (
-            <text key={i} x={xAt(i)} y={h-6} fontSize="7.5" fill={$.L4} textAnchor="middle">{bucketLabel(d.key,granularity)}</text>
-          ))}
-        </svg>
+        <div style={{width:"100%",height:240,direction:"ltr"}}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{top:8,right:8,left:0,bottom:4}}>
+              <CartesianGrid stroke={$.sepL} strokeDasharray="3 3" vertical={false}/>
+              <XAxis dataKey="key" tickFormatter={k=>bucketLabel(k,granularity)} tick={{fontSize:10, fill:$.L4}} axisLine={{stroke:$.sepL}} tickLine={false} minTickGap={24}/>
+              <YAxis tickFormatter={v=>numWithCommas(v)} tick={{fontSize:9.5, fill:$.L4}} axisLine={false} tickLine={false} width={58}/>
+              <Tooltip
+                contentStyle={{background:$.surface, border:`1px solid ${$.sepL}`, borderRadius:10, fontSize:11, direction:"rtl", fontFamily:"inherit"}}
+                labelFormatter={k=>bucketLabel(k,granularity)}
+                formatter={(value, name)=>{
+                  const s = CHART_SERIES.find(x=>x.key===name);
+                  return [`${numWithCommas(value)} ريال`, s?s.label:name];
+                }}
+              />
+              {visibleSeries.map(s=>(
+                <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} strokeWidth={2.2} dot={data.length<=12} activeDot={{r:4}} isAnimationActive={false}/>
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
 
       <div style={{marginTop:sp[3],borderTop:`1px solid ${$.sepL}`,paddingTop:sp[2]}}>
@@ -1474,7 +1463,7 @@ function MultiLineChart({entries}) {
   );
 }
 
-// مؤشر مخصّص كرسم بياني صغير — يظهر في النظرة العامة إذا فعّله الشخص
+// مؤشر مخصّص كرسم بياني رسمي (محاور + تلميحات) — يظهر في النظرة العامة إذا فعّله الشخص
 function MiniMetricChart({metric, go}) {
   const sorted = [...metric.entries].sort((a,b)=>new Date(a.entry_date)-new Date(b.entry_date));
   if (sorted.length < 2) {
@@ -1485,10 +1474,7 @@ function MiniMetricChart({metric, go}) {
       </Card>
     );
   }
-  const w=140,h=44;
-  const vals = sorted.map(e=>e.value);
-  const max=Math.max(...vals), min=Math.min(...vals), range=(max-min)||1;
-  const pts = sorted.map((e,i)=>`${(i/(sorted.length-1))*w},${h-((e.value-min)/range)*h}`).join(" ");
+  const data = sorted.map(e=>({date:e.entry_date, value:e.value}));
   const last = sorted[sorted.length-1].value, first = sorted[0].value;
   const trendColor = last>=first ? $.green : $.red;
   return (
@@ -1497,9 +1483,21 @@ function MiniMetricChart({metric, go}) {
         <span style={{fontSize:11,fontWeight:600,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{metric.name}</span>
         <span style={{...numFont,fontSize:13,fontWeight:700,color:$.L1,flexShrink:0}}>{numWithCommas(last)}{metric.unit?` ${metric.unit}`:""}</span>
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:40}}>
-        <polyline points={pts} fill="none" stroke={trendColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
+      <div style={{width:"100%",height:130,direction:"ltr"}}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{top:4,right:6,left:0,bottom:0}}>
+            <CartesianGrid stroke={$.sepL} strokeDasharray="3 3" vertical={false}/>
+            <XAxis dataKey="date" tickFormatter={d=>bucketLabel(d,"day")} tick={{fontSize:8.5, fill:$.L4}} axisLine={{stroke:$.sepL}} tickLine={false} minTickGap={18}/>
+            <YAxis tickFormatter={v=>numWithCommas(v)} tick={{fontSize:8, fill:$.L4}} axisLine={false} tickLine={false} width={42}/>
+            <Tooltip
+              contentStyle={{background:$.surface, border:`1px solid ${$.sepL}`, borderRadius:10, fontSize:10, direction:"rtl", fontFamily:"inherit"}}
+              labelFormatter={d=>fmtDate(d)}
+              formatter={(value)=>[`${numWithCommas(value)}${metric.unit?` ${metric.unit}`:""}`, metric.name]}
+            />
+            <Line type="monotone" dataKey="value" stroke={trendColor} strokeWidth={2} dot={data.length<=15} activeDot={{r:4}} isAnimationActive={false}/>
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </Card>
   );
 }
