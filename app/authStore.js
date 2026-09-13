@@ -272,10 +272,15 @@ export async function getMetrics(analysisId) {
   return data.map(m => ({ ...m, entries: (m.advisor_metric_entries||[]).sort((a,b)=>new Date(a.entry_date)-new Date(b.entry_date)) }));
 }
 
-export async function addMetric(analysisId, userId, name, unit) {
-  const { data, error } = await supabase.from("advisor_metrics").insert({ analysis_id: analysisId, user_id: userId, name, unit }).select().single();
+export async function addMetric(analysisId, userId, name, unit, showChart) {
+  const { data, error } = await supabase.from("advisor_metrics").insert({ analysis_id: analysisId, user_id: userId, name, unit, show_chart: !!showChart }).select().single();
   if (error) throw new Error("فشل إضافة المؤشر");
   return { ...data, entries: [] };
+}
+
+export async function updateMetricChart(metricId, showChart) {
+  const { error } = await supabase.from("advisor_metrics").update({ show_chart: !!showChart }).eq("id", metricId);
+  if (error) throw new Error("فشل تحديث إعداد الرسم البياني");
 }
 
 export async function addMetricEntry(metricId, userId, value) {
