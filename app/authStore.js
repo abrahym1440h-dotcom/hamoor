@@ -376,3 +376,37 @@ export async function deletePlan(analysisId, planName) {
   const { error } = await supabase.from("advisor_plan_items").delete().eq("analysis_id", analysisId).eq("plan_name", planName);
   if (error) throw new Error("فشل حذف الخطة");
 }
+
+// ═══════════════════════════════════════════════════
+// الفريق — إدارة كاملة لأعضاء الفريق
+// ═══════════════════════════════════════════════════
+
+export async function getTeamMembers(analysisId) {
+  const { data, error } = await supabase.from("advisor_team").select("*").eq("analysis_id", analysisId).order("created_at");
+  if (error) return [];
+  return data;
+}
+
+export async function addTeamMember(analysisId, userId, member) {
+  const { data, error } = await supabase.from("advisor_team").insert({
+    analysis_id: analysisId, user_id: userId,
+    name: member.name, role: member.role || null, phone: member.phone || null,
+    monthly_pay: member.monthlyPay || null, start_date: member.startDate || null, notes: member.notes || null
+  }).select().single();
+  if (error) throw new Error("فشل إضافة عضو الفريق");
+  return data;
+}
+
+export async function updateTeamMember(memberId, member) {
+  const { data, error } = await supabase.from("advisor_team").update({
+    name: member.name, role: member.role || null, phone: member.phone || null,
+    monthly_pay: member.monthlyPay || null, start_date: member.startDate || null, notes: member.notes || null
+  }).eq("id", memberId).select().single();
+  if (error) throw new Error("فشل تعديل بيانات العضو");
+  return data;
+}
+
+export async function deleteTeamMember(memberId) {
+  const { error } = await supabase.from("advisor_team").delete().eq("id", memberId);
+  if (error) throw new Error("فشل حذف العضو");
+}
