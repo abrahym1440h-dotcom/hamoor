@@ -1365,18 +1365,15 @@ function bucketLabel(key, granularity) {
   if (granularity === "year") return key;
   if (granularity === "month") {
     const [y,m] = key.split("-");
-    return `${AR_MONTHS[parseInt(m)-1].slice(0,3)} ${y.slice(2)}`;
+    return `${AR_MONTHS[parseInt(m)-1]} ${y}`;
   }
   try {
     const d = new Date(key);
-    return `${d.getDate()} ${AR_MONTHS[d.getMonth()].slice(0,3)}`;
+    return `${d.getDate()} ${AR_MONTHS[d.getMonth()]}`;
   } catch(e) { return key; }
 }
 
 function aggregateForChart(entries, granularity) {
-  if (granularity === "day") {
-    return entries.map(e => ({ key: e.entry_date, revenue: e.revenue||0, expenses: e.expenses||0, profit: e.profit||0 }));
-  }
   const buckets = {};
   entries.forEach(e => {
     const k = bucketKey(e.entry_date, granularity);
