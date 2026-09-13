@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -995,6 +995,7 @@ const ADVISOR_SECTIONS = [
   {id:"overview", name:"نظرة عامة", Icon:Grid},
   {id:"finance", name:"المالية", Icon:TrendingUp},
   {id:"progress", name:"خططي", Icon:CheckCircle},
+  {id:"team", name:"الفريق", Icon:Users},
   {id:"metrics", name:"مؤشراتي", Icon:Target},
   {id:"compare", name:"المقارنات", Icon:BarChart2},
   {id:"docs", name:"المستندات", Icon:FileText},
@@ -1062,6 +1063,7 @@ function AdvisorDashboard({result, user}) {
   const [documents, setDocuments] = useState([]);
   const [planItems, setPlanItems] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const analysisId = result?.id;
@@ -1074,11 +1076,12 @@ function AdvisorDashboard({result, user}) {
     if (!analysisId) { setLoading(false); return; }
     (async () => {
       try {
-        const [e, t, m, d, p, msg] = await Promise.all([
+        const [e, t, m, d, p, msg, tm] = await Promise.all([
           getFinanceEntries(analysisId), getDoneTasks(analysisId), getMetrics(analysisId),
-          getDocuments(analysisId), getPlanItems(analysisId), getAdvisorMessages(analysisId)
+          getDocuments(analysisId), getPlanItems(analysisId), getAdvisorMessages(analysisId),
+          getTeamMembers(analysisId)
         ]);
-        setEntries(e); setDoneTasks(t); setMetrics(m); setDocuments(d); setPlanItems(p); setMessages(msg);
+        setEntries(e); setDoneTasks(t); setMetrics(m); setDocuments(d); setPlanItems(p); setMessages(msg); setTeam(tm);
       } catch(err) {} finally { setLoading(false); }
     })();
   }, [analysisId]);
@@ -1155,6 +1158,12 @@ function AdvisorDashboard({result, user}) {
           onDeletePlanItem={async (id)=>{ await deletePlanItem(id); setPlanItems(prev=>prev.filter(p=>p.id!==id)); }}
           onDeletePlan={async (planName)=>{ await deletePlan(analysisId,planName); setPlanItems(prev=>prev.filter(p=>p.plan_name!==planName)); }}/>
       )}
+      {section === "team" && (
+        <TeamSection team={team} salaryBreakdown={result?.financial_analysis?.salary_breakdown}
+          onAdd={async (payload)=>{ const t = await addTeamMember(analysisId,user.id,payload); setTeam(prev=>[...prev,t]); }}
+          onUpdate={async (id,payload)=>{ const t = await updateTeamMember(id,payload); setTeam(prev=>prev.map(x=>x.id===id?t:x)); }}
+          onDelete={async (id)=>{ await deleteTeamMember(id); setTeam(prev=>prev.filter(x=>x.id!==id)); }}/>
+      )}
       {section === "metrics" && (
         <MetricsSection metrics={metrics} analysisId={analysisId} user={user}
           onAdd={async (name,unit,showChart)=>{ const m = await addMetric(analysisId,user.id,name,unit,showChart); setMetrics(prev=>[...prev,m]); }}
@@ -1164,7 +1173,8 @@ function AdvisorDashboard({result, user}) {
           onToggleChart={async (metricId,showChart)=>{ await updateMetricChart(metricId,showChart); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,show_chart:showChart}:m)); }}/>
       )}
       {section === "compare" && (
-        <CompareSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} totalSpent={totalSpent}/>
+        <CompareSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} totalSpent={totalSpent}
+          totalProfit={totalProfit} fa={fa} savedAt={result?.savedAt}/>
       )}
       {section === "docs" && (
         <DocsSection documents={documents} analysisId={analysisId} user={user}
@@ -1176,7 +1186,7 @@ function AdvisorDashboard({result, user}) {
         <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask}/>
       )}
       {section === "log" && (
-        <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics}/>
+        <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics} team={team}/>
       )}
     </div>
   );
@@ -1798,11 +1808,73 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete, on
 }
 
 // ═══════════════ المقارنات ═══════════════
-function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
+function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent, totalProfit, fa, savedAt}) {
   const hasComparison = latest && prevEntry;
   const needMore = 2 - entries.length;
+
+  const rp = fa?.revenue_projection || {};
+  const predictedBE = parseFloat(String(fa?.break_even_months||"").replace(/[^\d.]/g,"")) || null;
+  const monthsSinceAnalysis = savedAt ? Math.max(0, (Date.now() - new Date(savedAt).getTime()) / (1000*60*60*24*30)) : null;
+
+  let beStatus = null;
+  if (setupTotal>0 && predictedBE && monthsSinceAnalysis!==null) {
+    const actualRatio = Math.max(0, totalProfit / setupTotal);
+    const expectedRatio = Math.min(2, monthsSinceAnalysis / predictedBE);
+    let label, color;
+    if (actualRatio >= expectedRatio*1.1) { label="متقدم عن الخطة"; color=$.green; }
+    else if (actualRatio >= expectedRatio*0.85) { label="قريب من المسار المتوقع"; color=$.blue; }
+    else { label="متأخر عن الخطة"; color=$.orange; }
+    beStatus = {actualRatio, label, color};
+  }
+
+  const milestone = (() => {
+    if (monthsSinceAnalysis===null) return null;
+    const points = [
+      {m:1, v:rp.month_1, label:"الشهر الأول"},
+      {m:3, v:rp.month_3, label:"الشهر الثالث"},
+      {m:6, v:rp.month_6, label:"الشهر السادس"},
+      {m:12, v:rp.month_12, label:"الشهر الـ12"}
+    ].filter(p=>p.v!==undefined && p.v!==null && p.v!=="" && !isNaN(parseFloat(p.v)));
+    if (points.length===0) return null;
+    let best=points[0], bestDiff=Math.abs(points[0].m-monthsSinceAnalysis);
+    points.forEach(p=>{ const d=Math.abs(p.m-monthsSinceAnalysis); if(d<bestDiff){best=p;bestDiff=d;} });
+    return {...best, v: parseFloat(best.v)};
+  })();
+
   return (
     <div>
+      <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
+        <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>الفعلي مقابل المتوقع في تحليلك الأصلي</div>
+        {beStatus ? (
+          <div style={{marginBottom:sp[4]}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
+              <span style={{fontSize:12,color:$.L2}}>نقطة التعادل</span>
+              <Chip text={beStatus.label} color={beStatus.color} bg={`${beStatus.color}15`} size={11}/>
+            </div>
+            <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2]}}>
+              <div style={{height:"100%",width:`${Math.min(100,beStatus.actualRatio*100)}%`,background:beStatus.color,borderRadius:99,transition:".3s"}}/>
+            </div>
+            <div style={{fontSize:10.5,color:$.L4,fontWeight:300,lineHeight:1.6}}>
+              استرجعت {Math.round(beStatus.actualRatio*100)}% من رأس مالك الأولي · توقّع تحليلك الأصلي كان التعادل خلال {predictedBE} شهر، وأنت الآن تقريباً في الشهر {Math.round(monthsSinceAnalysis)} منذ التحليل
+            </div>
+          </div>
+        ) : (
+          <div style={{fontSize:11,color:$.L4,marginBottom:sp[4],fontWeight:300}}>يحتاج بيانات تأسيس ونقطة تعادل من تحليلك الأصلي لعرض هذه المقارنة</div>
+        )}
+
+        {milestone && latest ? (
+          <div style={{borderTop:`1px solid ${$.sepL}`,paddingTop:sp[3]}}>
+            <div style={{fontSize:12,color:$.L2,marginBottom:sp[2]}}>آخر إيراد مسجّل مقابل توقّع {milestone.label}</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div><div style={{...numFont,fontSize:15,fontWeight:700,color:$.L1}}>{numWithCommas(latest.revenue||0)}</div><div style={{fontSize:9.5,color:$.L4}}>فعلي</div></div>
+              <div style={{textAlign:"left"}}><div style={{...numFont,fontSize:15,fontWeight:700,color:$.blue}}>{numWithCommas(milestone.v)}</div><div style={{fontSize:9.5,color:$.L4}}>متوقع</div></div>
+            </div>
+          </div>
+        ) : (
+          <div style={{fontSize:11,color:$.L4,fontWeight:300,borderTop:`1px solid ${$.sepL}`,paddingTop:sp[3]}}>سجّل إيرادك في "المالية" لتشوف هذه المقارنة</div>
+        )}
+      </Card>
+
       <Card style={{padding:sp[5],marginBottom:sp[3],boxShadow:AD_SHADOW}}>
         <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[1]}}>هذا الإدخال مقابل السابق</div>
         {!hasComparison && <div style={{fontSize:10.5,color:$.blue,marginBottom:sp[3],fontWeight:300}}>{needMore>0?`يحتاج ${needMore} إدخال${needMore>1?"ات":""} إضافي${needMore>1?"ة":""} من "المالية"`:"جاهز — سيظهر بعد الإدخال التالي"}</div>}
@@ -1826,6 +1898,114 @@ function CompareSection({entries, latest, prevEntry, setupTotal, totalSpent}) {
         <div style={{height:8,background:$.F3,borderRadius:99,overflow:"hidden",marginBottom:sp[2]}}><div style={{height:"100%",width:`${setupTotal>0?Math.min(100,(totalSpent/setupTotal)*100):0}%`,background:totalSpent>setupTotal?$.red:$.blue,borderRadius:99,transition:".3s"}}/></div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:$.L4,fontWeight:300}}><span>أنفقت: <b style={numFont}>{numWithCommas(totalSpent)}</b></span><span>التقدير: <b style={numFont}>{numWithCommas(setupTotal)}</b></span></div>
       </Card>
+    </div>
+  );
+}
+
+// ═══════════════ الفريق — من يشتغل معك (إدارة كاملة) ═══════════════
+function TeamSection({team, salaryBreakdown, onAdd, onUpdate, onDelete}) {
+  const [adding, setAdding] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [name, setName] = useState(""); const [role, setRole] = useState("");
+  const [phone, setPhone] = useState(""); const [monthlyPay, setMonthlyPay] = useState("");
+  const [startDate, setStartDate] = useState(""); const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const totalMonthlyPay = team.reduce((s,t)=>s+(parseFloat(t.monthly_pay)||0),0);
+
+  function resetForm() { setName("");setRole("");setPhone("");setMonthlyPay("");setStartDate("");setNotes("");setEditId(null);setAdding(false); }
+
+  function startEdit(t) {
+    setEditId(t.id); setName(t.name||""); setRole(t.role||""); setPhone(t.phone||"");
+    setMonthlyPay(t.monthly_pay?String(t.monthly_pay):""); setStartDate(t.start_date||""); setNotes(t.notes||"");
+    setAdding(true);
+  }
+
+  async function save() {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      const payload = { name:name.trim(), role:role.trim(), phone:phone.trim(), monthlyPay:parseFloat(monthlyPay)||null, startDate:startDate||null, notes:notes.trim() };
+      if (editId) { await onUpdate(editId, payload); } else { await onAdd(payload); }
+      resetForm();
+    } catch(e){} finally { setSaving(false); }
+  }
+
+  async function remove(id) { if (!confirm("حذف هذا العضو من الفريق؟")) return; await onDelete(id); }
+
+  return (
+    <div>
+      {salaryBreakdown && salaryBreakdown.length>0 && (
+        <Card style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM}}>
+          <div style={{fontSize:11,color:$.L4,marginBottom:sp[2],fontWeight:500}}>الخطة الأصلية اقترحت</div>
+          {salaryBreakdown.map((s,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",fontSize:11.5,color:$.L2}}>
+              <span>{s.role} × {s.count}</span>
+              <span style={numFont}>{numWithCommas(s.monthly_each)} ريال/شهر</span>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {team.length>0 && (
+        <Card style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{fontSize:10,color:$.L4}}>عدد أعضاء فريقك</div><div style={{...numFont,fontSize:19,fontWeight:600,color:$.L1,marginTop:2}}>{team.length}</div></div>
+          <div style={{textAlign:"left"}}><div style={{fontSize:10,color:$.L4}}>إجمالي الرواتب الشهرية</div><div style={{...numFont,fontSize:16,fontWeight:600,color:$.L1,marginTop:2}}>{numWithCommas(totalMonthlyPay)}</div></div>
+        </Card>
+      )}
+
+      <div style={{fontSize:11,color:$.L4,marginBottom:sp[2],fontWeight:500,paddingRight:2}}>فريقك الفعلي</div>
+
+      {team.length===0 && !adding && (
+        <div style={{padding:`${sp[5]}px`,textAlign:"center",marginBottom:sp[3]}}>
+          <Users size={22} color={$.L4} style={{marginBottom:sp[2]}}/>
+          <div style={{fontSize:12,color:$.L3}}>ما سجّلت أي عضو في فريقك بعد</div>
+        </div>
+      )}
+
+      {team.map(t=>(
+        <Card key={t.id} style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:$.L1}}>{t.name}</div>
+              {t.role && <div style={{fontSize:10.5,color:$.L3,marginTop:2}}>{t.role}</div>}
+              <div style={{display:"flex",gap:sp[3],marginTop:sp[2],flexWrap:"wrap"}}>
+                {t.phone && <span style={{fontSize:10.5,color:$.L4,direction:"ltr"}}>{t.phone}</span>}
+                {t.monthly_pay && <span style={{...numFont,fontSize:10.5,color:$.L4}}>{numWithCommas(t.monthly_pay)} ريال/شهر</span>}
+                {t.start_date && <span style={{fontSize:10.5,color:$.L4}}>منذ {fmtDate(t.start_date)}</span>}
+              </div>
+              {t.notes && <div style={{fontSize:10.5,color:$.L3,marginTop:sp[2],fontWeight:300,lineHeight:1.5}}>{t.notes}</div>}
+            </div>
+            <div style={{display:"flex",gap:4,flexShrink:0}}>
+              <button onClick={()=>startEdit(t)} style={{background:"none",border:"none",cursor:"pointer",padding:4}}><Settings size={13} color={$.L4}/></button>
+              <button onClick={()=>remove(t.id)} style={{background:"none",border:"none",cursor:"pointer",padding:4}}><Trash2 size={13} color={$.L4}/></button>
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {adding ? (
+        <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
+          <div style={{fontSize:13,fontWeight:600,color:$.L1,marginBottom:sp[3]}}>{editId?"تعديل عضو الفريق":"عضو جديد"}</div>
+          <input value={name} onChange={e=>setName(e.target.value.substring(0,60))} placeholder="الاسم" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[2]}}/>
+          <input value={role} onChange={e=>setRole(e.target.value.substring(0,60))} placeholder="الدور (مثال: باريستا)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[2]}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[2],marginBottom:sp[2]}}>
+            <input value={phone} onChange={e=>setPhone(e.target.value.substring(0,20))} placeholder="رقم التواصل" inputMode="tel" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",direction:"ltr",textAlign:"right"}}/>
+            <input value={monthlyPay} onChange={e=>setMonthlyPay(e.target.value.replace(/[^\d.]/g,""))} placeholder="الراتب الشهري" inputMode="decimal" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+          </div>
+          <div style={{marginBottom:sp[2]}}>
+            <div style={{fontSize:10.5,color:$.L4,marginBottom:sp[1]}}>تاريخ الانضمام (اختياري)</div>
+            <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+          </div>
+          <input value={notes} onChange={e=>setNotes(e.target.value.substring(0,150))} placeholder="ملاحظة (اختياري)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
+          <div style={{display:"flex",gap:sp[2]}}>
+            <button onClick={save} disabled={!name.trim()||saving} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>{saving?<Spinner sz={14}/>:(editId?"حفظ التعديل":"إضافة")}</button>
+            <button onClick={resetForm} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
+          </div>
+        </Card>
+      ) : (
+        <div onClick={()=>setAdding(true)} style={{border:`1.3px dashed ${$.sepL}`,borderRadius:15,display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:sp[6],color:$.L4,fontSize:12,cursor:"pointer"}}><Plus size={16}/>إضافة عضو للفريق</div>
+      )}
     </div>
   );
 }
@@ -1918,11 +2098,12 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
 }
 
 // ═══════════════ السجل ═══════════════
-function LogSection({entries, messages, documents, metrics}) {
+function LogSection({entries, messages, documents, metrics, team}) {
   const events = [
     ...entries.map(e=>({date:e.created_at||e.entry_date, text:`إدخال مالي جديد — ربح ${numWithCommas(e.profit||0)} ريال`, color:$.blue})),
     ...documents.filter(d=>d.status==="uploaded").map(d=>({date:d.created_at, text:`اكتمل مستند: ${d.name}`, color:$.green})),
-    ...metrics.flatMap(m=>m.entries.map(e=>({date:e.created_at, text:`${m.name}: ${numWithCommas(e.value)}`, color:$.purple})))
+    ...metrics.flatMap(m=>m.entries.map(e=>({date:e.created_at, text:`${m.name}: ${numWithCommas(e.value)}`, color:$.purple}))),
+    ...(team||[]).map(t=>({date:t.created_at, text:`انضم للفريق: ${t.name}${t.role?` — ${t.role}`:""}`, color:$.teal}))
   ].filter(e=>e.date).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   if (events.length===0) return <Card style={{padding:sp[7],textAlign:"center",boxShadow:AD_SHADOW}}><Clock size={22} color={$.L4} style={{marginBottom:sp[2]}}/><div style={{fontSize:12,color:$.L3}}>لا يوجد نشاط مسجّل بعد</div><div style={{fontSize:10.5,color:$.L4,marginTop:2,fontWeight:300}}>كل إدخال أو مستند أو مؤشر يظهر هنا تلقائياً بالترتيب الزمني</div></Card>;
