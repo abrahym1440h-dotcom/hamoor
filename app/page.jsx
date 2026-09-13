@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -1134,7 +1134,7 @@ function AdvisorDashboard({result, user}) {
       {section === "overview" && (
         <OverviewSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal}
           budget={budget} budgetRemaining={budgetRemaining} progressPct={progressPct} totalProfit={totalProfit} totalRevenue={totalRevenue}
-          totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa} nextTask={nextTask} go={go}/>
+          totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa} nextTask={nextTask} go={go} metrics={metrics}/>
       )}
       {section === "finance" && (
         <FinanceSection entries={sortedEntries} user={user} analysisId={analysisId}
@@ -1156,10 +1156,11 @@ function AdvisorDashboard({result, user}) {
       )}
       {section === "metrics" && (
         <MetricsSection metrics={metrics} analysisId={analysisId} user={user}
-          onAdd={async (name,unit)=>{ const m = await addMetric(analysisId,user.id,name,unit); setMetrics(prev=>[...prev,m]); }}
+          onAdd={async (name,unit,showChart)=>{ const m = await addMetric(analysisId,user.id,name,unit,showChart); setMetrics(prev=>[...prev,m]); }}
           onAddEntry={async (metricId,value)=>{ const e = await addMetricEntry(metricId,user.id,value); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:[...m.entries,e]}:m)); }}
           onDeleteEntry={async (metricId,entryId)=>{ await deleteMetricEntry(entryId); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:m.entries.filter(e=>e.id!==entryId)}:m)); }}
-          onDelete={async (metricId)=>{ await deleteMetric(metricId); setMetrics(prev=>prev.filter(m=>m.id!==metricId)); }}/>
+          onDelete={async (metricId)=>{ await deleteMetric(metricId); setMetrics(prev=>prev.filter(m=>m.id!==metricId)); }}
+          onToggleChart={async (metricId,showChart)=>{ await updateMetricChart(metricId,showChart); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,show_chart:showChart}:m)); }}/>
       )}
       {section === "compare" && (
         <CompareSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} totalSpent={totalSpent}/>
@@ -1181,9 +1182,10 @@ function AdvisorDashboard({result, user}) {
 }
 
 // ═══════════════ نظرة عامة — المرآة الرئيسية ═══════════════
-function OverviewSection({entries, latest, prevEntry, setupTotal, budget, budgetRemaining, progressPct, totalProfit, totalRevenue, totalSpent, liquidityPct, riskPct, fa, nextTask, go}) {
+function OverviewSection({entries, latest, prevEntry, setupTotal, budget, budgetRemaining, progressPct, totalProfit, totalRevenue, totalSpent, liquidityPct, riskPct, fa, nextTask, go, metrics}) {
   const delta = latest && prevEntry ? (latest.profit||0) - (prevEntry.profit||0) : null;
   const hasData = entries.length > 0;
+  const chartMetrics = (metrics||[]).filter(m=>m.show_chart).slice(0,3);
 
   const sc = fa.setup_costs || {};
   const donutItems = [
@@ -1243,6 +1245,15 @@ function OverviewSection({entries, latest, prevEntry, setupTotal, budget, budget
         </div>
         <MultiLineChart entries={entries}/>
       </Card>
+
+      {chartMetrics.length > 0 && (
+        <div style={{marginBottom:sp[3]}}>
+          <div style={{fontSize:11,color:$.L4,marginBottom:sp[2],fontWeight:500,paddingRight:2}}>مؤشراتك المخصصة</div>
+          <div style={{display:"grid",gridTemplateColumns:chartMetrics.length===1?"1fr":"1fr 1fr",gap:sp[3]}}>
+            {chartMetrics.map(m=><MiniMetricChart key={m.id} metric={m} go={go}/>)}
+          </div>
+        </div>
+      )}
 
       <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:sp[3],marginBottom:sp[3]}}>
         <Card style={{padding:sp[5],boxShadow:AD_SHADOW}}>
@@ -1329,14 +1340,66 @@ function BudgetDonut({items, total}) {
   );
 }
 
-// رسم مفصّل: ٣ خطوط (إيراد/مصروف/ربح) + Legend — يلبي طلب "تفصيل كامل"
+// ═══════════════ الرسم البياني الرئيسي — خطوط قابلة للتحكم + محاور + تحكم بالفترة الزمنية ═══════════════
+const CHART_SERIES = [
+  {key:"revenue", color:$.green, label:"الإيراد"},
+  {key:"expenses", color:$.orange, label:"المصروفات"},
+  {key:"profit", color:$.blue, label:"الربح"}
+];
+
+const CHART_GRANULARITIES = [
+  {id:"day", label:"أيام"},
+  {id:"month", label:"أشهر"},
+  {id:"year", label:"سنوات"}
+];
+
+function bucketKey(dateStr, granularity) {
+  const d = new Date(dateStr);
+  if (granularity === "year") return String(d.getFullYear());
+  if (granularity === "month") return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  return dateStr;
+}
+
+function bucketLabel(key, granularity) {
+  if (granularity === "year") return key;
+  if (granularity === "month") {
+    const [y,m] = key.split("-");
+    return `${AR_MONTHS[parseInt(m)-1].slice(0,3)} ${y.slice(2)}`;
+  }
+  try {
+    const d = new Date(key);
+    return `${d.getDate()} ${AR_MONTHS[d.getMonth()].slice(0,3)}`;
+  } catch(e) { return key; }
+}
+
+function aggregateForChart(entries, granularity) {
+  if (granularity === "day") {
+    return entries.map(e => ({ key: e.entry_date, revenue: e.revenue||0, expenses: e.expenses||0, profit: e.profit||0 }));
+  }
+  const buckets = {};
+  entries.forEach(e => {
+    const k = bucketKey(e.entry_date, granularity);
+    if (!buckets[k]) buckets[k] = { key:k, revenue:0, expenses:0, profit:0 };
+    buckets[k].revenue += e.revenue||0;
+    buckets[k].expenses += e.expenses||0;
+    buckets[k].profit += e.profit||0;
+  });
+  return Object.values(buckets).sort((a,b)=>a.key.localeCompare(b.key));
+}
+
 function MultiLineChart({entries}) {
-  const w = 300, h = 100;
+  const [granularity, setGranularity] = useState("day");
+  const [active, setActive] = useState(["revenue","expenses","profit"]);
+
+  function toggle(key) {
+    setActive(prev => prev.includes(key) ? prev.filter(k=>k!==key) : [...prev,key]);
+  }
+
   if (entries.length < 2) {
     return (
       <div style={{position:"relative"}}>
-        <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:110,opacity:0.3}}>
-          <line x1="0" y1={h/2} x2={w} y2={h/2} stroke={$.L4} strokeWidth="1.5" strokeDasharray="5 5"/>
+        <svg viewBox="0 0 300 100" style={{width:"100%",height:110,opacity:0.3}}>
+          <line x1="0" y1="50" x2="300" y2="50" stroke={$.L4} strokeWidth="1.5" strokeDasharray="5 5"/>
         </svg>
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{fontSize:11,color:$.L4,background:$.surface,padding:`0 ${sp[2]}px`,fontWeight:300}}>{entries.length===0?"يظهر بعد أول إدخالين":"أضف إدخالاً آخر ليظهر الاتجاه"}</div>
@@ -1344,22 +1407,61 @@ function MultiLineChart({entries}) {
       </div>
     );
   }
-  const series = [{key:"revenue",color:$.green,label:"الإيراد"},{key:"expenses",color:$.orange,label:"المصروفات"},{key:"profit",color:$.blue,label:"الربح"}];
-  const allVals = entries.flatMap(e=>series.map(s=>e[s.key]||0));
-  const max = Math.max(...allVals,1), min = Math.min(...allVals,0), range = max-min||1;
-  const pt = (v,i) => `${(i/(entries.length-1))*w},${h-((v-min)/range)*h}`;
+
+  const data = aggregateForChart(entries, granularity);
+  const w=320, h=170, padLeft=46, padRight=8, padTop=8, padBottom=24;
+  const chartW = w-padLeft-padRight, chartH = h-padTop-padBottom;
+  const visibleSeries = CHART_SERIES.filter(s=>active.includes(s.key));
+  const allVals = visibleSeries.length>0 ? data.flatMap(d=>visibleSeries.map(s=>d[s.key]||0)) : [0];
+  const max = Math.max(...allVals,1), min = Math.min(...allVals,0);
+  const range = (max-min)||1;
+  const xAt = i => data.length>1 ? padLeft + (i/(data.length-1))*chartW : padLeft+chartW/2;
+  const yAt = v => padTop + chartH - ((v-min)/range)*chartH;
+  const yTicks = [max, (max+min)/2, min];
+  const labelStep = Math.max(1, Math.ceil(data.length/5));
+
   return (
     <div>
-      <div style={{display:"flex",gap:14,marginBottom:sp[3]}}>
-        {series.map(s=><div key={s.key} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:$.L3,fontWeight:400}}><span style={{width:8,height:8,borderRadius:"50%",background:s.color}}/>{s.label}</div>)}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:4,marginBottom:sp[3]}}>
+        {CHART_GRANULARITIES.map(g=>(
+          <button key={g.id} onClick={()=>setGranularity(g.id)} style={{fontSize:10,fontWeight:600,padding:"4px 11px",borderRadius:99,border:"none",cursor:"pointer",fontFamily:"inherit",background:granularity===g.id?$.blue:$.F4,color:granularity===g.id?"#fff":$.L3}}>{g.label}</button>
+        ))}
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:110}}>
-        {series.map(s=>{
-          const pts = entries.map((e,i)=>pt(e[s.key]||0,i)).join(" ");
-          return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
+
+      <div style={{display:"flex",gap:14,marginBottom:sp[3],flexWrap:"wrap"}}>
+        {CHART_SERIES.map(s=>{
+          const on = active.includes(s.key);
+          return (
+            <div key={s.key} onClick={()=>toggle(s.key)} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:on?$.L3:$.L4,fontWeight:on?500:400,cursor:"pointer",opacity:on?1:0.4,userSelect:"none"}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:s.color}}/>{s.label}
+            </div>
+          );
         })}
-      </svg>
-      {/* جدول أرقام دقيق تحت الرسم — التفصيل الكامل */}
+      </div>
+
+      {visibleSeries.length===0 ? (
+        <div style={{fontSize:11,color:$.L4,textAlign:"center",padding:`${sp[6]}px 0`}}>اختر مؤشراً واحداً على الأقل لعرضه</div>
+      ) : (
+        <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:150}}>
+          {yTicks.map((v,i)=>{
+            const y = yAt(v);
+            return (
+              <g key={i}>
+                <line x1={padLeft} y1={y} x2={w-padRight} y2={y} stroke={$.sepL} strokeWidth="1"/>
+                <text x={padLeft-6} y={y+3} fontSize="7.5" fill={$.L4} textAnchor="end">{numWithCommas(Math.round(v))}</text>
+              </g>
+            );
+          })}
+          {visibleSeries.map(s=>{
+            const pts = data.map((d,i)=>`${xAt(i)},${yAt(d[s.key]||0)}`).join(" ");
+            return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
+          })}
+          {data.map((d,i)=> (i%labelStep===0 || i===data.length-1) && (
+            <text key={i} x={xAt(i)} y={h-6} fontSize="7.5" fill={$.L4} textAnchor="middle">{bucketLabel(d.key,granularity)}</text>
+          ))}
+        </svg>
+      )}
+
       <div style={{marginTop:sp[3],borderTop:`1px solid ${$.sepL}`,paddingTop:sp[2]}}>
         {[...entries].reverse().slice(0,5).map((e,i)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"4px 0",color:$.L3}}>
@@ -1369,6 +1471,36 @@ function MultiLineChart({entries}) {
         ))}
       </div>
     </div>
+  );
+}
+
+// مؤشر مخصّص كرسم بياني صغير — يظهر في النظرة العامة إذا فعّله الشخص
+function MiniMetricChart({metric, go}) {
+  const sorted = [...metric.entries].sort((a,b)=>new Date(a.entry_date)-new Date(b.entry_date));
+  if (sorted.length < 2) {
+    return (
+      <Card onClick={()=>go&&go("metrics")} style={{padding:sp[4],boxShadow:AD_SHADOW_SM,cursor:go?"pointer":"default"}}>
+        <div style={{fontSize:11,fontWeight:600,color:$.L1,marginBottom:sp[2],overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{metric.name}</div>
+        <div style={{fontSize:9.5,color:$.L4,textAlign:"center",padding:`${sp[3]}px 0`,fontWeight:300}}>يحتاج قيمتين على الأقل ليظهر الاتجاه</div>
+      </Card>
+    );
+  }
+  const w=140,h=44;
+  const vals = sorted.map(e=>e.value);
+  const max=Math.max(...vals), min=Math.min(...vals), range=(max-min)||1;
+  const pts = sorted.map((e,i)=>`${(i/(sorted.length-1))*w},${h-((e.value-min)/range)*h}`).join(" ");
+  const last = sorted[sorted.length-1].value, first = sorted[0].value;
+  const trendColor = last>=first ? $.green : $.red;
+  return (
+    <Card onClick={()=>go&&go("metrics")} style={{padding:sp[4],boxShadow:AD_SHADOW_SM,cursor:go?"pointer":"default"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[2]}}>
+        <span style={{fontSize:11,fontWeight:600,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{metric.name}</span>
+        <span style={{...numFont,fontSize:13,fontWeight:700,color:$.L1,flexShrink:0}}>{numWithCommas(last)}{metric.unit?` ${metric.unit}`:""}</span>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:40}}>
+        <polyline points={pts} fill="none" stroke={trendColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </Card>
   );
 }
 
@@ -1584,14 +1716,17 @@ function ProgressSection({actionPlan, doneSet, onToggle, planItems, onAddPlanIte
   );
 }
 
-// ═══════════════ مؤشراتي — إدارة كاملة مع سجل القيم ═══════════════
-function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete}) {
+// ═══════════════ مؤشراتي — إدارة كاملة مع سجل القيم + خيار عرضه كرسم في النظرة العامة ═══════════════
+function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete, onToggleChart}) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState(""); const [unit, setUnit] = useState("");
+  const [showChart, setShowChart] = useState(false);
   const [entryInputs, setEntryInputs] = useState({});
   const [expandedId, setExpandedId] = useState(null);
 
-  async function submitAdd() { if (!name.trim()) return; await onAdd(name.trim(), unit.trim()); setName(""); setUnit(""); setAdding(false); }
+  const chartCount = metrics.filter(m=>m.show_chart).length;
+
+  async function submitAdd() { if (!name.trim()) return; await onAdd(name.trim(), unit.trim(), showChart); setName(""); setUnit(""); setShowChart(false); setAdding(false); }
   async function submitEntry(metricId) { const v = entryInputs[metricId]; if (!v || !v.trim()) return; await onAddEntry(metricId, parseFloat(v)); setEntryInputs(prev=>({...prev,[metricId]:""})); }
 
   return (
@@ -1601,11 +1736,18 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete}) {
         const last = sorted[0]; const prev = sorted[1];
         const delta = last && prev ? last.value - prev.value : null;
         const expanded = expandedId === m.id;
+        const chartOn = !!m.show_chart;
+        const chartDisabled = !chartOn && chartCount>=3;
         return (
           <Card key={m.id} style={{padding:sp[4],marginBottom:sp[3],boxShadow:AD_SHADOW_SM}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sp[2]}}>
               <div><div style={{fontSize:12.5,fontWeight:600,color:$.L1}}>{m.name}</div><div style={{fontSize:9.5,color:$.L4,marginTop:2,fontWeight:300}}>مؤشر مخصّص{m.unit?` · ${m.unit}`:""}</div></div>
-              <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><Trash2 size={14} color={$.L4}/></button>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={()=>!chartDisabled && onToggleChart(m.id, !chartOn)} title={chartOn?"إخفاء من النظرة العامة":"أظهر كرسم بياني في النظرة العامة"} style={{background:chartOn?`${$.blue}14`:"none",border:"none",borderRadius:8,cursor:chartDisabled?"default":"pointer",padding:5,opacity:chartDisabled?0.35:1}}>
+                  <BarChart2 size={13} color={chartOn?$.blue:$.L4}/>
+                </button>
+                <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",cursor:"pointer",padding:2}}><Trash2 size={14} color={$.L4}/></button>
+              </div>
             </div>
             <div onClick={()=>setExpandedId(expanded?null:m.id)} style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:sp[3],cursor:m.entries.length>0?"pointer":"default"}}>
               <div style={{...numFont,fontSize:19,fontWeight:500,color:$.L1}}>{last?numWithCommas(last.value):"—"}</div>
@@ -1614,6 +1756,11 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete}) {
                 {m.entries.length>0 && <ChevronDown size={13} color={$.L4} style={{transform:expanded?"rotate(180deg)":"none",transition:".2s"}}/>}
               </div>
             </div>
+            {chartOn && (
+              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:sp[2],fontSize:9.5,color:$.blue,fontWeight:600}}>
+                <BarChart2 size={11}/>يظهر كرسم بياني في النظرة العامة
+              </div>
+            )}
             {expanded && (
               <div style={{marginBottom:sp[3],borderTop:`1px solid ${$.sepL}`,paddingTop:sp[2]}}>
                 {sorted.map(e=>(
@@ -1639,9 +1786,13 @@ function MetricsSection({metrics, onAdd, onAddEntry, onDeleteEntry, onDelete}) {
         <Card style={{padding:sp[4],boxShadow:AD_SHADOW_SM}}>
           <input value={name} onChange={e=>setName(e.target.value.substring(0,60))} placeholder="اسم المؤشر (مثال: زيارات أسبوعية)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[2]}}/>
           <input value={unit} onChange={e=>setUnit(e.target.value.substring(0,20))} placeholder="الوحدة (اختياري)" style={{width:"100%",background:$.F4,border:`1px solid ${$.sepL}`,borderRadius:10,padding:sp[3],color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:sp[3]}}/>
+          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:sp[3],cursor:chartCount>=3&&!showChart?"default":"pointer"}}>
+            <input type="checkbox" checked={showChart} disabled={chartCount>=3 && !showChart} onChange={e=>setShowChart(e.target.checked)} style={{width:16,height:16}}/>
+            <span style={{fontSize:11.5,color:$.L2}}>أظهره كرسم بياني في النظرة العامة{chartCount>=3?" (وصلت الحد الأقصى 3)":""}</span>
+          </label>
           <div style={{display:"flex",gap:sp[2]}}>
             <button onClick={submitAdd} style={{flex:1,background:$.blue,color:"#fff",border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>حفظ</button>
-            <button onClick={()=>setAdding(false)} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
+            <button onClick={()=>{setAdding(false);setShowChart(false);}} style={{flex:1,background:$.F4,color:$.L3,border:"none",borderRadius:10,padding:sp[3],fontSize:13,fontWeight:500,fontFamily:"inherit",cursor:"pointer"}}>إلغاء</button>
           </div>
         </Card>
       ) : (
