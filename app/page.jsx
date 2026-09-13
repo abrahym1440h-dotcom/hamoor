@@ -1055,16 +1055,112 @@ function SavedBadge({show}) {
   return <span style={{fontSize:10.5,color:$.green,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}><Check size={12}/>تم الحفظ</span>;
 }
 
-function AdvisorDashboard({result, user}) {
+function daysAgoISO(n) { const d = new Date(Date.now() - n*24*60*60*1000); return d.toISOString().split("T")[0]; }
+
+// ═══════════ مشروع تجريبي — بيانات وهمية للتعليم قبل الاشتراك ═══════════
+const DEMO_RESULT = {
+  id: "demo",
+  idea: "كوفي مختص - حي الشاطئ",
+  city: "جدة",
+  budget: "180000",
+  score: 78,
+  decision: "فرصة واعدة بمخاطر متوسطة",
+  decision_type: "positive",
+  savedAt: new Date(Date.now() - 75*24*60*60*1000).toISOString(),
+  financial_analysis: {
+    setup_costs: { total: 150000, rent_deposit:30000, renovation:35000, equipment:50000, licenses:8000, initial_inventory:12000, marketing_launch:10000, working_capital:5000 },
+    monthly_costs: { total: 42000, rent:10000, salaries:20000, utilities:3000, materials:6000, marketing:2000, maintenance:1000, other:0 },
+    revenue_projection: { month_1: 18000, month_3: 32000, month_6: 45000, month_12: 58000, year_2_monthly: 68000, year_3_monthly: 75000 },
+    break_even_months: "9",
+    salary_breakdown: [ {role:"باريستا", count:2, monthly_each:5500}, {role:"مشرف مناوبة", count:1, monthly_each:6000} ]
+  },
+  action_plan: [
+    {phase:"المرحلة 1", title:"التأسيس", tasks:["استخراج السجل التجاري","توقيع عقد الإيجار","تصميم الديكور الداخلي"]},
+    {phase:"المرحلة 2", title:"التجهيز", tasks:["شراء المعدات","توظيف الباريستا","تجربة قائمة المشروبات"]},
+    {phase:"المرحلة 3", title:"الإطلاق", tasks:["حملة تسويق الافتتاح","تفعيل التوصيل","جمع أول تقييمات العملاء"]}
+  ],
+  risk_analysis: [
+    {risk:"منافسة مقاهي مجاورة", probability:"عالي", impact:"متوسط", mitigation:"تميّز في نوع القهوة والتجربة الداخلية"},
+    {risk:"تقلب تكلفة حبوب القهوة", probability:"متوسط", impact:"متوسط", mitigation:"عقد توريد سنوي بسعر ثابت"}
+  ]
+};
+const DEMO_FINANCE_ENTRIES = [
+  {id:"demo-f1", revenue:14000, expenses:9000, profit:5000, cash_balance:35000, note:"الشهر الأول", entry_date: daysAgoISO(70)},
+  {id:"demo-f2", revenue:19500, expenses:11000, profit:8500, cash_balance:43000, note:"", entry_date: daysAgoISO(45)},
+  {id:"demo-f3", revenue:26000, expenses:13500, profit:12500, cash_balance:56000, note:"عرض رمضان", entry_date: daysAgoISO(20)},
+  {id:"demo-f4", revenue:29500, expenses:14000, profit:15500, cash_balance:71500, note:"", entry_date: daysAgoISO(3)}
+];
+const DEMO_METRICS = [
+  { id:"demo-m1", name:"عدد الزبائن اليومي", unit:"زبون", show_chart:true, entries:[
+    {id:"demo-m1-e1", value:35, entry_date:daysAgoISO(60)},
+    {id:"demo-m1-e2", value:52, entry_date:daysAgoISO(30)},
+    {id:"demo-m1-e3", value:68, entry_date:daysAgoISO(5)}
+  ]},
+  { id:"demo-m2", name:"متابعين انستقرام", unit:"متابع", show_chart:false, entries:[
+    {id:"demo-m2-e1", value:800, entry_date:daysAgoISO(60)},
+    {id:"demo-m2-e2", value:2100, entry_date:daysAgoISO(5)}
+  ]}
+];
+const DEMO_DOCS = [
+  {id:"demo-d1", name:"السجل التجاري", status:"uploaded", created_at:daysAgoISO(70)},
+  {id:"demo-d2", name:"رخصة البلدية", status:"pending", created_at:daysAgoISO(50)},
+  {id:"demo-d3", name:"عقد الإيجار", status:"required", created_at:daysAgoISO(70)}
+];
+const DEMO_PLAN_ITEMS = [
+  {id:"demo-p1", plan_name:"خطة التسويق", task_text:"تصوير محتوى لإنستقرام", done:true},
+  {id:"demo-p2", plan_name:"خطة التسويق", task_text:"التعاون مع مؤثر محلي", done:false}
+];
+const DEMO_DONE_TASKS = [ {phase_index:0, task_index:0}, {phase_index:0, task_index:1} ];
+const DEMO_TEAM = [
+  {id:"demo-t1", name:"سارة العتيبي", role:"باريستا", phone:"0501234567", monthly_pay:5500, start_date:daysAgoISO(60), notes:"دوام كامل"},
+  {id:"demo-t2", name:"فهد القحطاني", role:"مشرف مناوبة", phone:"0559876543", monthly_pay:6000, start_date:daysAgoISO(40), notes:""}
+];
+
+const TOUR_STEPS = [
+  {section:"overview", title:"نظرة عامة", text:"هذي لوحتك الرئيسية — تشوف فيها وضعك المالي والتقدم والمخاطر بنظرة واحدة، وأرقامك الحقيقية تنعكس هنا تلقائياً."},
+  {section:"finance", title:"المالية", text:"سجّل هنا إيرادك ومصروفك الفعلي كل ما تحصل رقم جديد. عدّل أو احذف أي إدخال في أي وقت."},
+  {section:"progress", title:"خططي", text:"تابع خطة التنفيذ اللي طلعها تحليلك، أو أنشئ خططك الخاصة وأضف مهامك عليها."},
+  {section:"team", title:"الفريق", text:"سجّل من يشتغل معك — الاسم، الدور، الراتب، وتاريخ الانضمام."},
+  {section:"metrics", title:"مؤشراتي", text:"أضف أي مؤشر يهمك (زيارات، طلبات، عملاء جدد) وتابعه عبر الزمن، واختر تظهره كرسم في نظرتك العامة."},
+  {section:"compare", title:"المقارنات", text:"شوف كيف أداءك الفعلي يقارن بتوقعات تحليلك الأصلي — هل أنت متقدم أو متأخر عن الخطة."},
+  {section:"docs", title:"المستندات", text:"تابع حالة أوراقك الرسمية — من مطلوب لسا لين المكتمل."},
+  {section:"chat", title:"المستشار", text:"اسأل المستشار أي سؤال عن أرقامك أو خطوتك القادمة، ويرد عليك بناءً على بياناتك الفعلية."}
+];
+
+function AdvisorTour({onNavigate, onFinish}) {
+  const [step, setStep] = useState(0);
+  const s = TOUR_STEPS[step];
+  useEffect(()=>{ onNavigate(s.section); }, [step]);
+  return (
+    <div style={{position:"fixed", inset:0, zIndex:3000, display:"flex", alignItems:"flex-end", justifyContent:"center", pointerEvents:"none"}}>
+      <div onClick={onFinish} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.35)",pointerEvents:"auto"}}/>
+      <div style={{position:"relative",pointerEvents:"auto", background:$.surface, borderRadius:"20px 20px 0 0", maxWidth:520, width:"100%", padding:`${sp[5]}px ${sp[5]}px ${sp[7]}px`, boxShadow:"0 -8px 32px rgba(0,0,0,0.25)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:sp[3]}}>
+          <Chip text={`${step+1} / ${TOUR_STEPS.length}`} color={$.blue} bg={`${$.blue}15`}/>
+          <button onClick={onFinish} style={{background:"none",border:"none",color:$.L4,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>تخطي</button>
+        </div>
+        <div style={{fontSize:16,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>{s.title}</div>
+        <p style={{fontSize:13,color:$.L2,lineHeight:1.8,marginBottom:sp[5]}}>{s.text}</p>
+        <div style={{display:"flex",gap:sp[2]}}>
+          {step>0 && <button onClick={()=>setStep(st=>st-1)} style={{flex:1,background:$.F4,color:$.L2,border:"none",borderRadius:12,padding:sp[3],fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>السابق</button>}
+          <button onClick={()=> step<TOUR_STEPS.length-1 ? setStep(st=>st+1) : onFinish()} style={{flex:2,background:$.blue,color:"#fff",border:"none",borderRadius:12,padding:sp[3],fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{step<TOUR_STEPS.length-1?"التالي":"ابدأ الاستكشاف"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdvisorDashboard({result, user, isDemo}) {
   const [section, setSection] = useState("overview");
-  const [entries, setEntries] = useState([]);
-  const [doneTasks, setDoneTasks] = useState([]);
-  const [metrics, setMetrics] = useState([]);
-  const [documents, setDocuments] = useState([]);
-  const [planItems, setPlanItems] = useState([]);
+  const [entries, setEntries] = useState(isDemo ? DEMO_FINANCE_ENTRIES : []);
+  const [doneTasks, setDoneTasks] = useState(isDemo ? DEMO_DONE_TASKS : []);
+  const [metrics, setMetrics] = useState(isDemo ? DEMO_METRICS : []);
+  const [documents, setDocuments] = useState(isDemo ? DEMO_DOCS : []);
+  const [planItems, setPlanItems] = useState(isDemo ? DEMO_PLAN_ITEMS : []);
   const [messages, setMessages] = useState([]);
-  const [team, setTeam] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [team, setTeam] = useState(isDemo ? DEMO_TEAM : []);
+  const [loading, setLoading] = useState(!isDemo);
+  const [showTour, setShowTour] = useState(!!isDemo);
 
   const analysisId = result?.id;
   const fa = result?.financial_analysis || {};
@@ -1073,6 +1169,7 @@ function AdvisorDashboard({result, user}) {
   const budget = parseFloat(result?.budget) || 0;
 
   useEffect(() => {
+    if (isDemo) { setLoading(false); return; }
     if (!analysisId) { setLoading(false); return; }
     (async () => {
       try {
@@ -1084,7 +1181,7 @@ function AdvisorDashboard({result, user}) {
         setEntries(e); setDoneTasks(t); setMetrics(m); setDocuments(d); setPlanItems(p); setMessages(msg); setTeam(tm);
       } catch(err) {} finally { setLoading(false); }
     })();
-  }, [analysisId]);
+  }, [analysisId, isDemo]);
 
   const sortedEntries = [...entries].sort((a,b)=>new Date(a.entry_date)-new Date(b.entry_date));
   const latest = sortedEntries[sortedEntries.length-1];
@@ -1132,6 +1229,12 @@ function AdvisorDashboard({result, user}) {
 
   return (
     <div>
+      {isDemo && (
+        <div style={{display:"flex",alignItems:"center",gap:6,background:`${$.blue}12`,border:`1px solid ${$.blue}30`,borderRadius:12,padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[3]}}>
+          <Sparkles size={13} color={$.blue}/>
+          <span style={{fontSize:11,fontWeight:600,color:$.blue}}>مشروع تجريبي — بيانات وهمية، أي تعديل هنا لا يُحفظ</span>
+        </div>
+      )}
       <AdvisorHeader result={result} healthScore={healthScore}/>
       <AdvisorIsland active={section} onChange={setSection}/>
 
@@ -1141,7 +1244,7 @@ function AdvisorDashboard({result, user}) {
           totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa} nextTask={nextTask} go={go} metrics={metrics}/>
       )}
       {section === "finance" && (
-        <FinanceSection entries={sortedEntries} user={user} analysisId={analysisId}
+        <FinanceSection entries={sortedEntries} user={user} analysisId={analysisId} isDemo={isDemo}
           onAdd={(e)=>setEntries(prev=>[...prev,e])}
           onUpdate={(e)=>setEntries(prev=>prev.map(x=>x.id===e.id?e:x))}
           onDelete={(id)=>setEntries(prev=>prev.filter(x=>x.id!==id))}
@@ -1150,27 +1253,42 @@ function AdvisorDashboard({result, user}) {
       {section === "progress" && (
         <ProgressSection actionPlan={actionPlan} doneSet={doneSet} analysisId={analysisId} user={user} planItems={planItems}
           onToggle={async (pi,ti,text,val)=>{
-            await toggleTask(analysisId,user.id,pi,ti,text,val);
+            if (!isDemo) await toggleTask(analysisId,user.id,pi,ti,text,val);
             setDoneTasks(prev => val ? [...prev,{phase_index:pi,task_index:ti}] : prev.filter(t=>!(t.phase_index===pi&&t.task_index===ti)));
           }}
-          onAddPlanItem={async (planName,taskText)=>{ const it = await addPlanItem(analysisId,user.id,planName,taskText); setPlanItems(prev=>[...prev,it]); }}
-          onTogglePlanItem={async (id,done)=>{ await togglePlanItem(id,done); setPlanItems(prev=>prev.map(p=>p.id===id?{...p,done}:p)); }}
-          onDeletePlanItem={async (id)=>{ await deletePlanItem(id); setPlanItems(prev=>prev.filter(p=>p.id!==id)); }}
-          onDeletePlan={async (planName)=>{ await deletePlan(analysisId,planName); setPlanItems(prev=>prev.filter(p=>p.plan_name!==planName)); }}/>
+          onAddPlanItem={async (planName,taskText)=>{
+            const it = isDemo ? {id:"demo-"+Date.now(), plan_name:planName, task_text:taskText, done:false} : await addPlanItem(analysisId,user.id,planName,taskText);
+            setPlanItems(prev=>[...prev,it]);
+          }}
+          onTogglePlanItem={async (id,done)=>{ if (!isDemo) await togglePlanItem(id,done); setPlanItems(prev=>prev.map(p=>p.id===id?{...p,done}:p)); }}
+          onDeletePlanItem={async (id)=>{ if (!isDemo) await deletePlanItem(id); setPlanItems(prev=>prev.filter(p=>p.id!==id)); }}
+          onDeletePlan={async (planName)=>{ if (!isDemo) await deletePlan(analysisId,planName); setPlanItems(prev=>prev.filter(p=>p.plan_name!==planName)); }}/>
       )}
       {section === "team" && (
         <TeamSection team={team} salaryBreakdown={result?.financial_analysis?.salary_breakdown}
-          onAdd={async (payload)=>{ const t = await addTeamMember(analysisId,user.id,payload); setTeam(prev=>[...prev,t]); }}
-          onUpdate={async (id,payload)=>{ const t = await updateTeamMember(id,payload); setTeam(prev=>prev.map(x=>x.id===id?t:x)); }}
-          onDelete={async (id)=>{ await deleteTeamMember(id); setTeam(prev=>prev.filter(x=>x.id!==id)); }}/>
+          onAdd={async (payload)=>{
+            const t = isDemo ? {id:"demo-"+Date.now(), name:payload.name, role:payload.role, phone:payload.phone, monthly_pay:payload.monthlyPay, start_date:payload.startDate, notes:payload.notes, created_at:new Date().toISOString()} : await addTeamMember(analysisId,user.id,payload);
+            setTeam(prev=>[...prev,t]);
+          }}
+          onUpdate={async (id,payload)=>{
+            const t = isDemo ? {id, name:payload.name, role:payload.role, phone:payload.phone, monthly_pay:payload.monthlyPay, start_date:payload.startDate, notes:payload.notes} : await updateTeamMember(id,payload);
+            setTeam(prev=>prev.map(x=>x.id===id?t:x));
+          }}
+          onDelete={async (id)=>{ if (!isDemo) await deleteTeamMember(id); setTeam(prev=>prev.filter(x=>x.id!==id)); }}/>
       )}
       {section === "metrics" && (
         <MetricsSection metrics={metrics} analysisId={analysisId} user={user}
-          onAdd={async (name,unit,showChart)=>{ const m = await addMetric(analysisId,user.id,name,unit,showChart); setMetrics(prev=>[...prev,m]); }}
-          onAddEntry={async (metricId,value)=>{ const e = await addMetricEntry(metricId,user.id,value); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:[...m.entries,e]}:m)); }}
-          onDeleteEntry={async (metricId,entryId)=>{ await deleteMetricEntry(entryId); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:m.entries.filter(e=>e.id!==entryId)}:m)); }}
-          onDelete={async (metricId)=>{ await deleteMetric(metricId); setMetrics(prev=>prev.filter(m=>m.id!==metricId)); }}
-          onToggleChart={async (metricId,showChart)=>{ await updateMetricChart(metricId,showChart); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,show_chart:showChart}:m)); }}/>
+          onAdd={async (name,unit,showChart)=>{
+            const m = isDemo ? {id:"demo-"+Date.now(), name, unit, show_chart:showChart, entries:[]} : await addMetric(analysisId,user.id,name,unit,showChart);
+            setMetrics(prev=>[...prev,m]);
+          }}
+          onAddEntry={async (metricId,value)=>{
+            const e = isDemo ? {id:"demo-"+Date.now(), value, entry_date:todayStr()} : await addMetricEntry(metricId,user.id,value);
+            setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:[...m.entries,e]}:m));
+          }}
+          onDeleteEntry={async (metricId,entryId)=>{ if (!isDemo) await deleteMetricEntry(entryId); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:m.entries.filter(e=>e.id!==entryId)}:m)); }}
+          onDelete={async (metricId)=>{ if (!isDemo) await deleteMetric(metricId); setMetrics(prev=>prev.filter(m=>m.id!==metricId)); }}
+          onToggleChart={async (metricId,showChart)=>{ if (!isDemo) await updateMetricChart(metricId,showChart); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,show_chart:showChart}:m)); }}/>
       )}
       {section === "compare" && (
         <CompareSection entries={sortedEntries} latest={latest} prevEntry={prevEntry} setupTotal={setupTotal} totalSpent={totalSpent}
@@ -1178,16 +1296,21 @@ function AdvisorDashboard({result, user}) {
       )}
       {section === "docs" && (
         <DocsSection documents={documents} analysisId={analysisId} user={user}
-          onAdd={async (name)=>{ const d = await addDocument(analysisId,user.id,name); setDocuments(prev=>[...prev,d]); }}
-          onStatusChange={async (docId,status)=>{ await updateDocumentStatus(docId,status); setDocuments(prev=>prev.map(d=>d.id===docId?{...d,status}:d)); }}
-          onDelete={async (docId)=>{ await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
+          onAdd={async (name)=>{
+            const d = isDemo ? {id:"demo-"+Date.now(), name, status:"required", created_at:new Date().toISOString()} : await addDocument(analysisId,user.id,name);
+            setDocuments(prev=>[...prev,d]);
+          }}
+          onStatusChange={async (docId,status)=>{ if (!isDemo) await updateDocumentStatus(docId,status); setDocuments(prev=>prev.map(d=>d.id===docId?{...d,status}:d)); }}
+          onDelete={async (docId)=>{ if (!isDemo) await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
       )}
       {section === "chat" && (
-        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask}/>
+        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo}/>
       )}
       {section === "log" && (
         <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics} team={team}/>
       )}
+
+      {isDemo && showTour && <AdvisorTour onNavigate={setSection} onFinish={()=>setShowTour(false)}/>}
     </div>
   );
 }
@@ -1510,7 +1633,7 @@ function MiniMetricChart({metric, go}) {
 }
 
 // ═══════════════ المالية — إدارة كاملة (إضافة/تعديل/حذف) ═══════════════
-function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal}) {
+function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal, isDemo}) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [revenue, setRevenue] = useState(""); const [expenses, setExpenses] = useState("");
@@ -1535,13 +1658,16 @@ function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, b
       const payload = { revenue: parseFloat(revenue)||0, expenses: parseFloat(expenses)||0,
         profit: parseFloat(profit) || (parseFloat(revenue)||0)-(parseFloat(expenses)||0),
         cashBalance: parseFloat(cashBalance)||0, note: note.trim(), date };
-      if (editId) { const updated = await updateFinanceEntry(editId, payload); onUpdate(updated); }
+      if (isDemo) {
+        const demoEntry = { id: editId || ("demo-"+Date.now()), revenue:payload.revenue, expenses:payload.expenses, profit:payload.profit, cash_balance:payload.cashBalance, note:payload.note, entry_date:payload.date };
+        if (editId) onUpdate(demoEntry); else onAdd(demoEntry);
+      } else if (editId) { const updated = await updateFinanceEntry(editId, payload); onUpdate(updated); }
       else { const e = await addFinanceEntry(analysisId, user.id, payload); onAdd(e); }
       fireSaved(); resetForm();
     } catch(err){} finally { setSaving(false); }
   }
 
-  async function remove(id) { if (!confirm("حذف هذا الإدخال؟")) return; await deleteFinanceEntry(id); onDelete(id); }
+  async function remove(id) { if (!confirm("حذف هذا الإدخال؟")) return; if (!isDemo) await deleteFinanceEntry(id); onDelete(id); }
 
   return (
     <div>
@@ -2048,7 +2174,7 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
 }
 
 // ═══════════════ المستشار — رفيق يمشي معه خطوة بخطوة ═══════════════
-function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask}) {
+function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
   const scrollRef = useRef(null);
@@ -2068,7 +2194,7 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
       const data = await res.json();
       if (!res.ok) { setErr(data.error || "تعذّر الوصول للمستشار"); return; }
       setMessages(prev => [...prev, { role:"advisor", content:data.reply, id:"tmp-a-"+Date.now() }]);
-      if (analysisId) { saveAdvisorMessage(analysisId,user.id,"user",text); saveAdvisorMessage(analysisId,user.id,"advisor",data.reply); }
+      if (!isDemo && analysisId) { saveAdvisorMessage(analysisId,user.id,"user",text); saveAdvisorMessage(analysisId,user.id,"advisor",data.reply); }
     } catch(e) { setErr("تعذّر الاتصال، تحقق من الإنترنت"); } finally { setSending(false); }
   }
 
@@ -2690,10 +2816,11 @@ function AnalysisScreen({result, onUpdate, user}) {
     </div>
   );
 }
-function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack}) {
+function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : {};
-  const selected = selectedId ? analyses.find(a => a.id === selectedId) : null;
+  const isDemoSelected = selectedId === "__demo__";
+  const selected = (!isDemoSelected && selectedId) ? analyses.find(a => a.id === selectedId) : null;
 
   if (!user) {
     return (
@@ -2710,8 +2837,45 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack}) {
     );
   }
 
-  // عرض المستشار لمشروع مختار
+  // عرض المشروع التجريبي — متاح للجميع، بيانات وهمية لا تُحفظ
+  if (isDemoSelected) {
+    return (
+      <div style={{padding:`${sp[6]}px ${sp[5]}px ${sp[10]}px`}}>
+        <div style={containerStyle}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:$.blue,marginBottom:sp[5],padding:0}}>
+            <ArrowRight size={16}/><span>كل المشاريع</span>
+          </button>
+          <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[5]}}>
+            <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${$.blue},${$.purple})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Sparkles size={20} color="#fff"/>
+            </div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:17,fontWeight:800,color:$.L1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{DEMO_RESULT.idea}</div>
+              <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{DEMO_RESULT.city}</span></div>
+            </div>
+          </div>
+          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo/>
+        </div>
+      </div>
+    );
+  }
+
+  // عرض المستشار لمشروع حقيقي مختار — يتطلب اشتراك
   if (selected) {
+    if (!isPremium) {
+      return (
+        <div style={{padding:`${sp[14]}px ${sp[5]}px`,textAlign:"center"}}>
+          <div style={containerStyle}>
+            <div style={{width:80,height:80,borderRadius:24,background:`${$.orange}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[5]}}>
+              <Crown size={36} color={$.orange} strokeWidth={1.5}/>
+            </div>
+            <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>المستشار لمشاريعك الحقيقية للمشتركين</h3>
+            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320,margin:"0 auto",marginBottom:sp[5]}}>اشترك ليتابع معك المستشار مشروعك بأرقامك الفعلية، أو جرّبه أولاً بالمشروع التجريبي</p>
+            <button onClick={onNeedUpgrade} style={{background:"linear-gradient(150deg,#FFB800,#FF9500)",color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>اشترك الآن</button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{padding:`${sp[6]}px ${sp[5]}px ${sp[10]}px`}}>
         <div style={containerStyle}>
@@ -2733,48 +2897,66 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack}) {
     );
   }
 
-  // قائمة المشاريع
-  if (analyses.length === 0) {
-    return (
-      <div style={{padding:`${sp[14]}px ${sp[5]}px`}}>
-        <div style={containerStyle}>
-          <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:sp[8]}}>المستشار</h1>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:`${sp[12]}px`,textAlign:"center"}}>
-            <div style={{width:80,height:80,borderRadius:24,background:`${$.blue}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:sp[5]}}>
-              <Sparkles size={36} color={$.blue} strokeWidth={1.5}/>
-            </div>
-            <h3 style={{fontSize:18,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>حلّل مشروعك أولاً</h3>
-            <p style={{fontSize:14,color:$.L3,lineHeight:1.6,maxWidth:320}}>المستشار يتابع معك مشروعاً بعد تحليله. حلّل مشروعك من الرئيسية، وارجع هنا لمتابعته</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // قائمة المشاريع + بطاقة المشروع التجريبي (دائماً ظاهرة)
   return (
     <div style={{padding:`${sp[14]}px ${sp[5]}px ${sp[10]}px`}}>
       <div style={containerStyle}>
         <h1 style={{fontSize:30,fontWeight:800,color:$.L1,marginBottom:4}}>المستشار</h1>
         <p style={{fontSize:14,color:$.L3,marginBottom:sp[5]}}>اختر مشروعاً لمتابعته مع المستشار</p>
 
-        <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
-          {analyses.map(a => {
-            const pos = a.decision_type === "positive";
-            const color = pos ? $.green : $.red;
-            return (
-              <Card key={a.id} onClick={()=>onSelect(a.id)} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
-                  <ScoreRing value={a.score} size={52} track={5} color={color} noAnim/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
-                    <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{a.city}</span></div>
+        <Card onClick={()=>onSelect("__demo__")} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer",marginBottom:sp[4],border:`1.5px dashed ${$.blue}50`,background:`${$.blue}06`}}>
+          <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+            <div style={{width:52,height:52,borderRadius:16,background:`linear-gradient(135deg,${$.blue},${$.purple})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Sparkles size={24} color="#fff"/>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
+                <span style={{fontSize:15,fontWeight:700,color:$.L1}}>جرّب المستشار — مشروع تجريبي</span>
+                <Chip text="تعليمي" color={$.blue} bg={`${$.blue}15`} size={10}/>
+              </div>
+              <div style={{fontSize:12,color:$.L3}}>بيانات وهمية، تجوّل بحرية وشوف كل الأقسام قبل الاشتراك</div>
+            </div>
+            <ChevronRight size={18} color={$.L4} style={{transform:"scaleX(-1)",flexShrink:0}}/>
+          </div>
+        </Card>
+
+        {!isPremium && (
+          <Card onClick={onNeedUpgrade} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer",marginBottom:sp[5],background:"linear-gradient(135deg,#FFB800,#FF9500)",border:"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:sp[3]}}>
+              <Crown size={22} color="#fff"/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:800,color:"#fff"}}>المستشار لمشاريعك الحقيقية يحتاج اشتراك</div>
+                <div style={{fontSize:11.5,color:"rgba(255,255,255,0.9)"}}>اشترك ليتابع معك أي مشروع حللته فعلياً</div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {analyses.length === 0 ? (
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:`${sp[10]}px`,textAlign:"center"}}>
+            <div style={{fontSize:13,color:$.L3}}>حلّل مشروعك من الرئيسية عشان يظهر هنا وتقدر تتابعه</div>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
+            {analyses.map(a => {
+              const pos = a.decision_type === "positive";
+              const color = pos ? $.green : $.red;
+              return (
+                <Card key={a.id} onClick={()=> isPremium ? onSelect(a.id) : onNeedUpgrade()} style={{padding:`${sp[4]}px ${sp[5]}px`,cursor:"pointer",opacity:isPremium?1:0.6,position:"relative"}}>
+                  {!isPremium && <div style={{position:"absolute",top:sp[3],left:sp[3]}}><Lock size={14} color={$.L4}/></div>}
+                  <div style={{display:"flex",alignItems:"center",gap:sp[4]}}>
+                    <ScoreRing value={a.score} size={52} track={5} color={color} noAnim/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.idea}</div>
+                      <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{a.city}</span></div>
+                    </div>
+                    <ChevronRight size={18} color={$.L4} style={{transform:"scaleX(-1)",flexShrink:0}}/>
                   </div>
-                  <ChevronRight size={18} color={$.L4} style={{transform:"scaleX(-1)",flexShrink:0}}/>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3957,7 +4139,7 @@ export default function HamourApp() {
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)}/>}
+        {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
