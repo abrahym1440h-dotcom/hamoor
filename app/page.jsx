@@ -354,6 +354,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   const [plan, setPlan] = useState("yearly");
   const [payBusy, setPayBusy] = useState(false);
   const [payErr, setPayErr] = useState(null);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
 
   async function startPayment() {
     if (payBusy) return;
@@ -401,6 +402,16 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
     "قسم اقتراحات المشاريع",
     "تحليل عميق بالذكاء الاصطناعي"
   ];
+  const MORE_FEATURES = [
+    "تحليل المخاطر والتحديات بالتفصيل",
+    "الخطة التنفيذية والتسعير الكاملة",
+    "تعديل معطيات تحليلك وإعادة الحساب",
+    "مستشار ذكي يتابع مشروعك خطوة بخطوة",
+    "تتبع إيرادك ومصروفك الفعلي عبر الزمن",
+    "إدارة فريق العمل بالكامل",
+    "مقارنة أداءك الفعلي بتوقعات تحليلك",
+    "متابعة مستنداتك الرسمية وحالتها"
+  ];
 
   return (
     <Sheet open={open} onClose={onClose}>
@@ -416,13 +427,25 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
         <div style={{background:$.F5,borderRadius:16,padding:sp[4],marginBottom:sp[5]}}>
           <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>مزايا المشترك</div>
           {FEATURES.map((f,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:i<FEATURES.length-1?sp[2]:0}}>
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:sp[2]}}>
               <div style={{width:18,height:18,borderRadius:"50%",background:`${$.green}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <Check size={11} color={$.green} strokeWidth={3}/>
               </div>
               <span style={{fontSize:13,color:$.L1,fontWeight:600}}>{f}</span>
             </div>
           ))}
+          {showAllFeatures && MORE_FEATURES.map((f,i)=>(
+            <div key={"more-"+i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:i<MORE_FEATURES.length-1?sp[2]:0}}>
+              <div style={{width:18,height:18,borderRadius:"50%",background:`${$.green}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Check size={11} color={$.green} strokeWidth={3}/>
+              </div>
+              <span style={{fontSize:13,color:$.L1,fontWeight:600}}>{f}</span>
+            </div>
+          ))}
+          <button onClick={()=>setShowAllFeatures(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:$.blue,padding:0,marginTop:sp[3],display:"flex",alignItems:"center",gap:4}}>
+            {showAllFeatures ? "عرض أقل" : "عرض كل المزايا"}
+            <ChevronDown size={13} style={{transform:showAllFeatures?"rotate(180deg)":"none",transition:".2s"}}/>
+          </button>
         </div>
 
         <div style={{fontSize:13,fontWeight:700,color:$.L1,marginBottom:sp[3]}}>اختر خطتك</div>
@@ -2276,7 +2299,9 @@ function LogSection({entries, messages, documents, metrics, team}) {
     </Card>
   );
 }
-function EditPanel({result, onUpdated}) {
+const MAX_EDITS = 3;
+
+function EditPanel({result, onUpdated, isPremium, onNeedUpgrade}) {
   const [open,setOpen]=useState(false);
   const [rent,setRent]=useState("");
   const [budget,setBudget]=useState("");
@@ -2293,6 +2318,9 @@ function EditPanel({result, onUpdated}) {
   const currentRentYearly = (mc.rent || 0) * 12;
   const currentEquip = sc.equipment || 0;
   const currentBudget = parseInt(result.budget) || 0;
+  const editCount = result.edit_count || 0;
+  const editsLeft = Math.max(0, MAX_EDITS - editCount);
+  const limitReached = editsLeft <= 0;
 
   function fmtInput(v, setter) {
     const raw = v.replace(/\D/g, "");
@@ -2303,7 +2331,7 @@ function EditPanel({result, onUpdated}) {
   const hasChanges = rent.trim() || budget.trim() || staff || equip.trim() || note.trim();
 
   async function recalc() {
-    if (!hasChanges || busy) return;
+    if (!hasChanges || busy || limitReached) return;
     setBusy(true); setErr(null); setDone(null);
     try {
       const edits = {};
@@ -2314,6 +2342,7 @@ function EditPanel({result, onUpdated}) {
       if (note.trim()) edits.note = note.trim();
 
       const updated = await apiCall("recalc", { original: result, edits });
+      updated.edit_count = editCount + 1;
       setDone(updated._edit_note || "تم تحديث التحليل");
       onUpdated(updated);
       setRent(""); setBudget(""); setStaff(""); setEquip(""); setNote("");
@@ -2323,6 +2352,17 @@ function EditPanel({result, onUpdated}) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!isPremium) {
+    return (
+      <div className="no-print" style={{marginBottom:sp[4]}}>
+        <button onClick={onNeedUpgrade} style={{width:"100%",background:$.surface,color:$.L3,border:`1px solid ${$.sepL}`,borderRadius:14,padding:`${sp[4]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <Lock size={14} color={$.L4}/>
+          عدّل معطياتي وأعد الحساب — للمشتركين
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -2337,8 +2377,16 @@ function EditPanel({result, onUpdated}) {
           <div style={{padding:`${sp[5]}px ${sp[5]}px ${sp[2]}px`}}>
             <div style={{fontSize:16,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>عدّل الأرقام الفعلية</div>
             <div style={{fontSize:12,color:$.L3,lineHeight:1.7}}>لقيت محل بسعر مختلف؟ تغيّرت ميزانيتك؟ حدّث ما تعرفه فعلياً — والباقي يبقى كما هو.</div>
+            <div style={{fontSize:11,color:limitReached?$.orange:$.L4,marginTop:sp[2],fontWeight:600}}>{limitReached ? "وصلت الحد الأقصى للتعديلات على هذا التحليل" : `تبقى لك ${editsLeft} من ${MAX_EDITS} تعديلات على هذا التحليل`}</div>
           </div>
 
+          {limitReached ? (
+            <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[6]}px`}}>
+              <div style={{background:`${$.orange}10`,border:`1px solid ${$.orange}30`,borderRadius:12,padding:`${sp[4]}px`,fontSize:13,color:$.L2,lineHeight:1.7}}>
+                استخدمت الحد الأقصى ({MAX_EDITS}) من التعديلات على هذا التحليل. لتجربة سيناريو مختلف تماماً (فكرة أو مدينة أخرى)، ابدأ تحليلاً جديداً من الرئيسية.
+              </div>
+            </div>
+          ) : (
           <div style={{padding:`${sp[4]}px ${sp[5]}px ${sp[5]}px`,display:"flex",flexDirection:"column",gap:sp[4]}}>
             <FormField label="الإيجار السنوي الفعلي">
               <input value={rent} onChange={e=>fmtInput(e.target.value,setRent)} inputMode="numeric" placeholder={currentRentYearly ? numWithCommas(currentRentYearly) : "90,000"}
@@ -2388,6 +2436,7 @@ function EditPanel({result, onUpdated}) {
               {busy ? <><Spinner sz={16}/>جاري إعادة الحساب…</> : "أعد الحساب بهذه الأرقام"}
             </button>
           </div>
+          )}
         </Card>
       )}
     </div>
@@ -2468,7 +2517,7 @@ function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
             <Download size={15}/>تصدير التحليل PDF
           </button>}
 
-          {onUpdate && <EditPanel result={result} onUpdated={onUpdate}/>}
+          {onUpdate && <EditPanel result={result} onUpdated={onUpdate} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>}
 
           <div className="no-print" style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
             {TABS.map((t,i)=>{
