@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getPremiumUsage, incrementPremiumUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -51,7 +51,7 @@ const sp = {1:4,2:8,3:12,4:16,5:20,6:24,7:28,8:32,10:40,12:48,14:56,16:64};
 const FREE_ANALYSES = 2;
 const FREE_ARTICLE_IDS = [1, 2, 3, 22, 23];
 const FREE_ARTICLES = FREE_ARTICLE_IDS.length;
-const PREMIUM_ANALYSES = Infinity; // المشترك بلا حد
+const PREMIUM_ANALYSES = 10; // المشترك يحصل على 10 تحليلات لكل فترة اشتراك (لا تتجدد بالوقت، تصفّر مع كل اشتراك جديد)
 
 function useScreenSize() {
   const [size, setSize] = useState({ width: 0, isMobile: true, isTablet: false, isDesktop: false });
@@ -396,7 +396,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   }
 
   const FEATURES = [
-    "تحليلات مشاريع بلا حدود",
+    "حتى 10 تحليلات لكل فترة اشتراك",
     "كل المقالات مفتوحة",
     "قسم اقتراحات المشاريع",
     "تحليل عميق بالذكاء الاصطناعي"
@@ -410,7 +410,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
             <Crown size={34} color="#fff" strokeWidth={2.2}/>
           </div>
           <h2 style={{fontSize:22,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>اشترك في هامور</h2>
-          <p style={{fontSize:14,color:$.L3,lineHeight:1.7}}>افتح كل مزايا التطبيق واحصل على تحليلات واقتراحات بلا حدود</p>
+          <p style={{fontSize:14,color:$.L3,lineHeight:1.7}}>افتح كل مزايا التطبيق واحصل على حتى 10 تحليلات لكل فترة اشتراك</p>
         </div>
 
         <div style={{background:$.F5,borderRadius:16,padding:sp[4],marginBottom:sp[5]}}>
@@ -529,7 +529,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
   }
 
   async function go() {
-    if (reachedLimit) { if (onClose) onClose(); onNeedUpgrade(); return; }
+    if (reachedLimit) { if (!isPremium) { if (onClose) onClose(); onNeedUpgrade(); } return; }
     if (!canGo) return;
     setBusy(true); setErr(null);
     setProgress(0); setProgressStage("جاري البدء…");
@@ -594,14 +594,23 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
           {isPremium ? <Crown size={14} color={$.orange}/> : <BarChart2 size={14} color={$.L3}/>}
           <span style={{fontSize:12,fontWeight:600,color:$.L2}}>{isPremium?"اشتراك مفعّل":"الباقة المجانية"}</span>
         </div>
-        {isPremium && <span style={{fontSize:12,fontWeight:700,color:$.orange}}>كل المزايا مفتوحة</span>}
+        <span style={{fontSize:12,fontWeight:700,color:isPremium?$.orange:$.L3}}>{analysesCount} من {limit} تحليلات</span>
       </div>
 
       {reachedLimit && (
         <div style={{background:`${$.orange}10`,border:`1.5px solid ${$.orange}30`,borderRadius:14,padding:`${sp[4]}px`,marginBottom:sp[4],textAlign:"center"}}>
           <Crown size={24} color={$.orange} style={{marginBottom:sp[2]}}/>
-          <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>وصلت للحد المسموح</div>
-          <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>اشترك واحصل على تحليلات بلا حدود</p>
+          {isPremium ? (
+            <>
+              <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>استخدمت العشر تحليلات المتاحة ضمن اشتراكك الحالي</div>
+              <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>تتجدد مع اشتراكك القادم. تحتاج تحليلات إضافية الآن؟ راسلنا على hamoorservice@gmail.com</p>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:14,fontWeight:700,color:$.L1,marginBottom:sp[1]}}>وصلت للحد المسموح</div>
+              <p style={{fontSize:12,color:$.L3,lineHeight:1.6}}>اشترك واحصل على حتى 10 تحليلات لكل فترة اشتراك</p>
+            </>
+          )}
         </div>
       )}
 
@@ -774,14 +783,14 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
           `}</style>
         </div>
       )}
-      <button onClick={go} disabled={busy||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?"linear-gradient(150deg,#FFB800,#FF9500)":(canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3),color:(reachedLimit||canGo)?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-        {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:reachedLimit?<><Crown size={16} strokeWidth={2.2}/>اشترك للمتابعة</>:<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
+      <button onClick={go} disabled={busy||(reachedLimit&&isPremium)||(!reachedLimit&&!canGo)} style={{marginTop:sp[5],width:"100%",background:reachedLimit?(isPremium?$.F3:"linear-gradient(150deg,#FFB800,#FF9500)"):(canGo?"linear-gradient(150deg,#1A7AFF,#007AFF,#005FCC)":$.F3),color:(reachedLimit&&isPremium)?$.L4:((reachedLimit||canGo)?"#fff":$.L4),border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:16,fontWeight:700,cursor:(busy||(reachedLimit&&isPremium)||(!reachedLimit&&!canGo))?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:(reachedLimit&&!isPremium||canGo)?SH.blue:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+        {busy?<><Spinner sz={17}/>جاري التحليل العميق…</>:reachedLimit?(isPremium?<>استخدمت حد اشتراكك</>:<><Crown size={16} strokeWidth={2.2}/>اشترك للمتابعة</>):<><Zap size={16} strokeWidth={2.2}/>حلّل المشروع</>}
       </button>
       <div style={{height:sp[8]}}/>
     </div>
   );
 }
-function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, usageCount, isPremium, onNeedUpgrade}) {
+function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, usageCount, premiumUsageCount, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
 
@@ -881,7 +890,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:800,color:"#fff",marginBottom:2}}>اشترك في هامور</div>
-                  <p style={{fontSize:12,color:"rgba(255,255,255,0.9)"}}>تحليلات بلا حدود + كل المقالات مفتوحة</p>
+                  <p style={{fontSize:12,color:"rgba(255,255,255,0.9)"}}>حتى 10 تحليلات + كل المقالات مفتوحة</p>
                 </div>
                 <ChevronRight size={20} color="#fff" style={{transform:"scaleX(-1)"}}/>
               </div>
@@ -975,13 +984,25 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
       </div>
 
       <Sheet open={showForm} onClose={()=>setShowForm(false)}>
-        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={isPremium?0:usageCount} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
+        <AnalyzeForm onAnalyze={onAnalyze} onClose={()=>setShowForm(false)} user={user} analysesCount={isPremium?premiumUsageCount:usageCount} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
       </Sheet>
     </div>
   );
 }
 
 const TABS=["نظرة عامة","تحليل السوق","التحليل المالي","المخاطر والتحديات","الخطة والتسعير"];
+const LOCKED_TABS = [3,4]; // المخاطر والتحديات، الخطة والتسعير — للمشتركين فقط
+
+function LockedTabCard({title, onNeedUpgrade, screen}) {
+  return (
+    <div style={{gridColumn:screen?.isDesktop?"span 2":"auto", padding:`${sp[10]}px ${sp[5]}px`, textAlign:"center", background:$.F5, borderRadius:20}}>
+      <Crown size={28} color={$.orange} style={{marginBottom:sp[3]}}/>
+      <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>{title} متاح للمشتركين</div>
+      <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4],maxWidth:340,margin:"0 auto"}}>اشترك لتشوف التفاصيل الكاملة وتحصل على خطة تنفيذية جاهزة لمشروعك</p>
+      <button onClick={onNeedUpgrade} style={{background:"linear-gradient(150deg,#FFB800,#FF9500)",color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:sp[3]}}>اشترك الآن</button>
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════
 // المستشار — مرآة تعكس وضع العميل من بياناته هو، ويديرها هو بالكامل
@@ -1112,7 +1133,7 @@ const DEMO_PLAN_ITEMS = [
 ];
 const DEMO_DONE_TASKS = [ {phase_index:0, task_index:0}, {phase_index:0, task_index:1} ];
 const DEMO_TEAM = [
-  {id:"demo-t1", name:"سارة العتيبي", role:"باريستا", phone:"0501234567", monthly_pay:5500, start_date:daysAgoISO(60), notes:"دوام كامل"},
+  {id:"demo-t1", name:"سعود العتيبي", role:"باريستا", phone:"0501234567", monthly_pay:5500, start_date:daysAgoISO(60), notes:"دوام كامل"},
   {id:"demo-t2", name:"فهد القحطاني", role:"مشرف مناوبة", phone:"0559876543", monthly_pay:6000, start_date:daysAgoISO(40), notes:""}
 ];
 
@@ -1150,7 +1171,7 @@ function AdvisorTour({onNavigate, onFinish}) {
   );
 }
 
-function AdvisorDashboard({result, user, isDemo}) {
+function AdvisorDashboard({result, user, isDemo, onNeedUpgrade}) {
   const [section, setSection] = useState("overview");
   const [entries, setEntries] = useState(isDemo ? DEMO_FINANCE_ENTRIES : []);
   const [doneTasks, setDoneTasks] = useState(isDemo ? DEMO_DONE_TASKS : []);
@@ -1226,13 +1247,17 @@ function AdvisorDashboard({result, user, isDemo}) {
   if (loading) return <div style={{padding:sp[8],textAlign:"center"}}><Spinner sz={20}/></div>;
 
   const go = (id) => setSection(id);
+  function blockDemoAdd() {
+    alert("هذا مشروع تجريبي للتعليم فقط. اشترك لإضافة بياناتك الحقيقية ومتابعة مشروعك الفعلي.");
+    if (onNeedUpgrade) onNeedUpgrade();
+  }
 
   return (
     <div>
       {isDemo && (
         <div style={{display:"flex",alignItems:"center",gap:6,background:`${$.blue}12`,border:`1px solid ${$.blue}30`,borderRadius:12,padding:`${sp[2]}px ${sp[3]}px`,marginBottom:sp[3]}}>
           <Sparkles size={13} color={$.blue}/>
-          <span style={{fontSize:11,fontWeight:600,color:$.blue}}>مشروع تجريبي — بيانات وهمية، أي تعديل هنا لا يُحفظ</span>
+          <span style={{fontSize:11,fontWeight:600,color:$.blue}}>مشروع تجريبي — تصفّح بحرية، بس الإضافة الفعلية تحتاج اشتراك</span>
         </div>
       )}
       <AdvisorHeader result={result} healthScore={healthScore}/>
@@ -1244,7 +1269,7 @@ function AdvisorDashboard({result, user, isDemo}) {
           totalSpent={totalSpent} liquidityPct={liquidityPct} riskPct={riskPct} fa={fa} nextTask={nextTask} go={go} metrics={metrics}/>
       )}
       {section === "finance" && (
-        <FinanceSection entries={sortedEntries} user={user} analysisId={analysisId} isDemo={isDemo}
+        <FinanceSection entries={sortedEntries} user={user} analysisId={analysisId} isDemo={isDemo} onNeedUpgrade={blockDemoAdd}
           onAdd={(e)=>setEntries(prev=>[...prev,e])}
           onUpdate={(e)=>setEntries(prev=>prev.map(x=>x.id===e.id?e:x))}
           onDelete={(id)=>setEntries(prev=>prev.filter(x=>x.id!==id))}
@@ -1257,7 +1282,8 @@ function AdvisorDashboard({result, user, isDemo}) {
             setDoneTasks(prev => val ? [...prev,{phase_index:pi,task_index:ti}] : prev.filter(t=>!(t.phase_index===pi&&t.task_index===ti)));
           }}
           onAddPlanItem={async (planName,taskText)=>{
-            const it = isDemo ? {id:"demo-"+Date.now(), plan_name:planName, task_text:taskText, done:false} : await addPlanItem(analysisId,user.id,planName,taskText);
+            if (isDemo) { blockDemoAdd(); return; }
+            const it = await addPlanItem(analysisId,user.id,planName,taskText);
             setPlanItems(prev=>[...prev,it]);
           }}
           onTogglePlanItem={async (id,done)=>{ if (!isDemo) await togglePlanItem(id,done); setPlanItems(prev=>prev.map(p=>p.id===id?{...p,done}:p)); }}
@@ -1267,7 +1293,8 @@ function AdvisorDashboard({result, user, isDemo}) {
       {section === "team" && (
         <TeamSection team={team} salaryBreakdown={result?.financial_analysis?.salary_breakdown}
           onAdd={async (payload)=>{
-            const t = isDemo ? {id:"demo-"+Date.now(), name:payload.name, role:payload.role, phone:payload.phone, monthly_pay:payload.monthlyPay, start_date:payload.startDate, notes:payload.notes, created_at:new Date().toISOString()} : await addTeamMember(analysisId,user.id,payload);
+            if (isDemo) { blockDemoAdd(); return; }
+            const t = await addTeamMember(analysisId,user.id,payload);
             setTeam(prev=>[...prev,t]);
           }}
           onUpdate={async (id,payload)=>{
@@ -1279,11 +1306,13 @@ function AdvisorDashboard({result, user, isDemo}) {
       {section === "metrics" && (
         <MetricsSection metrics={metrics} analysisId={analysisId} user={user}
           onAdd={async (name,unit,showChart)=>{
-            const m = isDemo ? {id:"demo-"+Date.now(), name, unit, show_chart:showChart, entries:[]} : await addMetric(analysisId,user.id,name,unit,showChart);
+            if (isDemo) { blockDemoAdd(); return; }
+            const m = await addMetric(analysisId,user.id,name,unit,showChart);
             setMetrics(prev=>[...prev,m]);
           }}
           onAddEntry={async (metricId,value)=>{
-            const e = isDemo ? {id:"demo-"+Date.now(), value, entry_date:todayStr()} : await addMetricEntry(metricId,user.id,value);
+            if (isDemo) { blockDemoAdd(); return; }
+            const e = await addMetricEntry(metricId,user.id,value);
             setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:[...m.entries,e]}:m));
           }}
           onDeleteEntry={async (metricId,entryId)=>{ if (!isDemo) await deleteMetricEntry(entryId); setMetrics(prev=>prev.map(m=>m.id===metricId?{...m,entries:m.entries.filter(e=>e.id!==entryId)}:m)); }}
@@ -1297,7 +1326,8 @@ function AdvisorDashboard({result, user, isDemo}) {
       {section === "docs" && (
         <DocsSection documents={documents} analysisId={analysisId} user={user}
           onAdd={async (name)=>{
-            const d = isDemo ? {id:"demo-"+Date.now(), name, status:"required", created_at:new Date().toISOString()} : await addDocument(analysisId,user.id,name);
+            if (isDemo) { blockDemoAdd(); return; }
+            const d = await addDocument(analysisId,user.id,name);
             setDocuments(prev=>[...prev,d]);
           }}
           onStatusChange={async (docId,status)=>{ if (!isDemo) await updateDocumentStatus(docId,status); setDocuments(prev=>prev.map(d=>d.id===docId?{...d,status}:d)); }}
@@ -1633,7 +1663,7 @@ function MiniMetricChart({metric, go}) {
 }
 
 // ═══════════════ المالية — إدارة كاملة (إضافة/تعديل/حذف) ═══════════════
-function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal, isDemo}) {
+function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, budget, totalSpent, budgetRemaining, budgetUsedPct, monthlyTotal, isDemo, onNeedUpgrade}) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [revenue, setRevenue] = useState(""); const [expenses, setExpenses] = useState("");
@@ -1659,8 +1689,9 @@ function FinanceSection({entries, user, analysisId, onAdd, onUpdate, onDelete, b
         profit: parseFloat(profit) || (parseFloat(revenue)||0)-(parseFloat(expenses)||0),
         cashBalance: parseFloat(cashBalance)||0, note: note.trim(), date };
       if (isDemo) {
-        const demoEntry = { id: editId || ("demo-"+Date.now()), revenue:payload.revenue, expenses:payload.expenses, profit:payload.profit, cash_balance:payload.cashBalance, note:payload.note, entry_date:payload.date };
-        if (editId) onUpdate(demoEntry); else onAdd(demoEntry);
+        if (!editId) { setSaving(false); if (onNeedUpgrade) onNeedUpgrade(); return; }
+        const demoEntry = { id: editId, revenue:payload.revenue, expenses:payload.expenses, profit:payload.profit, cash_balance:payload.cashBalance, note:payload.note, entry_date:payload.date };
+        onUpdate(demoEntry);
       } else if (editId) { const updated = await updateFinanceEntry(editId, payload); onUpdate(updated); }
       else { const e = await addFinanceEntry(analysisId, user.id, payload); onAdd(e); }
       fireSaved(); resetForm();
@@ -2363,7 +2394,7 @@ function EditPanel({result, onUpdated}) {
   );
 }
 
-function AnalysisScreen({result, onUpdate, user}) {
+function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [tab,setTab]=useState(0);
   const [printMode,setPrintMode]=useState(false);
@@ -2440,7 +2471,14 @@ function AnalysisScreen({result, onUpdate, user}) {
           {onUpdate && <EditPanel result={result} onUpdated={onUpdate}/>}
 
           <div className="no-print" style={{background:$.F3,borderRadius:12,padding:3,display:"flex",gap:2,marginBottom:sp[4],overflowX:"auto"}}>
-            {TABS.map((t,i)=>(<button key={t} onClick={()=>setTab(i)} style={{flex:"none",minWidth:screen.isMobile?"23%":"auto",padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i?$.surface:"transparent",color:tab===i?$.blue:$.L3,fontSize:12,fontWeight:tab===i?700:500,boxShadow:tab===i?SH.card:"none",whiteSpace:"nowrap"}}>{t}</button>))}
+            {TABS.map((t,i)=>{
+              const locked = !isPremium && LOCKED_TABS.includes(i);
+              return (
+                <button key={t} onClick={()=> locked ? onNeedUpgrade() : setTab(i)} style={{flex:"none",minWidth:screen.isMobile?"23%":"auto",padding:`${sp[2]}px ${sp[3]}px`,borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",background:tab===i&&!locked?$.surface:"transparent",color:tab===i&&!locked?$.blue:(locked?$.L4:$.L3),fontSize:12,fontWeight:tab===i&&!locked?700:500,boxShadow:tab===i&&!locked?SH.card:"none",whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                  {locked && <Lock size={10}/>}{t}
+                </button>
+              );
+            })}
           </div>
 
           <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[4]}}>
@@ -2672,6 +2710,9 @@ function AnalysisScreen({result, onUpdate, user}) {
             </>)}
 
             {(tab===3||printMode) && (
+              !isPremium ? (
+                <LockedTabCard title="المخاطر والتحديات" onNeedUpgrade={onNeedUpgrade} screen={screen}/>
+              ) : (
               <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
                 <Section title="تحليل المخاطر التفصيلي" Icon={AlertTriangle} color={$.red} subtitle={`${(result.risk_analysis||[]).length} مخاطر مصنّفة مع خطط التخفيف`}>
                   <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
@@ -2709,9 +2750,13 @@ function AnalysisScreen({result, onUpdate, user}) {
                   </div>
                 </Section>
               </div>
+              )
             )}
 
-            {(tab===4||printMode) && (<>
+            {(tab===4||printMode) && (
+              !isPremium ? (
+                <LockedTabCard title="الخطة والتسعير" onNeedUpgrade={onNeedUpgrade} screen={screen}/>
+              ) : (<>
               {result.action_plan?.length>0 && (
                 <div style={{gridColumn:screen.isDesktop?"span 2":"auto"}}>
                   <Section title="الخطة التنفيذية - أول 90 يوم" Icon={Calendar} color={$.blue} subtitle="خطوات عملية مرتبة من التأسيس حتى الانطلاق">
@@ -2802,7 +2847,8 @@ function AnalysisScreen({result, onUpdate, user}) {
                   </Section>
                 </div>
               )}
-            </>)}
+            </>)
+            )}
           </div>
 
           <div style={{marginTop:sp[5],padding:`${sp[4]}px`,background:$.F5,borderRadius:14,display:"flex",gap:sp[3],alignItems:"flex-start"}}>
@@ -2854,7 +2900,7 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremi
               <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{DEMO_RESULT.city}</span></div>
             </div>
           </div>
-          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo/>
+          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo onNeedUpgrade={onNeedUpgrade}/>
         </div>
       </div>
     );
@@ -3741,7 +3787,7 @@ function LegalSheet({open, onClose}) {
         <div style={{marginBottom:sp[5]}}>
           <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>الباقات والأسعار</h3>
           <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
-            الباقة المجانية: تحليلان اثنان مع وصول محدود للمقالات. الاشتراك الشهري: 19.99 ريال لمدة 30 يوماً. الاشتراك السنوي: 199.99 ريال لمدة 365 يوماً. الاشتراك يتيح تحليلات بلا حدود وفتح كامل المقالات وقسم الاقتراحات. الأسعار شاملة ضريبة القيمة المضافة.
+            الباقة المجانية: تحليلان اثنان مع وصول محدود للمقالات. الاشتراك الشهري: 19.99 ريال لمدة 30 يوماً. الاشتراك السنوي: 199.99 ريال لمدة 365 يوماً. الاشتراك يتيح حتى 10 تحليلات لكل فترة اشتراك (لا تتجدد إلا مع اشتراك جديد) وفتح كامل المقالات وقسم الاقتراحات. الأسعار شاملة ضريبة القيمة المضافة.
           </p>
         </div>
 
@@ -3966,6 +4012,7 @@ export default function HamourApp() {
   const [isPremium, setIsPremium] = useState(false);
   const [analyses, setAnalyses] = useState([]);
   const [usageCount, setUsageCount] = useState(0);
+  const [premiumUsageCount, setPremiumUsageCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dark, setDark] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -3992,6 +4039,8 @@ export default function HamourApp() {
     setIsPremium(!!p.is_premium);
     const used = await getUsage(uid);
     setUsageCount(used);
+    const premiumUsed = await getPremiumUsage(uid);
+    setPremiumUsageCount(premiumUsed);
   }, []);
 
   const refreshAnalyses = useCallback(async () => {
@@ -4051,10 +4100,15 @@ export default function HamourApp() {
     setResult(normalized);
     setAnalyses(prev => [normalized, ...prev.filter(a => a.id !== normalized.id)]);
     setTab("analysis");
-    // زيادة العدّاد المخفي (لا ينقص عند الحذف)
-    if (user && !isPremium) {
-      setUsageCount(c => c + 1);
-      incrementUsage(user.id);
+    // زيادة العدّاد المخفي (لا ينقص عند الحذف) — عدّاد منفصل للمشترك وللمجاني
+    if (user) {
+      if (isPremium) {
+        setPremiumUsageCount(c => c + 1);
+        incrementPremiumUsage(user.id);
+      } else {
+        setUsageCount(c => c + 1);
+        incrementUsage(user.id);
+      }
     }
   }
 
@@ -4136,8 +4190,8 @@ export default function HamourApp() {
       <div className="_spark" style={{width:5,height:5,top:"48%",left:"55%",animation:"_float2 8.5s infinite"}}/>
 
       <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingTop:screen.isDesktop?0:`calc(52px + env(safe-area-inset-top))`}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user}/>}
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} premiumUsageCount={premiumUsageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
