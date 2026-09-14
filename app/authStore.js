@@ -113,7 +113,7 @@ export async function activateWithCode(userId, code) {
   if (error || !data || !data.active) throw new Error("كود التفعيل غير صحيح");
   const { error: upErr } = await supabase
     .from("profiles")
-    .update({ is_premium: true })
+    .update({ is_premium: true, premium_analyses_used: 0 })
     .eq("id", userId);
   if (upErr) throw new Error("تعذّر تفعيل الاشتراك، حاول مرة أخرى");
   return true;
@@ -123,10 +123,30 @@ export async function cancelSubscription(userId) {
   if (!userId) throw new Error("سجّل الدخول أولاً");
   const { error } = await supabase
     .from("profiles")
-    .update({ is_premium: false })
+    .update({ is_premium: false, premium_analyses_used: 0 })
     .eq("id", userId);
   if (error) throw new Error("تعذّر إلغاء الاشتراك، حاول مرة أخرى");
   return true;
+}
+
+// عدد تحليلات المشترك — سقف ثابت لكل فترة اشتراك، يصفّر فقط عند تفعيل اشتراك جديد (لا يتجدد بالوقت)
+export async function getPremiumUsage(userId) {
+  if (!userId) return 0;
+  try {
+    const { data } = await supabase.from("profiles").select("premium_analyses_used").eq("id", userId).single();
+    return data?.premium_analyses_used || 0;
+  } catch(e) { return 0; }
+}
+
+export async function incrementPremiumUsage(userId) {
+  if (!userId) return;
+  try {
+    const { data } = await supabase.from("profiles").select("premium_analyses_used").eq("id", userId).single();
+    const current = data?.premium_analyses_used || 0;
+    await supabase.from("profiles").update({ premium_analyses_used: current + 1 }).eq("id", userId);
+  } catch(e) {
+    console.error("incrementPremiumUsage error:", e.message);
+  }
 }
 
 // مدة التجديد: 7 أيام بالميلي ثانية
