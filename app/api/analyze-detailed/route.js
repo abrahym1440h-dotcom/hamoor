@@ -68,8 +68,6 @@ ${financialBrief}
 - مشروع رقمي بلا موقع: لا إيجار ولا ديكور؛ استخدم تكاليف تطوير واستضافة وتراخيص رقمية. البنود غير المنطبقة = 0.
 - خدمة: احسب بالعملاء الشهريين أو عدد العقود، ومتوسط الفاتورة قد يكون قيمة عقد أو اشتراك.
 - مشروع منزلي/صغير: قلّل التكاليف، لا تفرض تكاليف محل كامل.
-- آلات البيع الذاتي (فيندنق): نموذج مختلف جذرياً عن المحل. لا إيجار محل ولا ديكور ولا رواتب موظفين (المالك يعبّئ بنفسه في البداية) - ضع هذه البنود = 0. رأس المال الأساسي هو ثمن الماكينة نفسها. رسوم الموقع نسبة من المبيعات (10-20%) أو إيجار رمزي شهري، وليست إيجار محل. النمو يكون بإضافة ماكينات لا بتوسيع المساحة، فاحسب الإيراد لكل ماكينة ثم اضربه بالعدد. الموقع (مستشفى، جامعة، صالة رياضية، مجمع سكني) هو العامل الحاسم في الإيراد.
-- مشروع متعدد المنتجات: إذا ذكر صاحب المشروع أنه يبيع أصنافاً متنوعة، لا تحصره في صنف واحد ولا تحسب اقتصادياته على أساس أضيق صنف ذُكر. احسب متوسطاً مرجّحاً لتشكيلة المنتجات، واعتبر التنويع نقطة قوة تقلل المخاطر وترفع معدل الدوران، لا نقطة ضعف.
 - فكرة ابتكارية: حلّلها بمنطقها الخاص، اذكر الفرصة والغموض بصراحة.
 - المنافسون لمشروع غير تقليدي: اذكر البدائل أو الحلول القريبة.
 البنود غير المنطبقة = 0 مع شرح في الملاحظات.`;
@@ -264,7 +262,9 @@ ${adaptEngine}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 6000, responseMimeType: "application/json" }
+            // thinkingBudget: 0 يعطّل "التفكير" الذي يستهلك من نفس حصة maxOutputTokens
+            // ويسبب انقطاع الـ JSON قبل اكتماله (وهذا كان سبب GEMINI_FAIL_PARSE)
+            generationConfig: { temperature: 0.4, maxOutputTokens: 8000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } }
           }),
           signal: ctrl.signal
         });
@@ -281,8 +281,108 @@ ${adaptEngine}
       const text = cand?.content?.parts?.map(p => p.text || "").join("") || "";
       if (!text) throw new Error("GEMINI_FAIL_EMPTY");
       const parsed = extractJSON(text);
-      if (!parsed) throw new Error("GEMINI_FAIL_PARSE");
+      if (!parsed) {
+        console.error("Gemini parse failed. finishReason=" + cand?.finishReason + " textLength=" + text.length);
+        throw new Error("GEMINI_FAIL_PARSE");
+      }
       return parsed;
+    }
+
+    // ═══ دالة استدعاء Z.ai (GLM) — نموذج مجاني بالكامل بشكل دائم من شركة Zhipu الصينية، مباشرة بدون وسيط ═══
+    // glm-4.5-flash مجاني 100% على التوكنز (مو تجربة محدودة بأيام)، تحتاج فقط إنشاء حساب على z.ai
+    async function callZai(userPrompt) {
+      const zaiKey = process.env.ZAI_API_KEY;
+      if (!zaiKey) throw new Error("ZAI_NO_KEY");
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 40000);
+      let response;
+      try {
+        response = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${zaiKey}` },
+          body: JSON.stringify({
+            model: "glm-4.5-flash",
+            messages: [{ role: "user", content: userPrompt }],
+            temperature: 0.35,
+            max_tokens: 6000,
+            response_format: { type: "json_object" }
+          }),
+          signal: ctrl.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Z.ai Error:", response.status, errText.substring(0, 200));
+        throw new Error("ZAI_FAIL_" + response.status);
+      }
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("ZAI_FAIL_EMPTY");
+      const parsed = extractJSON(text);
+      if (!parsed) throw new Error("ZAI_FAIL_PARSE");
+      return parsed;
+    }
+
+    // ═══ دالة استدعاء OpenRouter — عدة نماذج مجانية (صينية وغيرها) بالتتابع ═══
+    // مفتاح واحد (OPENROUTER_API_KEY) يعطي وصول لعشرات النماذج، وبعضها مجاني بالكامل.
+    // القائمة قد تتغيّر من طرف OpenRouter من وقت لآخر — راجع openrouter.ai/models?max_price=0
+    // وحدّث الأسماء أدناه لو أحد النماذج تقاعد أو تغيّر اسمه.
+    const OPENROUTER_FREE_MODELS = [
+      "deepseek/deepseek-chat-v3.1:free",
+      "z-ai/glm-4.5-air:free",
+      "qwen/qwen3-235b-a22b:free",
+      "moonshotai/kimi-k2:free",
+      "meta-llama/llama-3.3-70b-instruct:free"
+    ];
+
+    async function callOpenRouter(userPrompt) {
+      const orKey = process.env.OPENROUTER_API_KEY;
+      if (!orKey) throw new Error("OPENROUTER_NO_KEY");
+      let lastErr = null;
+      for (const model of OPENROUTER_FREE_MODELS) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 40000);
+        try {
+          let response;
+          try {
+            response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${orKey}` },
+              body: JSON.stringify({
+                model,
+                messages: [{ role: "user", content: userPrompt }],
+                temperature: 0.35,
+                max_tokens: 6000,
+                response_format: { type: "json_object" }
+              }),
+              signal: ctrl.signal
+            });
+          } finally {
+            clearTimeout(timer);
+          }
+          if (!response.ok) {
+            const errText = await response.text();
+            console.error("OpenRouter Error (" + model + "):", response.status, errText.substring(0, 200));
+            lastErr = new Error("OPENROUTER_FAIL_" + response.status);
+            continue;
+          }
+          const data = await response.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (!text) { lastErr = new Error("OPENROUTER_FAIL_EMPTY"); continue; }
+          const parsed = extractJSON(text);
+          if (!parsed) { lastErr = new Error("OPENROUTER_FAIL_PARSE"); continue; }
+          console.log("OpenRouter succeeded with model: " + model);
+          return parsed;
+        } catch (e) {
+          clearTimeout(timer);
+          console.error("OpenRouter exception (" + model + "):", e.message);
+          lastErr = e;
+          continue;
+        }
+      }
+      throw lastErr || new Error("OPENROUTER_ALL_FAILED");
     }
 
     // ═══ دالة استدعاء Groq (الاحتياطي) ═══
@@ -429,7 +529,7 @@ ${adaptEngine}
 {"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع"]}`;
 
       try {
-        const result = await callCerebras(queryGenPrompt);
+        const result = await callAI(queryGenPrompt);
         const queries = result.queries || [];
         console.log("Generated " + queries.length + " research queries");
         return queries.slice(0, 4);
@@ -499,20 +599,32 @@ ${adaptEngine}
           return await callCerebras(userPrompt);
         } catch (e1) {
           console.log("Cerebras failed (" + e1.message + ")");
-          if (e1.message.includes("401") || e1.message.includes("NO_KEY")) {
-            cerebrasBroken = true; // مفتاح خطأ، لا تكرر المحاولة
-            console.log("Cerebras key broken, skipping for rest of request");
+          if (e1.message.includes("401") || e1.message.includes("402") || e1.message.includes("NO_KEY")) {
+            cerebrasBroken = true; // مفتاح خطأ أو رصيد منتهي، لا تكرر المحاولة بقية هذا الطلب
+            console.log("Cerebras unavailable (no credit/key), skipping for rest of request");
           }
         }
       }
-      // 2) Groq كاحتياط
+      // 2) Z.ai (GLM) — مجاني بالكامل وبشكل دائم، مباشر من الشركة (بدون وسيط)
+      try {
+        return await callZai(userPrompt);
+      } catch (eZ) {
+        console.log("Z.ai failed (" + eZ.message + "), trying OpenRouter...");
+      }
+      // 3) OpenRouter — عدة نماذج مجانية (ديب سيك، كوين، جلم، كيمي...) بالتتابع
+      try {
+        return await callOpenRouter(userPrompt);
+      } catch (e2) {
+        console.log("OpenRouter failed (" + e2.message + "), trying Groq...");
+      }
+      // 4) Groq
       try {
         return await callGroq(userPrompt);
-      } catch (e2) {
-        console.log("Groq failed (" + e2.message + "), switching to Gemini...");
-        // 3) Gemini كاحتياط أخير
-        return await callGemini(userPrompt);
+      } catch (e3) {
+        console.log("Groq failed (" + e3.message + "), switching to Gemini...");
       }
+      // 5) Gemini كخيار أخير
+      return await callGemini(userPrompt);
     }
 
     console.log("═══ بدء التحليل بالبحث الحقيقي ═══");
@@ -542,8 +654,8 @@ ${adaptEngine}
 
     let merged = { ...coreData, ...planData };
 
-    // ═══ مرحلة التدقيق: مراجعة سريعة للأرقام مقابل البحث (Cerebras فقط - سريع) ═══
-    if (hasData && !cerebrasBroken) {
+    // ═══ مرحلة التدقيق: مراجعة سريعة للأرقام مقابل البحث ═══
+    if (hasData) {
       try {
         const fa = merged.financial_analysis || {};
         const auditPrompt = `أنت مدقق مالي صارم. راجع هذه الأرقام من دراسة جدوى لمشروع "${idea}" في ${city}:
@@ -558,7 +670,7 @@ ${searchContext.substring(0, 3000)}
 
 مهمتك: قارن الأرقام مع البحث. إن وجدت رقماً بعيداً بوضوح عن واقع السوق (أعلى أو أدنى بأكثر من 50%)، صحّحه. أرجع JSON فقط:
 {"corrections_needed": <true|false>, "setup_total": <الرقم الصحيح أو نفسه>, "monthly_total": <الرقم>, "month_12_revenue": <الرقم>, "audit_note": "<جملة واحدة: ما الذي صححته ولماذا، أو 'الأرقام متسقة مع السوق'>"}`;
-        const audit = await callCerebras(auditPrompt);
+        const audit = await callAI(auditPrompt);
         if (audit && audit.corrections_needed) {
           const fa2 = merged.financial_analysis || {};
           if (audit.setup_total > 0 && fa2.setup_costs) {
