@@ -605,17 +605,17 @@ ${adaptEngine}
           }
         }
       }
-      // 2) Z.ai (GLM) — مجاني بالكامل وبشكل دائم، مباشر من الشركة (بدون وسيط)
-      try {
-        return await callZai(userPrompt);
-      } catch (eZ) {
-        console.log("Z.ai failed (" + eZ.message + "), trying OpenRouter...");
-      }
-      // 3) OpenRouter — عدة نماذج مجانية (ديب سيك، كوين، جلم، كيمي...) بالتتابع
+      // 2) OpenRouter أولاً — فيها نماذج قوية فعلاً ومجانية بالكامل (ديب سيك الكامل، كوين 235B، كيمي K2) مو نسخ مصغّرة
       try {
         return await callOpenRouter(userPrompt);
       } catch (e2) {
-        console.log("OpenRouter failed (" + e2.message + "), trying Groq...");
+        console.log("OpenRouter failed (" + e2.message + "), trying Z.ai...");
+      }
+      // 3) Z.ai (GLM-Flash) — أخف وأسرع، احتياطي لو ازدحمت حصة OpenRouter
+      try {
+        return await callZai(userPrompt);
+      } catch (eZ) {
+        console.log("Z.ai failed (" + eZ.message + "), trying Groq...");
       }
       // 4) Groq
       try {
