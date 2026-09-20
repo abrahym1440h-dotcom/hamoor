@@ -251,7 +251,9 @@ ${adaptEngine}
 
     // ═══ دالة استدعاء Gemini (النموذج الأساسي) ═══
     async function callGemini(userPrompt) {
-      const model = "gemini-2.5-flash";
+      // نستخدم alias "flash-latest" بدل رقم إصدار ثابت — جوجل تحدّثه تلقائيًا لأحدث نموذج Flash عندها،
+      // فما نحتاج نرجع نعدّل هذا السطر كل ما يطلعون إصدار جديد
+      const model = "gemini-flash-latest";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 40000);
@@ -397,7 +399,7 @@ ${adaptEngine}
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             messages: [{ role: "user", content: userPrompt }],
             temperature: 0.35,
             max_tokens: 3200,
@@ -409,17 +411,19 @@ ${adaptEngine}
         clearTimeout(timer);
       }
       if (!response.ok) {
+        const errText = await response.text();
+        console.error("Groq Error:", response.status, errText.substring(0, 300));
         if (response.status === 429 && attempt < 3) {
           await new Promise(r => setTimeout(r, 4000 * attempt));
           return callGroq(userPrompt, attempt + 1);
         }
-        throw new Error("الخدمة مزدحمة حالياً، حاول بعد دقيقة");
+        throw new Error("GROQ_FAIL_" + response.status);
       }
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content;
-      if (!text) throw new Error("لا يوجد رد من المحلّل");
+      if (!text) throw new Error("GROQ_FAIL_EMPTY");
       const parsed = extractJSON(text);
-      if (!parsed) throw new Error("تعذّر تحليل الرد");
+      if (!parsed) throw new Error("GROQ_FAIL_PARSE");
       return parsed;
     }
 
@@ -489,17 +493,7 @@ ${adaptEngine}
         const data = await response.json();
         const results = data.results || [];
         console.log("Linkup query '" + query.substring(0, 50) + "': " + results.length + " results");
-        // ترتيب النتائج: التي تحتوي أرقاماً مالية أولاً (الأكثر فائدة للتحليل)
-        const numScore = (t) => {
-          const txt = (t.content || t.snippet || "") + (t.name || t.title || "");
-          let s = 0;
-          if (/\d{2,}/.test(txt)) s += 2;
-          if (/(ريال|ألف|مليون|تكلفة|سعر|إيجار|رأس مال|٪|%)/.test(txt)) s += 3;
-          if (/(2025|2026)/.test(txt)) s += 1;
-          return s;
-        };
-        results.sort((a, b) => numScore(b) - numScore(a));
-        return results.slice(0, 4).map(r => ({
+        return results.slice(0, 5).map(r => ({
           title: (r.name || r.title || "").substring(0, 100),
           snippet: (r.content || r.snippet || "").substring(0, 350),
           url: r.url || ""
@@ -509,6 +503,74 @@ ${adaptEngine}
         console.error("Linkup exception:", e.message);
         return null;
       }
+    }
+
+    // ═══ دالة البحث الحي عبر Tavily — بديل/رديف مجاني لـLinkup (1000 استعلام مجاني شهرياً، بدون بطاقة) ═══
+    async function searchTavily(query) {
+      const tavilyKey = process.env.TAVILY_API_KEY;
+      if (!tavilyKey) return null;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const response = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          // نرسل المفتاح بالطريقتين (body + header) لتفادي أي فرق بتوثيق Tavily الحالي
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
+          body: JSON.stringify({
+            api_key: tavilyKey,
+            query,
+            search_depth: "basic", // 1 كريدت فقط لكل استعلام — يحافظ على الحصة المجانية
+            max_results: 5,
+            include_answer: false
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (!response.ok) {
+          console.error("Tavily Error:", response.status);
+          return null;
+        }
+        const data = await response.json();
+        const results = data.results || [];
+        console.log("Tavily query '" + query.substring(0, 50) + "': " + results.length + " results");
+        return results.slice(0, 5).map(r => ({
+          title: (r.title || "").substring(0, 100),
+          snippet: (r.content || "").substring(0, 350),
+          url: r.url || ""
+        }));
+      } catch (e) {
+        clearTimeout(timer);
+        console.error("Tavily exception:", e.message);
+        return null;
+      }
+    }
+
+    // ═══ تدمج نتائج Linkup وTavily معاً لكل استعلام — تعمل بالتوازي، ولا تفشل الاثنتين إلا لو فشل المزوّدان معاً ═══
+    async function searchCombined(query) {
+      const [linkupResults, tavilyResults] = await Promise.all([
+        searchLinkup(query),
+        searchTavily(query)
+      ]);
+      const combined = [...(linkupResults || []), ...(tavilyResults || [])];
+      if (combined.length === 0) return null;
+      // إزالة التكرار حسب الرابط
+      const seen = new Set();
+      const deduped = combined.filter(r => {
+        if (!r.url || seen.has(r.url)) return false;
+        seen.add(r.url);
+        return true;
+      });
+      // ترتيب النتائج المدمجة: التي تحتوي أرقاماً مالية أولاً (الأكثر فائدة للتحليل)
+      const numScore = (t) => {
+        const txt = (t.snippet || "") + (t.title || "");
+        let s = 0;
+        if (/\d{2,}/.test(txt)) s += 2;
+        if (/(ريال|ألف|مليون|تكلفة|سعر|إيجار|رأس مال|٪|%)/.test(txt)) s += 3;
+        if (/(2025|2026)/.test(txt)) s += 1;
+        return s;
+      };
+      deduped.sort((a, b) => numScore(b) - numScore(a));
+      return deduped.slice(0, 6);
     }
 
     // ═══ المرحلة 1: AI يولّد أسئلة بحث محددة للمشروع ═══
@@ -547,7 +609,7 @@ ${adaptEngine}
     // ═══ المرحلة 2: بحث عميق متوازي لكل سؤال ═══
     async function deepResearch(queries) {
       console.log("Starting deep research on " + queries.length + " queries...");
-      const searches = await Promise.all(queries.map(q => searchLinkup(q)));
+      const searches = await Promise.all(queries.map(q => searchCombined(q)));
       const validResults = [];
       searches.forEach((results, i) => {
         if (results && results.length > 0) {
