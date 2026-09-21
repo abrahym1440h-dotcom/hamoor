@@ -10,6 +10,7 @@ function numWithCommas(n){
 
 export async function POST(req) {
   try {
+    console.log("═══ ROUTE VERSION MARKER: HAMOOR-FIX-2026-09-20-V5 (Zai+OpenRouter+Tavily+fixed-Groq+fixed-Gemini) ═══");
     const { idea, sector: userSector, city, budget, extras } = await req.json();
     console.log("Request:", { idea, userSector, city, budget, extras });
 
