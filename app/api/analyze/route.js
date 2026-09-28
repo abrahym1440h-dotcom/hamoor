@@ -10,6 +10,7 @@ function numWithCommas(n){
 
 export async function POST(req) {
   try {
+    console.log("═══ ROUTE VERSION MARKER: HAMOOR-FIX-2026-09-20-V5 (Zai+OpenRouter+Tavily+fixed-Groq+fixed-Gemini) ═══");
     const { idea, sector: userSector, city, budget, extras } = await req.json();
     console.log("Request:", { idea, userSector, city, budget, extras });
 
@@ -251,7 +252,9 @@ ${adaptEngine}
 
     // ═══ دالة استدعاء Gemini (النموذج الأساسي) ═══
     async function callGemini(userPrompt) {
-      const model = "gemini-2.5-flash";
+      // نستخدم alias "flash-latest" بدل رقم إصدار ثابت — جوجل تحدّثه تلقائيًا لأحدث نموذج Flash عندها،
+      // فما نحتاج نرجع نعدّل هذا السطر كل ما يطلعون إصدار جديد
+      const model = "gemini-flash-latest";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 40000);
@@ -262,7 +265,9 @@ ${adaptEngine}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 6000, responseMimeType: "application/json" }
+            // thinkingBudget: 0 يعطّل "التفكير" الذي يستهلك من نفس حصة maxOutputTokens
+            // ويسبب انقطاع الـ JSON قبل اكتماله (وهذا كان سبب GEMINI_FAIL_PARSE)
+            generationConfig: { temperature: 0.4, maxOutputTokens: 8000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } }
           }),
           signal: ctrl.signal
         });
@@ -279,8 +284,108 @@ ${adaptEngine}
       const text = cand?.content?.parts?.map(p => p.text || "").join("") || "";
       if (!text) throw new Error("GEMINI_FAIL_EMPTY");
       const parsed = extractJSON(text);
-      if (!parsed) throw new Error("GEMINI_FAIL_PARSE");
+      if (!parsed) {
+        console.error("Gemini parse failed. finishReason=" + cand?.finishReason + " textLength=" + text.length);
+        throw new Error("GEMINI_FAIL_PARSE");
+      }
       return parsed;
+    }
+
+    // ═══ دالة استدعاء Z.ai (GLM) — نموذج مجاني بالكامل بشكل دائم من شركة Zhipu الصينية، مباشرة بدون وسيط ═══
+    // glm-4.5-flash مجاني 100% على التوكنز (مو تجربة محدودة بأيام)، تحتاج فقط إنشاء حساب على z.ai
+    async function callZai(userPrompt) {
+      const zaiKey = process.env.ZAI_API_KEY;
+      if (!zaiKey) throw new Error("ZAI_NO_KEY");
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 40000);
+      let response;
+      try {
+        response = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${zaiKey}` },
+          body: JSON.stringify({
+            model: "glm-4.5-flash",
+            messages: [{ role: "user", content: userPrompt }],
+            temperature: 0.35,
+            max_tokens: 6000,
+            response_format: { type: "json_object" }
+          }),
+          signal: ctrl.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Z.ai Error:", response.status, errText.substring(0, 200));
+        throw new Error("ZAI_FAIL_" + response.status);
+      }
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("ZAI_FAIL_EMPTY");
+      const parsed = extractJSON(text);
+      if (!parsed) throw new Error("ZAI_FAIL_PARSE");
+      return parsed;
+    }
+
+    // ═══ دالة استدعاء OpenRouter — عدة نماذج مجانية (صينية وغيرها) بالتتابع ═══
+    // مفتاح واحد (OPENROUTER_API_KEY) يعطي وصول لعشرات النماذج، وبعضها مجاني بالكامل.
+    // القائمة قد تتغيّر من طرف OpenRouter من وقت لآخر — راجع openrouter.ai/models?max_price=0
+    // وحدّث الأسماء أدناه لو أحد النماذج تقاعد أو تغيّر اسمه.
+    const OPENROUTER_FREE_MODELS = [
+      "deepseek/deepseek-chat-v3.1:free",
+      "z-ai/glm-4.5-air:free",
+      "qwen/qwen3-235b-a22b:free",
+      "moonshotai/kimi-k2:free",
+      "meta-llama/llama-3.3-70b-instruct:free"
+    ];
+
+    async function callOpenRouter(userPrompt) {
+      const orKey = process.env.OPENROUTER_API_KEY;
+      if (!orKey) throw new Error("OPENROUTER_NO_KEY");
+      let lastErr = null;
+      for (const model of OPENROUTER_FREE_MODELS) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 40000);
+        try {
+          let response;
+          try {
+            response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${orKey}` },
+              body: JSON.stringify({
+                model,
+                messages: [{ role: "user", content: userPrompt }],
+                temperature: 0.35,
+                max_tokens: 6000,
+                response_format: { type: "json_object" }
+              }),
+              signal: ctrl.signal
+            });
+          } finally {
+            clearTimeout(timer);
+          }
+          if (!response.ok) {
+            const errText = await response.text();
+            console.error("OpenRouter Error (" + model + "):", response.status, errText.substring(0, 200));
+            lastErr = new Error("OPENROUTER_FAIL_" + response.status);
+            continue;
+          }
+          const data = await response.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (!text) { lastErr = new Error("OPENROUTER_FAIL_EMPTY"); continue; }
+          const parsed = extractJSON(text);
+          if (!parsed) { lastErr = new Error("OPENROUTER_FAIL_PARSE"); continue; }
+          console.log("OpenRouter succeeded with model: " + model);
+          return parsed;
+        } catch (e) {
+          clearTimeout(timer);
+          console.error("OpenRouter exception (" + model + "):", e.message);
+          lastErr = e;
+          continue;
+        }
+      }
+      throw lastErr || new Error("OPENROUTER_ALL_FAILED");
     }
 
     // ═══ دالة استدعاء Groq (الاحتياطي) ═══
@@ -295,7 +400,7 @@ ${adaptEngine}
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             messages: [{ role: "user", content: userPrompt }],
             temperature: 0.35,
             max_tokens: 3200,
@@ -307,17 +412,19 @@ ${adaptEngine}
         clearTimeout(timer);
       }
       if (!response.ok) {
+        const errText = await response.text();
+        console.error("Groq Error:", response.status, errText.substring(0, 300));
         if (response.status === 429 && attempt < 3) {
           await new Promise(r => setTimeout(r, 4000 * attempt));
           return callGroq(userPrompt, attempt + 1);
         }
-        throw new Error("الخدمة مزدحمة حالياً، حاول بعد دقيقة");
+        throw new Error("GROQ_FAIL_" + response.status);
       }
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content;
-      if (!text) throw new Error("لا يوجد رد من المحلّل");
+      if (!text) throw new Error("GROQ_FAIL_EMPTY");
       const parsed = extractJSON(text);
-      if (!parsed) throw new Error("تعذّر تحليل الرد");
+      if (!parsed) throw new Error("GROQ_FAIL_PARSE");
       return parsed;
     }
 
@@ -387,17 +494,7 @@ ${adaptEngine}
         const data = await response.json();
         const results = data.results || [];
         console.log("Linkup query '" + query.substring(0, 50) + "': " + results.length + " results");
-        // ترتيب النتائج: التي تحتوي أرقاماً مالية أولاً (الأكثر فائدة للتحليل)
-        const numScore = (t) => {
-          const txt = (t.content || t.snippet || "") + (t.name || t.title || "");
-          let s = 0;
-          if (/\d{2,}/.test(txt)) s += 2;
-          if (/(ريال|ألف|مليون|تكلفة|سعر|إيجار|رأس مال|٪|%)/.test(txt)) s += 3;
-          if (/(2025|2026)/.test(txt)) s += 1;
-          return s;
-        };
-        results.sort((a, b) => numScore(b) - numScore(a));
-        return results.slice(0, 4).map(r => ({
+        return results.slice(0, 5).map(r => ({
           title: (r.name || r.title || "").substring(0, 100),
           snippet: (r.content || r.snippet || "").substring(0, 350),
           url: r.url || ""
@@ -407,6 +504,74 @@ ${adaptEngine}
         console.error("Linkup exception:", e.message);
         return null;
       }
+    }
+
+    // ═══ دالة البحث الحي عبر Tavily — بديل/رديف مجاني لـLinkup (1000 استعلام مجاني شهرياً، بدون بطاقة) ═══
+    async function searchTavily(query) {
+      const tavilyKey = process.env.TAVILY_API_KEY;
+      if (!tavilyKey) return null;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const response = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          // نرسل المفتاح بالطريقتين (body + header) لتفادي أي فرق بتوثيق Tavily الحالي
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
+          body: JSON.stringify({
+            api_key: tavilyKey,
+            query,
+            search_depth: "basic", // 1 كريدت فقط لكل استعلام — يحافظ على الحصة المجانية
+            max_results: 5,
+            include_answer: false
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (!response.ok) {
+          console.error("Tavily Error:", response.status);
+          return null;
+        }
+        const data = await response.json();
+        const results = data.results || [];
+        console.log("Tavily query '" + query.substring(0, 50) + "': " + results.length + " results");
+        return results.slice(0, 5).map(r => ({
+          title: (r.title || "").substring(0, 100),
+          snippet: (r.content || "").substring(0, 350),
+          url: r.url || ""
+        }));
+      } catch (e) {
+        clearTimeout(timer);
+        console.error("Tavily exception:", e.message);
+        return null;
+      }
+    }
+
+    // ═══ تدمج نتائج Linkup وTavily معاً لكل استعلام — تعمل بالتوازي، ولا تفشل الاثنتين إلا لو فشل المزوّدان معاً ═══
+    async function searchCombined(query) {
+      const [linkupResults, tavilyResults] = await Promise.all([
+        searchLinkup(query),
+        searchTavily(query)
+      ]);
+      const combined = [...(linkupResults || []), ...(tavilyResults || [])];
+      if (combined.length === 0) return null;
+      // إزالة التكرار حسب الرابط
+      const seen = new Set();
+      const deduped = combined.filter(r => {
+        if (!r.url || seen.has(r.url)) return false;
+        seen.add(r.url);
+        return true;
+      });
+      // ترتيب النتائج المدمجة: التي تحتوي أرقاماً مالية أولاً (الأكثر فائدة للتحليل)
+      const numScore = (t) => {
+        const txt = (t.snippet || "") + (t.title || "");
+        let s = 0;
+        if (/\d{2,}/.test(txt)) s += 2;
+        if (/(ريال|ألف|مليون|تكلفة|سعر|إيجار|رأس مال|٪|%)/.test(txt)) s += 3;
+        if (/(2025|2026)/.test(txt)) s += 1;
+        return s;
+      };
+      deduped.sort((a, b) => numScore(b) - numScore(a));
+      return deduped.slice(0, 6);
     }
 
     // ═══ المرحلة 1: AI يولّد أسئلة بحث محددة للمشروع ═══
@@ -427,7 +592,7 @@ ${adaptEngine}
 {"queries": ["السؤال الأول", "السؤال الثاني", "السؤال الثالث", "السؤال الرابع"]}`;
 
       try {
-        const result = await callCerebras(queryGenPrompt);
+        const result = await callAI(queryGenPrompt);
         const queries = result.queries || [];
         console.log("Generated " + queries.length + " research queries");
         return queries.slice(0, 4);
@@ -445,7 +610,7 @@ ${adaptEngine}
     // ═══ المرحلة 2: بحث عميق متوازي لكل سؤال ═══
     async function deepResearch(queries) {
       console.log("Starting deep research on " + queries.length + " queries...");
-      const searches = await Promise.all(queries.map(q => searchLinkup(q)));
+      const searches = await Promise.all(queries.map(q => searchCombined(q)));
       const validResults = [];
       searches.forEach((results, i) => {
         if (results && results.length > 0) {
@@ -497,20 +662,32 @@ ${adaptEngine}
           return await callCerebras(userPrompt);
         } catch (e1) {
           console.log("Cerebras failed (" + e1.message + ")");
-          if (e1.message.includes("401") || e1.message.includes("NO_KEY")) {
-            cerebrasBroken = true; // مفتاح خطأ، لا تكرر المحاولة
-            console.log("Cerebras key broken, skipping for rest of request");
+          if (e1.message.includes("401") || e1.message.includes("402") || e1.message.includes("NO_KEY")) {
+            cerebrasBroken = true; // مفتاح خطأ أو رصيد منتهي، لا تكرر المحاولة بقية هذا الطلب
+            console.log("Cerebras unavailable (no credit/key), skipping for rest of request");
           }
         }
       }
-      // 2) Groq كاحتياط
+      // 2) OpenRouter أولاً — فيها نماذج قوية فعلاً ومجانية بالكامل (ديب سيك الكامل، كوين 235B، كيمي K2) مو نسخ مصغّرة
+      try {
+        return await callOpenRouter(userPrompt);
+      } catch (e2) {
+        console.log("OpenRouter failed (" + e2.message + "), trying Z.ai...");
+      }
+      // 3) Z.ai (GLM-Flash) — أخف وأسرع، احتياطي لو ازدحمت حصة OpenRouter
+      try {
+        return await callZai(userPrompt);
+      } catch (eZ) {
+        console.log("Z.ai failed (" + eZ.message + "), trying Groq...");
+      }
+      // 4) Groq
       try {
         return await callGroq(userPrompt);
-      } catch (e2) {
-        console.log("Groq failed (" + e2.message + "), switching to Gemini...");
-        // 3) Gemini كاحتياط أخير
-        return await callGemini(userPrompt);
+      } catch (e3) {
+        console.log("Groq failed (" + e3.message + "), switching to Gemini...");
       }
+      // 5) Gemini كخيار أخير
+      return await callGemini(userPrompt);
     }
 
     console.log("═══ بدء التحليل بالبحث الحقيقي ═══");
@@ -540,8 +717,8 @@ ${adaptEngine}
 
     let merged = { ...coreData, ...planData };
 
-    // ═══ مرحلة التدقيق: مراجعة سريعة للأرقام مقابل البحث (Cerebras فقط - سريع) ═══
-    if (hasData && !cerebrasBroken) {
+    // ═══ مرحلة التدقيق: مراجعة سريعة للأرقام مقابل البحث ═══
+    if (hasData) {
       try {
         const fa = merged.financial_analysis || {};
         const auditPrompt = `أنت مدقق مالي صارم. راجع هذه الأرقام من دراسة جدوى لمشروع "${idea}" في ${city}:
@@ -556,7 +733,7 @@ ${searchContext.substring(0, 3000)}
 
 مهمتك: قارن الأرقام مع البحث. إن وجدت رقماً بعيداً بوضوح عن واقع السوق (أعلى أو أدنى بأكثر من 50%)، صحّحه. أرجع JSON فقط:
 {"corrections_needed": <true|false>, "setup_total": <الرقم الصحيح أو نفسه>, "monthly_total": <الرقم>, "month_12_revenue": <الرقم>, "audit_note": "<جملة واحدة: ما الذي صححته ولماذا، أو 'الأرقام متسقة مع السوق'>"}`;
-        const audit = await callCerebras(auditPrompt);
+        const audit = await callAI(auditPrompt);
         if (audit && audit.corrections_needed) {
           const fa2 = merged.financial_analysis || {};
           if (audit.setup_total > 0 && fa2.setup_costs) {
