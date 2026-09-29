@@ -722,86 +722,32 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
       </FormField>
       {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
       {busy && (
-        <div style={{marginTop:sp[5],borderRadius:22,padding:`${sp[7]}px ${sp[5]}px ${sp[6]}px`,position:"relative",overflow:"hidden",background:`linear-gradient(170deg, #0a0e1a, #0d1228)`,border:`1px solid rgba(255,255,255,0.08)`,boxShadow:SH.card}}>
-          <div style={{position:"relative",zIndex:2}}>
-            {/* العنوان والمرحلة */}
-            <div style={{textAlign:"center",marginBottom:sp[5]}}>
-              <div style={{fontSize:17,fontWeight:800,color:$.L1,fontFamily:"inherit"}}>جاري تحليل مشروعك</div>
-              <div style={{fontSize:13,color:$.L3,marginTop:sp[2],minHeight:18,fontFamily:"inherit"}}>{progressStage || "جاري البدء…"}</div>
+        <div style={{marginTop:sp[5],borderRadius:20,padding:`${sp[6]}px ${sp[5]}px ${sp[5]}px`,background:$.surface,border:`1px solid ${$.sepL}`,boxShadow:SH.card}}>
+          <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[5]}}>
+            <div style={{width:42,height:42,borderRadius:12,background:`${$.blue}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Spinner sz={20} clr={$.blue}/>
             </div>
-
-            {/* شريط زجاجي مع لمعان وجزيئات */}
-            <div style={{
-              position:"relative",
-              height:64,
-              borderRadius:18,
-              overflow:"hidden",
-              background:"linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))",
-              border:"0.5px solid rgba(255,255,255,0.1)",
-              backdropFilter:"blur(20px)",
-              WebkitBackdropFilter:"blur(20px)"
-            }}>
-              {/* التعبئة المتدرّجة */}
-              <div style={{
-                position:"absolute",top:0,right:0,bottom:0,
-                width:`${progress}%`,
-                background:"linear-gradient(90deg, rgba(0,122,255,0.6), rgba(0,200,255,0.8), rgba(94,234,212,0.6))",
-                transition:"width 1s cubic-bezier(0.4, 0, 0.2, 1)",
-                overflow:"hidden"
-              }}>
-                {/* لمعان متحرك */}
-                <div style={{
-                  position:"absolute",inset:0,
-                  background:"linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)",
-                  backgroundSize:"200% 100%",
-                  animation:"hamourShimmer 2.5s linear infinite"
-                }}/>
-              </div>
-
-              {/* جزيئات تطفو */}
-              <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
-                {[0,1,2,3,4,5,6,7].map(i=>(
-                  <div key={i} style={{
-                    position:"absolute",
-                    width:3,height:3,borderRadius:"50%",
-                    background:"#5eead4",
-                    left:`${(i*12.5+5)}%`,
-                    bottom:0,
-                    opacity:0,
-                    animation:`hamourFloat 4s linear infinite`,
-                    animationDelay:`${i*0.5}s`
-                  }}/>
-                ))}
-              </div>
-
-              {/* النسبة في المنتصف */}
-              <div style={{
-                position:"absolute",inset:0,
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:24,fontWeight:800,color:"#fff",
-                fontFamily:"inherit",
-                textShadow:"0 1px 8px rgba(0,0,0,0.5)",
-                zIndex:2,
-                letterSpacing:"-0.5px"
-              }}>{progress}%</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:16,fontWeight:800,color:$.L1,fontFamily:"inherit"}}>جاري تحليل مشروعك</div>
+              <div style={{fontSize:12.5,color:$.L3,marginTop:2,minHeight:18,fontFamily:"inherit"}}>{progressStage || "جاري البدء…"}</div>
             </div>
+            <div style={{fontSize:28,fontWeight:800,color:$.blue,letterSpacing:"-0.5px",fontFamily:"inherit"}}>{progress}%</div>
+          </div>
 
-            {/* النص السفلي */}
-            <div style={{textAlign:"center",fontSize:11,color:$.L4,marginTop:sp[3],fontFamily:"inherit",letterSpacing:"0.3px"}}>
-              بحث حقيقي · تحليل ذكي · بيانات حية
+          <div style={{position:"relative",height:12,borderRadius:6,overflow:"hidden",background:$.F3}}>
+            <div style={{position:"absolute",top:0,right:0,bottom:0,width:`${progress}%`,borderRadius:6,background:`linear-gradient(90deg, ${$.blue}, ${$.teal})`,transition:"width 1s cubic-bezier(0.4, 0, 0.2, 1)",overflow:"hidden"}}>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%)",backgroundSize:"200% 100%",animation:"hamourShimmer 2.5s linear infinite"}}/>
             </div>
           </div>
 
-          {/* الأنيميشن CSS */}
+          <div style={{textAlign:"center",fontSize:11.5,color:$.L3,marginTop:sp[4],fontFamily:"inherit"}}>
+            بحث حقيقي · تحليل ذكي · بيانات حية
+          </div>
+
           <style>{`
             @keyframes hamourShimmer {
               from { background-position: 200% 0; }
               to { background-position: -100% 0; }
-            }
-            @keyframes hamourFloat {
-              0% { transform: translateY(20px); opacity: 0; }
-              20% { opacity: 1; }
-              100% { transform: translateY(-80px); opacity: 0; }
             }
           `}</style>
         </div>
@@ -2443,6 +2389,22 @@ function EditPanel({result, onUpdated, isPremium, onNeedUpgrade}) {
   );
 }
 
+function splitSummary(text) {
+  if (!text) return [];
+  return String(text)
+    .split(/(?:\.|؛|؟|\?|!)\s+/)
+    .map(s => s.trim().replace(/[.؛]+$/, ""))
+    .filter(s => s.length > 3);
+}
+
+function summaryMeta(s) {
+  if (/(ميزانيتك|الميزانية)/.test(s) && /(تكفي|كافية|فائض)/.test(s)) return { label:"الميزانية", Icon:DollarSign, color:$.blue };
+  if (/(تحتاج|ينقص|إضافية|عجز|الحد الأدنى)/.test(s)) return { label:"المبلغ المطلوب", Icon:TrendingUp, color:$.orange };
+  if (/(يقلقني|قلق|مخاطر|صعوب|تحدي|خطر|المنافسة|حتى لو)/.test(s)) return { label:"ما يقلقني", Icon:AlertTriangle, color:$.red };
+  if (/(نجاح|يحدد|أهم ما)/.test(s)) return { label:"مفتاح النجاح", Icon:Target, color:$.green };
+  return { label:"ملاحظة", Icon:Info, color:$.indigo };
+}
+
 function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [tab,setTab]=useState(0);
@@ -2490,7 +2452,14 @@ function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
           <div style={{flex:1}}>
             <Chip text="نتيجة التحليل" color="rgba(255,255,255,0.88)" bg="rgba(255,255,255,0.20)"/>
             <div style={{fontSize:screen.isDesktop?34:26,fontWeight:800,color:"#fff",letterSpacing:"-0.6px",margin:`${sp[3]}px 0 ${sp[2]}px`}}>{result.decision}</div>
-            <p style={{fontSize:screen.isDesktop?15:13,color:"rgba(255,255,255,0.88)",lineHeight:1.7,maxWidth:screen.isDesktop?500:280}}>{result.summary}</p>
+            {(() => {
+              const parts = splitSummary(result.summary);
+              const short = parts.length > 2 ? parts.slice(0,2).join("؛ ") + "." : result.summary;
+              return (<>
+                <p style={{fontSize:screen.isDesktop?15:13,color:"rgba(255,255,255,0.88)",lineHeight:1.7,maxWidth:screen.isDesktop?500:280}}>{short}</p>
+                {parts.length > 2 && <div style={{fontSize:11.5,color:"rgba(255,255,255,0.7)",marginTop:6}}>التفاصيل الكاملة مقسّمة بالأسفل ↓</div>}
+              </>);
+            })()}
           </div>
           <ScoreRing value={result.score} size={screen.isDesktop?140:104} track={screen.isDesktop?11:9} color="rgba(255,255,255,0.95)"/>
         </div>
@@ -2532,6 +2501,24 @@ function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
 
           <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[4]}}>
             {(tab===0||printMode) && (<>
+              {splitSummary(result.summary).length > 2 && (
+                <div style={{gridColumn:"1 / -1"}}>
+                  <Section title="ملخص التحليل بالتفصيل" Icon={FileText} color={$.blue} subtitle="الملخص مقسّم لنقاط واضحة">
+                    {splitSummary(result.summary).map((s,i)=>{
+                      const {label,Icon,color} = summaryMeta(s);
+                      return (
+                        <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],padding:`${sp[3]}px`,background:`${color}0D`,borderRadius:10,borderRight:`3px solid ${color}`}}>
+                          <IconBadge Icon={Icon} color={color} size={30}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:12,fontWeight:700,color:color,marginBottom:3}}>{label}</div>
+                            <div style={{fontSize:14,color:$.L2,lineHeight:1.7}}>{s}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Section>
+                </div>
+              )}
               {sw.strengths?.length>0 && <Section title="نقاط القوة" Icon={CheckCircle} color={$.green} subtitle={`${sw.strengths.length} نقاط قوة تدعم المشروع`}>
                 {sw.strengths.map((s,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3],padding:`${sp[3]}px`,background:`${$.green}06`,borderRadius:10,borderRight:`3px solid ${$.green}`}}>
