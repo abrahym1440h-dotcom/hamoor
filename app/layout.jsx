@@ -14,17 +14,19 @@ export const metadata = {
   }
 };
 
+// يلوّن خلفية الصفحة كاملة (بما فيها الشريط العلوي) من أول لحظة، قبل ما يشتغل التطبيق،
+// حسب الثيم المحفوظ — هذا اللي يشيل الأبيض اللي فوق.
+const PAINT_SCRIPT = `try{var d=localStorage.getItem("hamour_theme")==="dark";var c=d?"#0E1726":"#F2F2F7";document.documentElement.style.backgroundColor=c;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",c);}catch(e){}`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
         <meta name="theme-color" content="#0E1726" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="HAMOUR" />
         <link rel="apple-touch-icon" href="/IMG_0090.jpeg" />
+        <script dangerouslySetInnerHTML={{ __html: PAINT_SCRIPT }} />
       </head>
       <body style={{ margin: 0, padding: 0 }}>{children}</body>
     </html>
