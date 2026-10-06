@@ -72,6 +72,28 @@ function useScreenSize() {
 
 const THEME_KEY = "hamour_theme";
 
+// نسخة محفوظة على الجهاز من آخر بيانات، عشان التطبيق يفتح فوراً بدون انتظار الإنترنت
+const BOOT_KEY = "hamour_boot_v1";
+function readBoot() {
+  try { const raw = localStorage.getItem(BOOT_KEY); return raw ? JSON.parse(raw) : null; } catch(e) { return null; }
+}
+function writeBoot(data) {
+  try { localStorage.setItem(BOOT_KEY, JSON.stringify(data)); } catch(e) {}
+}
+function clearBoot() {
+  try { localStorage.removeItem(BOOT_KEY); } catch(e) {}
+}
+
+// يلوّن خلفية الصفحة كاملة (بما فيها الشريط العلوي) بلون الثيم — يشيل الأبيض اللي فوق
+function paintPage(isDark) {
+  try {
+    const c = isDark ? DARK.bg : LIGHT.bg;
+    document.documentElement.style.backgroundColor = c;
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", c);
+  } catch(e) {}
+}
+
 function formatDate(isoString) {
   if (!isoString) return "";
   try {
@@ -4056,11 +4078,27 @@ export default function HamourApp() {
   const [dark, setDark] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
+  const bootUidRef = useRef(null);
+  const lastLoadRef = useRef({ uid: null, t: 0 });
+
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(THEME_KEY);
-      if (saved === "dark") { setDark(true); $ = DARK; }
-    } catch(e) {}
+    let isDark = false;
+    try { isDark = localStorage.getItem(THEME_KEY) === "dark"; } catch(e) {}
+    if (isDark) { setDark(true); $ = DARK; }
+    paintPage(isDark);
+
+    // افتح التطبيق فوراً من آخر نسخة محفوظة على الجهاز (بدون انتظار الإنترنت)
+    const c = readBoot();
+    if (c && c.user && c.user.id) {
+      bootUidRef.current = c.user.id;
+      setUser(c.user);
+      setProfile(c.profile || null);
+      setIsPremium(!!c.isPremium);
+      setUsageCount(c.usageCount || 0);
+      setPremiumUsageCount(c.premiumUsageCount || 0);
+      setAnalyses(Array.isArray(c.analyses) ? c.analyses : []);
+      setLoading(false);
+    }
   }, []);
 
   function toggleDark() {
@@ -4068,6 +4106,7 @@ export default function HamourApp() {
       const next = !d;
       $ = next ? DARK : LIGHT;
       try { localStorage.setItem(THEME_KEY, next?"dark":"light"); } catch(e) {}
+      paintPage(next);
       return next;
     });
   }
@@ -4075,12 +4114,22 @@ export default function HamourApp() {
   const loadProfile = useCallback(async (uid) => {
     const p = await getProfile(uid);
     setProfile(p);
-    setIsPremium(!!p.is_premium);
-    const used = await getUsage(uid);
+    setIsPremium(!!(p && p.is_premium));
+    // العدّادين نجيبهم مع بعض (مو واحد ورا الثاني) عشان أسرع
+    const [used, premiumUsed] = await Promise.all([getUsage(uid), getPremiumUsage(uid)]);
     setUsageCount(used);
-    const premiumUsed = await getPremiumUsage(uid);
     setPremiumUsageCount(premiumUsed);
   }, []);
+
+  // يحمّل البروفايل والتحليلات بالخلفية وبشكل متوازي — التطبيق ما ينتظرها
+  const loadAll = useCallback(async (uid) => {
+    const last = lastLoadRef.current;
+    if (last.uid === uid && Date.now() - last.t < 4000) return; // نفس الطلب قبل لحظات
+    lastLoadRef.current = { uid, t: Date.now() };
+    const reqAnalyses = getAnalysesCloud(uid).then(list => setAnalyses(list)).catch(() => {});
+    await loadProfile(uid).catch(() => {});
+    await reqAnalyses;
+  }, [loadProfile]);
 
   const refreshAnalyses = useCallback(async () => {
     const u = await getCurrentUser();
@@ -4092,21 +4141,38 @@ export default function HamourApp() {
   useEffect(() => {
     let sub;
     (async () => {
-      const u = await getCurrentUser();
-      setUser(u);
-      if (u) {
-        await loadProfile(u.id);
-        const list = await getAnalysesCloud(u.id);
-        setAnalyses(list);
+      // نعرف مين المستخدم — بحد أقصى ٤ ثواني، ما نعلّق على الإنترنت
+      let u = null, known = true;
+      try {
+        u = await Promise.race([
+          getCurrentUser(),
+          new Promise(res => setTimeout(() => res("__slow__"), 4000)),
+        ]);
+        if (u === "__slow__") { known = false; u = null; }
+      } catch(e) { known = false; }
+
+      if (known) {
+        if (u) {
+          // دخل حساب غير المحفوظ؟ نصفّر البيانات القديمة
+          if (bootUidRef.current && bootUidRef.current !== u.id) {
+            setProfile(null); setIsPremium(false); setAnalyses([]);
+            setUsageCount(0); setPremiumUsageCount(0);
+          }
+          setUser(u);
+        } else {
+          clearBoot();
+          setUser(null); setProfile(null); setIsPremium(false); setAnalyses([]);
+        }
       }
-      setLoading(false);
+      setLoading(false); // افتح التطبيق الحين، والبيانات تكمل بالخلفية
+      if (known && u) loadAll(u.id);
+
       sub = onAuthChange(async (newUser) => {
         setUser(newUser);
         if (newUser) {
-          await loadProfile(newUser.id);
-          const list = await getAnalysesCloud(newUser.id);
-          setAnalyses(list);
+          await loadAll(newUser.id);
         } else {
+          clearBoot();
           setAnalyses([]);
           setProfile(null);
           setIsPremium(false);
@@ -4115,16 +4181,25 @@ export default function HamourApp() {
       });
     })();
     return () => { if (sub) sub.unsubscribe(); };
-  }, [loadProfile]);
+  }, [loadAll]);
+
+  // نحفظ آخر نسخة من البيانات على الجهاز عشان الفتح الجاي يكون فوري
+  useEffect(() => {
+    if (!user || !profile) return;
+    writeBoot({
+      user, profile, isPremium, usageCount, premiumUsageCount,
+      analyses: Array.isArray(analyses) ? analyses.slice(0, 25) : [],
+    });
+  }, [user, profile, isPremium, usageCount, premiumUsageCount, analyses]);
 
   async function handleLogin(u) {
     setUser(u);
-    await loadProfile(u.id);
-    const list = await getAnalysesCloud(u.id);
-    setAnalyses(list);
+    await loadAll(u.id);
   }
 
   async function handleLogout() {
+    clearBoot();
+    lastLoadRef.current = { uid: null, t: 0 };
     await signOut();
     setUser(null);
     setAnalyses([]);
@@ -4132,6 +4207,7 @@ export default function HamourApp() {
     setIsPremium(false);
     setResult(null);
     setTab("home");
+    clearBoot();
   }
 
   function handleAnalyze(analysis) {
@@ -4175,7 +4251,8 @@ export default function HamourApp() {
 
   if (loading) {
     return (
-      <div key={dark?"d":"l"} style={{minHeight:"100vh",background:$.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div key={dark?"d":"l"} style={{minHeight:"100vh",background:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <style>{`@keyframes _spin{to{transform:rotate(360deg)}}`}</style>
         <Spinner sz={32} clr={$.blue}/>
       </div>
     );
@@ -4201,7 +4278,7 @@ export default function HamourApp() {
         @keyframes _mesh2{0%,100%{transform:translate(78%,22%);opacity:0}50%{transform:translate(34%,72%);opacity:1}}
         @media print {
           @page { margin: 1.5cm; }
-          body { background: #fff !important; }
+          html, body { background: #fff !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           ._dotsbg, ._spark { display: none !important; }
