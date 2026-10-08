@@ -13,6 +13,17 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
+// كلمة «هامور» مرسومة كشكل (SVG) بخط ثمانية Serif Display Bold — ملف الخط نفسه غير موجود في الموقع
+const HAMOOR_PATH = "M134 -422H117L58 -282C109 -225 172 -157 203 -96C164 21 31 95 -146 120V137L58 230C152 123 223 -28 223 -165C223 -179 222 -194 220 -208L248 -272ZM692 0C724 0 741 -17 741 -49V-164H652C645 -338 561 -411 475 -411C387 -411 299 -320 299 -163C299 -56 354 0 434 0H615C542 88 415 138 271 155V173L477 266C548 184 606 103 634 0ZM315 -215C315 -243 366 -261 427 -261C497 -261 576 -233 612 -164H434C366 -164 315 -181 315 -215ZM807 -168H806C790 -165 771 -164 740 -164C708 -164 692 -148 692 -116V0C721 0 749 -4 765 -12L813 -114L873 -82C946 -42 1015 -19 1113 -5C1144 -54 1171 -102 1188 -152L1191 -160C1236 -293 1165 -435 1058 -435C987 -435 919 -373 854 -255ZM860 -239 863 -242C886 -285 922 -311 965 -311C1041 -311 1125 -239 1148 -149C1080 -162 966 -193 860 -239ZM1461 0C1493 0 1510 -17 1510 -49V-164C1430 -164 1401 -172 1401 -221V-751H1383L1294 -626L1318 -221C1328 -68 1370 0 1461 0ZM1668 -513 1658 -506 1639 -401C1574 -366 1541 -295 1541 -221C1541 -200 1543 -181 1548 -165C1536 -164 1524 -164 1511 -164C1478 -164 1462 -148 1462 -115V0C1519 0 1576 -15 1629 -38L1963 30L2027 -124C2074 -234 2006 -345 1875 -425L1883 -459ZM1692 -346C1760 -346 1827 -283 1816 -222C1791 -202 1745 -187 1685 -177L1555 -244C1591 -318 1645 -346 1692 -346ZM1832 -206C1853 -240 1859 -270 1854 -296C1940 -238 1997 -168 2011 -117L1791 -152C1808 -170 1822 -188 1832 -206Z";
+function HamoorWord({ style }) {
+  return (
+    <svg viewBox="-146 -751 2187.9 1017" role="img" aria-label="هامور" fill="currentColor"
+      style={{ display:"inline-block", height:"1.017em", width:"2.188em", verticalAlign:"-0.266em", flexShrink:0, ...style }}>
+      <path d={HAMOOR_PATH} />
+    </svg>
+  );
+}
+
 const CATEGORY_ICONS = { Utensils, ShoppingBag, Sparkle, GraduationCap, Dumbbell, Briefcase, Activity, PieChart, BookOpen };
 
 const LIGHT = {
@@ -339,7 +350,7 @@ function AuthScreen({onSuccess}) {
           <div style={{width:72,height:72,borderRadius:22,background:"linear-gradient(145deg,#1D6EF5,#0055D4)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[4],boxShadow:SH.blue,overflow:"hidden"}}>
             <img src="/logo.png" alt="هامور" style={{width:54,height:54,objectFit:"contain"}}/>
           </div>
-          <h1 style={{fontSize:32,fontWeight:800,color:$.L1,letterSpacing:"-1px",marginBottom:6}}>هامور</h1>
+          <h1 style={{fontSize:32,fontWeight:800,color:$.L1,letterSpacing:"-1px",marginBottom:6}}><HamoorWord /></h1>
           <p style={{fontSize:14,color:$.L3,lineHeight:1.6}}>دراسة جدوى ذكية للسوق السعودي</p>
         </div>
 
@@ -445,7 +456,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
           <div style={{width:72,height:72,borderRadius:22,background:"linear-gradient(145deg,#FFB800,#FF9500)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",marginBottom:sp[4]}}>
             <Crown size={34} color="#fff" strokeWidth={2.2}/>
           </div>
-          <h2 style={{fontSize:22,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>اشترك في هامور</h2>
+          <h2 style={{fontSize:22,fontWeight:800,color:$.L1,marginBottom:sp[2]}}>اشترك في <HamoorWord /></h2>
           <p style={{fontSize:14,color:$.L3,lineHeight:1.7}}>افتح كل مزايا التطبيق واحصل على حتى 10 تحليلات لكل فترة اشتراك</p>
         </div>
 
@@ -817,7 +828,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
                 <span style={{fontSize:11,fontWeight:700,color:"#FFD60A"}}>مشترك</span>
               </div>}
             </div>
-            <h1 style={{fontSize:screen.isDesktop?52:screen.isTablet?44:38,fontWeight:800,color:"#fff",letterSpacing:"-1.4px",lineHeight:1.08,marginBottom:sp[2]}}>هامور</h1>
+            <h1 style={{fontSize:screen.isDesktop?52:screen.isTablet?44:38,fontWeight:800,color:"#fff",letterSpacing:"-1.4px",lineHeight:1.08,marginBottom:sp[2]}}><HamoorWord /></h1>
             <p style={{fontSize:screen.isDesktop?17:14,color:"rgba(255,255,255,0.75)",lineHeight:1.6,maxWidth:screen.isDesktop?480:280,marginBottom:sp[5]}}>دراسة جدوى ذكية ومفصّلة للسوق السعودي مدعومة بالذكاء الاصطناعي</p>
             <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
               <div style={{background:"rgba(255,255,255,0.15)",borderRadius:99,padding:`${sp[2]}px ${sp[3]}px`,display:"flex",alignItems:"center",gap:5}}>
@@ -883,7 +894,7 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
                   <Crown size={22} color="#fff"/>
                 </div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:15,fontWeight:800,color:"#fff",marginBottom:2}}>اشترك في هامور</div>
+                  <div style={{fontSize:15,fontWeight:800,color:"#fff",marginBottom:2}}>اشترك في <HamoorWord /></div>
                   <p style={{fontSize:12,color:"rgba(255,255,255,0.9)"}}>حتى 10 تحليلات + كل المقالات مفتوحة</p>
                 </div>
                 <ChevronRight size={20} color="#fff" style={{transform:"scaleX(-1)"}}/>
@@ -1127,8 +1138,8 @@ const DEMO_PLAN_ITEMS = [
 ];
 const DEMO_DONE_TASKS = [ {phase_index:0, task_index:0}, {phase_index:0, task_index:1} ];
 const DEMO_TEAM = [
-  {id:"demo-t1", name:"سعود العتيبي", role:"باريستا", phone:"0501234567", monthly_pay:5500, start_date:daysAgoISO(60), notes:"دوام كامل"},
-  {id:"demo-t2", name:"فهد القحطاني", role:"مشرف مناوبة", phone:"0559876543", monthly_pay:6000, start_date:daysAgoISO(40), notes:""}
+  {id:"demo-t1", name:"سعود العتيبي", role:"باريستا", phone:"05XXXXXXXX", monthly_pay:5500, start_date:daysAgoISO(60), notes:"دوام كامل"},
+  {id:"demo-t2", name:"فهد القحطاني", role:"مشرف مناوبة", phone:"05XXXXXXXX", monthly_pay:6000, start_date:daysAgoISO(40), notes:""}
 ];
 
 const TOUR_STEPS = [
@@ -2459,7 +2470,7 @@ function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/logo.png" alt="هامور" style={{width:44,height:44,objectFit:"contain"}}/>
             <div>
-              <div style={{fontSize:20,fontWeight:800,color:"#0B1320"}}>هامور</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#0B1320"}}><HamoorWord /></div>
               <div style={{fontSize:10,color:"#6B7280"}}>دراسة جدوى ذكية للسوق السعودي</div>
             </div>
           </div>
@@ -2915,7 +2926,7 @@ function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
           <div style={{marginTop:sp[5],padding:`${sp[4]}px`,background:$.F5,borderRadius:14,display:"flex",gap:sp[3],alignItems:"flex-start"}}>
             <Info size={16} color={$.L4} style={{flexShrink:0,marginTop:2}}/>
             <p style={{fontSize:12,color:$.L3,lineHeight:1.8}}>
-              هذا التحليل أداة استرشادية مبنية على متوسطات السوق والذكاء الاصطناعي، الغرض منه مساعدتك على التفكير واتخاذ قرار مبدئي. الأرقام تقديرية وقد تختلف عن الواقع، ولا يُغني هذا التحليل عن دراسة جدوى ميدانية متخصصة قبل أي قرار استثماري. هامور غير مسؤول عن أي قرارات تُتخذ بناءً عليه.
+              هذا التحليل أداة استرشادية مبنية على متوسطات السوق والذكاء الاصطناعي، الغرض منه مساعدتك على التفكير واتخاذ قرار مبدئي. الأرقام تقديرية وقد تختلف عن الواقع، ولا يُغني هذا التحليل عن دراسة جدوى ميدانية متخصصة قبل أي قرار استثماري. <HamoorWord /> غير مسؤول عن أي قرارات تُتخذ بناءً عليه.
             </p>
           </div>
         </div>
@@ -3734,7 +3745,7 @@ function HamburgerNav({active, onChange, user, isPremium, dark, onToggleDark}) {
           <span style={{width:17,height:2,background:$.L1,borderRadius:2}}/>
           <span style={{width:17,height:2,background:$.L1,borderRadius:2}}/>
         </button>
-        <div style={{fontSize:15,fontWeight:800,color:$.L1}}>{current?.name || "هامور"}</div>
+        <div style={{fontSize:15,fontWeight:800,color:$.L1}}>{current?.name || <HamoorWord />}</div>
         {isPremium ? (
           <div style={{width:34,height:34,borderRadius:"50%",background:`${$.orange}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Crown size={16} color={$.orange}/>
@@ -3797,7 +3808,7 @@ function SideNav({active, onChange, user, dark, onToggleDark, isPremium}) {
           <img src="/logo.png" alt="هامور" style={{width:32,height:32,objectFit:"contain"}}/>
         </div>
         <div>
-          <div style={{fontSize:20,fontWeight:800,color:$.L1}}>هامور</div>
+          <div style={{fontSize:20,fontWeight:800,color:$.L1}}><HamoorWord /></div>
           <div style={{fontSize:11,color:$.L3}}>دراسة جدوى ذكية</div>
         </div>
       </div>
@@ -3841,7 +3852,7 @@ function LegalSheet({open, onClose}) {
         <div style={{marginBottom:sp[5]}}>
           <h3 style={{fontSize:15,fontWeight:700,color:$.L1,marginBottom:sp[2]}}>طبيعة الخدمة</h3>
           <p style={{fontSize:13,color:$.L2,lineHeight:1.9}}>
-            هامور أداة استرشادية لتحليل المشاريع تعتمد على الذكاء الاصطناعي ونتائج بحث من مصادر عامة. التحليلات والأرقام تقديرية بطبيعتها وقد تختلف عن الواقع، ولا تُعدّ دراسة جدوى ميدانية معتمدة ولا نصيحة استثمارية أو قانونية. أنت وحدك مسؤول عن أي قرار تتخذه بناءً عليها، ونوصي بالرجوع لمختص قبل أي استثمار.
+            <HamoorWord /> أداة استرشادية لتحليل المشاريع تعتمد على الذكاء الاصطناعي ونتائج بحث من مصادر عامة. التحليلات والأرقام تقديرية بطبيعتها وقد تختلف عن الواقع، ولا تُعدّ دراسة جدوى ميدانية معتمدة ولا نصيحة استثمارية أو قانونية. أنت وحدك مسؤول عن أي قرار تتخذه بناءً عليها، ونوصي بالرجوع لمختص قبل أي استثمار.
           </p>
         </div>
 
@@ -3880,7 +3891,7 @@ function LegalSheet({open, onClose}) {
         </div>
 
         <p style={{fontSize:11,color:$.L4,marginTop:sp[5],lineHeight:1.7,textAlign:"center"}}>
-          باستخدامك تطبيق هامور فإنك توافق على هذه الشروط. قد نحدّثها من وقت لآخر.
+          باستخدامك تطبيق <HamoorWord /> فإنك توافق على هذه الشروط. قد نحدّثها من وقت لآخر.
         </p>
       </div>
     </Sheet>
@@ -3939,7 +3950,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
               <User size={30} color="#fff" strokeWidth={2}/>
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:17,fontWeight:800,color:$.L1,marginBottom:2}}>{profile?.name || "مستخدم هامور"}</div>
+              <div style={{fontSize:17,fontWeight:800,color:$.L1,marginBottom:2}}>{profile?.name || <>مستخدم <HamoorWord /></>}</div>
               <div style={{fontSize:12,color:$.L3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email}</div>
             </div>
             {isPremium && (
@@ -4024,7 +4035,7 @@ function SettingsScreen({user, profile, isPremium, dark, onToggleDark, onNeedUpg
           <LogOut size={17}/>تسجيل الخروج
         </button>
 
-        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[6]}}>هامور · الإصدار 1.1</p>
+        <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[6]}}><HamoorWord /> · الإصدار 1.1</p>
       </div>
 
       <LegalSheet open={showLegal} onClose={()=>setShowLegal(false)}/>
