@@ -1339,7 +1339,7 @@ function AdvisorDashboard({result, user, isDemo, onNeedUpgrade}) {
           onDelete={async (docId)=>{ if (!isDemo) await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
       )}
       {section === "chat" && (
-        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo}/>
+        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team}/>
       )}
       {section === "log" && (
         <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics} team={team}/>
@@ -2210,7 +2210,7 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
 }
 
 // ═══════════════ المستشار — رفيق يمشي معه خطوة بخطوة ═══════════════
-function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo}) {
+function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
   const scrollRef = useRef(null);
@@ -2225,7 +2225,17 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
     try {
       const res = await fetch("/api/advisor", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ analysis: result, financeEntries: entries, history: messages.map(m=>({role:m.role,content:m.content})), message: text })
+        body: JSON.stringify({
+          analysis: result,
+          financeEntries: entries,
+          doneTasks: doneTasks || [],
+          metrics: metrics || [],
+          documents: documents || [],
+          planItems: planItems || [],
+          team: (team || []).map(t=>({name:t.name, role:t.role, monthly_pay:t.monthly_pay})),
+          history: messages.map(m=>({role:m.role,content:m.content})),
+          message: text
+        })
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error || "تعذّر الوصول للمستشار"); return; }
@@ -2240,7 +2250,7 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
         {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[7]}px 0`,fontWeight:300}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
         {messages.map((m,i)=>(
           <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:sp[3]}}>
-            <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,background:m.role==="user"?$.F4:`${$.blue}0F`,border:m.role==="advisor"?`1px solid ${$.blue}22`:"none",color:$.L1}}>{m.content}</div>
+            <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",background:m.role==="user"?$.F4:`${$.blue}0F`,border:m.role==="advisor"?`1px solid ${$.blue}22`:"none",color:$.L1}}>{m.content}</div>
           </div>
         ))}
         {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}0F`}}><Spinner sz={14}/></div></div>}
