@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createWhale } from "./hamour-whale";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
 import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getPremiumUsage, incrementPremiumUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
 import {
@@ -2210,17 +2209,6 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
   );
 }
 
-// الحوت الصغير اللي يظهر وقت تفكير المستشار (حركات عشوائية)
-function ThinkingWhale() {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    const w = createWhale(ref.current, { mode: "think" });
-    return () => w.destroy();
-  }, []);
-  return <div ref={ref} aria-hidden="true" style={{width:64,marginTop:12}}/>;
-}
-
 // ═══════════════ المستشار — رفيق يمشي معه خطوة بخطوة ═══════════════
 function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
@@ -2265,7 +2253,7 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
             <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",background:m.role==="user"?$.F4:`${$.blue}0F`,border:m.role==="advisor"?`1px solid ${$.blue}22`:"none",color:$.L1}}>{m.content}</div>
           </div>
         ))}
-        {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}0F`,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:sp[1]}}><span style={{fontSize:11.5,color:$.L4,fontWeight:300}}>المستشار يفكر…</span><ThinkingWhale/></div></div>}
+        {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}0F`}}><Spinner sz={14}/></div></div>}
       </div>
       {err && <div style={{padding:`${sp[2]}px ${sp[5]}px`,fontSize:11,color:$.orange}}>{err}</div>}
       {nextTask && messages.length===0 && (
