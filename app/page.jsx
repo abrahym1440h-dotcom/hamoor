@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
+import ThinkingWhale from "./ThinkingWhale";
+import AdvisorReply from "./AdvisorReply";
 import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getPremiumUsage, incrementPremiumUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
@@ -1176,7 +1178,7 @@ function AdvisorTour({onNavigate, onFinish}) {
   );
 }
 
-function AdvisorDashboard({result, user, isDemo, onNeedUpgrade}) {
+function AdvisorDashboard({result, user, isDemo, onNeedUpgrade, onGoLearning}) {
   const [section, setSection] = useState("overview");
   const [entries, setEntries] = useState(isDemo ? DEMO_FINANCE_ENTRIES : []);
   const [doneTasks, setDoneTasks] = useState(isDemo ? DEMO_DONE_TASKS : []);
@@ -1339,7 +1341,7 @@ function AdvisorDashboard({result, user, isDemo, onNeedUpgrade}) {
           onDelete={async (docId)=>{ if (!isDemo) await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
       )}
       {section === "chat" && (
-        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team}/>
+        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team} onGoLearning={onGoLearning}/>
       )}
       {section === "log" && (
         <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics} team={team}/>
@@ -2210,12 +2212,12 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
 }
 
 // ═══════════════ المستشار — رفيق يمشي معه خطوة بخطوة ═══════════════
-function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team}) {
+function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team, onGoLearning}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
   const scrollRef = useRef(null);
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, sending]);
 
   async function send(overrideText) {
     const text = (overrideText !== undefined ? overrideText : input).trim();
@@ -2250,10 +2252,12 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
         {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[7]}px 0`,fontWeight:300}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
         {messages.map((m,i)=>(
           <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:sp[3]}}>
-            <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",background:m.role==="user"?$.F4:`${$.blue}0F`,border:m.role==="advisor"?`1px solid ${$.blue}22`:"none",color:$.L1}}>{m.content}</div>
+            {m.role==="advisor"
+              ? <AdvisorReply text={m.content} result={result} question={i>0&&messages[i-1].role==="user"?messages[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===messages.length-1?send:undefined} onGoLearning={onGoLearning}/>
+              : <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",background:$.F4,color:$.L1}}>{m.content}</div>}
           </div>
         ))}
-        {sending && <div style={{display:"flex"}}><div style={{padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,background:`${$.blue}0F`}}><Spinner sz={14}/></div></div>}
+        {sending && <ThinkingWhale t={$}/>}
       </div>
       {err && <div style={{padding:`${sp[2]}px ${sp[5]}px`,fontSize:11,color:$.orange}}>{err}</div>}
       {nextTask && messages.length===0 && (
@@ -2944,7 +2948,7 @@ function AnalysisScreen({result, onUpdate, user, isPremium, onNeedUpgrade}) {
     </div>
   );
 }
-function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremium, onNeedUpgrade}) {
+function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremium, onNeedUpgrade, onGoLearning}) {
   const screen = useScreenSize();
   const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : {};
   const isDemoSelected = selectedId === "__demo__";
@@ -2982,7 +2986,7 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremi
               <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{DEMO_RESULT.city}</span></div>
             </div>
           </div>
-          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo onNeedUpgrade={onNeedUpgrade}/>
+          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo onNeedUpgrade={onNeedUpgrade} onGoLearning={onGoLearning}/>
         </div>
       </div>
     );
@@ -3019,7 +3023,7 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremi
               <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{selected.city}</span></div>
             </div>
           </div>
-          <AdvisorDashboard result={selected} user={user}/>
+          <AdvisorDashboard result={selected} user={user} onGoLearning={onGoLearning}/>
         </div>
       </div>
     );
@@ -4324,7 +4328,7 @@ function HamourApp({ onReady }) {
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} premiumUsageCount={premiumUsageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} onGoLearning={()=>setTab("learning")}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
         {tab==="learning" && <LearningScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
