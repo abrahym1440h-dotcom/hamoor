@@ -383,7 +383,7 @@ function Extras({ t, P }) {
 const Intro = ({ t, P }) => (P.intro ? <Para t={t} size={12.5}>{P.intro}</Para> : null);
 
 /* مخطط السيولة (يستخدمه التصميم ٨ للنص وللبطاقة) */
-function Runway({ N, t }) {
+function Runway({ N, t, k = 1 }) {
   const be = N.be || null, run = N.runway;
   const maxM = Math.max(be || 0, run * 1.15, 3);
   const pc = (m) => Math.min(100, (m / maxM) * 100);
@@ -408,14 +408,14 @@ function Runway({ N, t }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {rows.map((r) => (
-          <div key={r.l} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 12.5 }}>
+          <div key={r.l} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 12.5 * k }}>
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: r.c, flexShrink: 0 }} />
             <span style={{ color: t.L3, flex: 1, minWidth: 0 }}>{r.l}</span>
             <b style={{ color: t.L1, fontVariantNumeric: "tabular-nums", textAlign: "left" }}>{r.v}</b>
           </div>
         ))}
       </div>
-      {N.setup && <div style={{ borderTop: `1px solid ${t.sepL}`, paddingTop: 10, fontSize: 11, color: t.L3, lineHeight: 1.8 }}>الخط يفترض صرف الميزانية على التشغيل فقط، بدون احتساب تكاليف التأسيس ({fmt(N.setup)} ريال).</div>}
+      {N.setup && <div style={{ borderTop: `1px solid ${t.sepL}`, paddingTop: 10, fontSize: 11 * k, color: t.L3, lineHeight: 1.8 }}>الخط يفترض صرف الميزانية على التشغيل فقط، بدون احتساب تكاليف التأسيس ({fmt(N.setup)} ريال).</div>}
     </div>
   );
 }
@@ -626,38 +626,38 @@ function paperRows(N) {
     N.be && ["نقطة التعادل", `بعد ${fmtMonths(N.be)}`],
   ].filter(Boolean);
 }
-function PaperH({ children }) { return <div style={{ fontSize: 14, fontWeight: 800, color: PAPER.ink, paddingBottom: 7, borderBottom: `2px solid ${PAPER.ink}` }}>{children}</div>; }
-function PaperNum({ n, bg }) { return <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", background: bg, color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}>{n}</span>; }
-function PaperScore({ sc, stampC }) {
+function PaperH({ children, k = 1 }) { return <div style={{ fontSize: 14 * k, fontWeight: 800, color: PAPER.ink, paddingBottom: 7, borderBottom: `2px solid ${PAPER.ink}` }}>{children}</div>; }
+function PaperNum({ n, bg, k = 1 }) { return <span style={{ flexShrink: 0, width: 24 * k, height: 24 * k, borderRadius: "50%", background: bg, color: "#fff", fontSize: 12 * k, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}>{n}</span>; }
+function PaperScore({ sc, stampC, k = 1 }) {
   const filled = sc != null ? sc / 10 : 0;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: PAPER.muted }}>تقييم الجدوى</span>
-        <span style={{ direction: "ltr", fontSize: 19, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{sc}<span style={{ fontSize: 12, fontWeight: 500, color: PAPER.faint }}>/100</span></span>
+        <span style={{ fontSize: 12.5 * k, fontWeight: 600, color: PAPER.muted }}>تقييم الجدوى</span>
+        <span style={{ direction: "ltr", fontSize: 19 * k, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{sc}<span style={{ fontSize: 12 * k, fontWeight: 500, color: PAPER.faint }}>/100</span></span>
       </div>
       <div role="img" aria-label={`${sc} من 100`} style={{ display: "grid", gridTemplateColumns: "repeat(10, minmax(0, 1fr))", gap: 3 }}>
         {Array.from({ length: 10 }).map((_, i) => {
           const f = Math.max(0, Math.min(1, filled - i));
-          return <div key={i} style={{ height: 11, borderRadius: 3, background: PAPER.seg, position: "relative", overflow: "hidden" }}>{f > 0 && <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: `${f * 100}%`, background: stampC === PAPER.green ? PAPER.green : PAPER.segRed }} />}</div>;
+          return <div key={i} style={{ height: 11 * k, borderRadius: 3, background: PAPER.seg, position: "relative", overflow: "hidden" }}>{f > 0 && <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: `${f * 100}%`, background: stampC === PAPER.green ? PAPER.green : PAPER.segRed }} />}</div>;
         })}
       </div>
     </div>
   );
 }
-function PaperReco({ steps, a, onGo }) {
+function PaperReco({ steps, a, onGo, k = 1 }) {
   return (
     <div style={{ background: PAPER.tintBlue, borderRadius: 14, padding: "14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: PAPER.ink }}>التوصيات</div>
+      <div style={{ fontSize: 14 * k, fontWeight: 800, color: PAPER.ink }}>التوصيات</div>
       {steps.map((s, i) => (
-        <div key={i} style={{ display: "flex", gap: 10, fontSize: 12.5, lineHeight: 1.85, color: "#24365C" }}>
-          <PaperNum n={i + 1} bg={PAPER.blue} />
+        <div key={i} style={{ display: "flex", gap: 10, fontSize: 12.5 * k, lineHeight: 1.85, color: "#24365C" }}>
+          <PaperNum n={i + 1} bg={PAPER.blue} k={k} />
           <div style={{ minWidth: 0 }}>{s.title && <b style={{ color: PAPER.ink }}><Inline text={s.title} />{s.body ? ". " : ""}</b>}<Inline text={s.body} /></div>
         </div>
       ))}
       {a && (
-        <button type="button" onClick={onGo || undefined} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", boxSizing: "border-box", textAlign: "right", minHeight: 46, padding: "8px 12px", borderRadius: 11, border: "none", background: "#fff", color: "#1D3F8F", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, cursor: onGo ? "pointer" : "default" }}>
-          <BookOpen size={16} color={PAPER.blue} style={{ flexShrink: 0 }} />
+        <button type="button" onClick={onGo || undefined} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", boxSizing: "border-box", textAlign: "right", minHeight: 46, padding: "8px 12px", borderRadius: 11, border: "none", background: "#fff", color: "#1D3F8F", fontFamily: "inherit", fontSize: 12.5 * k, fontWeight: 700, cursor: onGo ? "pointer" : "default" }}>
+          <BookOpen size={16 * k} color={PAPER.blue} style={{ flexShrink: 0 }} />
           <span style={{ flex: 1, minWidth: 0, lineHeight: 1.6 }}>اقرأ: {a.title}</span>
           {onGo && <ChevronLeft size={16} color={PAPER.blue} style={{ flexShrink: 0 }} />}
         </button>
@@ -665,51 +665,51 @@ function PaperReco({ steps, a, onGo }) {
     </div>
   );
 }
-function D10({ P, N, t, a, onGo }) {
+function D10({ P, N, t, a, onGo, k = 1 }) {
   const sc = N.score;
   const stampC = /pos/i.test(N.dtype) ? PAPER.green : /neg/i.test(N.dtype) ? PAPER.red : sc != null ? (sc >= 75 ? PAPER.green : sc >= 60 ? PAPER.amber : PAPER.red) : PAPER.blue;
   const rows = paperRows(N);
   return (
     <div style={{ width: "100%", boxSizing: "border-box", background: PAPER.bg, color: PAPER.ink, border: `1px solid ${PAPER.line}`, borderRadius: 18, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 18 }}>
-      {P.intro && <div style={{ fontSize: 12.5, lineHeight: 1.9, color: PAPER.muted }}>{P.intro}</div>}
+      {P.intro && <div style={{ fontSize: 12.5 * k, lineHeight: 1.9, color: PAPER.muted }}>{P.intro}</div>}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: PAPER.faint }}>تقرير جدوى مبدئي</div>
-          <div style={{ fontSize: 16.5, fontWeight: 800, lineHeight: 1.5 }}>{N.idea || "مشروعك"}{N.city ? ` · ${N.city}` : ""}</div>
+          <div style={{ fontSize: 11.5 * k, fontWeight: 600, color: PAPER.faint }}>تقرير جدوى مبدئي</div>
+          <div style={{ fontSize: 16.5 * k, fontWeight: 800, lineHeight: 1.5 }}>{N.idea || "مشروعك"}{N.city ? <>{" "}<span style={{ whiteSpace: "nowrap" }}>{"· " + N.city}</span></> : null}</div>
         </div>
-        {N.decision && <div style={{ flexShrink: 0, maxWidth: "46%", transform: "rotate(-4deg)", border: `2px solid ${stampC}`, color: stampC, borderRadius: 9, padding: "1px 10px", fontSize: 12, fontWeight: 800, lineHeight: 1.6, textAlign: "center", marginTop: 2 }}>{N.decision}</div>}
+        {N.decision && <div style={{ flexShrink: 0, maxWidth: "46%", transform: "rotate(-4deg)", border: `2px solid ${stampC}`, color: stampC, borderRadius: 9, padding: "1px 10px", fontSize: 12 * k, fontWeight: 800, lineHeight: 1.6, textAlign: "center", marginTop: 2 }}>{N.decision}</div>}
       </div>
       {sc != null && (
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <PaperScore sc={sc} stampC={stampC} />
-          {P.problem && (P.problem.title || P.problem.body) && <div style={{ fontSize: 12.5, color: PAPER.muted, lineHeight: 1.8 }}>المشكلة الأساسية: <b style={{ color: PAPER.ink }}>{P.problem.title || P.problem.body}</b></div>}
+          <PaperScore sc={sc} stampC={stampC} k={k} />
+          {P.problem && (P.problem.title || P.problem.body) && <div style={{ fontSize: 12.5 * k, color: PAPER.muted, lineHeight: 1.8 }}>المشكلة الأساسية: <b style={{ color: PAPER.ink }}>{P.problem.title || P.problem.body}</b></div>}
         </div>
       )}
       {rows.length > 0 && (
         <div>
-          <PaperH>الأرقام المعتمدة</PaperH>
+          <PaperH k={k}>الأرقام المعتمدة</PaperH>
           {rows.map(([l, v, col], i) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", fontSize: 12.5, borderBottom: i < rows.length - 1 ? `1px solid ${PAPER.line}` : "none" }}>
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", fontSize: 12.5 * k, borderBottom: i < rows.length - 1 ? `1px solid ${PAPER.line}` : "none" }}>
               <span style={{ color: PAPER.muted }}>{l}</span>
               <b style={{ color: col || PAPER.ink, fontVariantNumeric: "tabular-nums", textAlign: "left" }}>{v}</b>
             </div>
           ))}
         </div>
       )}
-      {P.problem && P.problem.title && P.problem.body && <div style={{ fontSize: 12.5, lineHeight: 1.9, color: PAPER.muted }}>{P.problem.body}</div>}
+      {P.problem && P.problem.title && P.problem.body && <div style={{ fontSize: 12.5 * k, lineHeight: 1.9, color: PAPER.muted }}>{P.problem.body}</div>}
       {P.risks.length > 0 && (
         <div>
-          <PaperH>ملاحظات المخاطر</PaperH>
+          <PaperH k={k}>ملاحظات المخاطر</PaperH>
           {P.risks.map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: i < P.risks.length - 1 ? `1px solid ${PAPER.line}` : "none" }}>
-              <PaperNum n={i + 1} bg={PAPER.amber} />
-              <div style={{ fontSize: 12.5, lineHeight: 1.85, color: PAPER.muted, minWidth: 0 }}>{r.title && <b style={{ color: PAPER.ink }}>{r.title}. </b>}{r.body}</div>
+              <PaperNum n={i + 1} bg={PAPER.amber} k={k} />
+              <div style={{ fontSize: 12.5 * k, lineHeight: 1.85, color: PAPER.muted, minWidth: 0 }}>{r.title && <b style={{ color: PAPER.ink }}>{r.title}. </b>}{r.body}</div>
             </div>
           ))}
         </div>
       )}
-      {(P.steps.length > 0 || a) && <PaperReco steps={P.steps} a={a} onGo={onGo} />}
-      {P.rest.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{P.rest.map((p, i) => <div key={i} style={{ fontSize: 12, lineHeight: 1.85, color: PAPER.faint }}>{p}</div>)}</div>}
+      {(P.steps.length > 0 || a) && <PaperReco steps={P.steps} a={a} onGo={onGo} k={k} />}
+      {P.rest.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{P.rest.map((p, i) => <div key={i} style={{ fontSize: 12 * k, lineHeight: 1.85, color: PAPER.faint }}>{p}</div>)}</div>}
     </div>
   );
 }
@@ -921,7 +921,7 @@ function Card9({ C, t, a, onGo }) {
 }
 
 /* ═══ بطاقة ١٠ — ورقة التقرير ═══ */
-function Card10({ C, N, t, a, onGo }) {
+function Card10({ C, N, t, a, onGo, k = 1 }) {
   const sc = N.score, wl = worstLevel(C.chips);
   const stampC = N.decision
     ? (/pos/i.test(N.dtype) ? PAPER.green : /neg/i.test(N.dtype) ? PAPER.red : sc != null ? (sc >= 75 ? PAPER.green : sc >= 60 ? PAPER.amber : PAPER.red) : PAPER.blue)
@@ -930,26 +930,26 @@ function Card10({ C, N, t, a, onGo }) {
   const rows = C.stats.length ? C.stats.map((s) => [s.label, `${s.value}${unitOf(s.label, s.value) ? " " + unitOf(s.label, s.value) : ""}`, isNeg(s.value) ? PAPER.red : null]) : paperRows(N);
   return (
     <div style={{ width: "100%", boxSizing: "border-box", background: PAPER.bg, color: PAPER.ink, border: `1px solid ${PAPER.line}`, borderRadius: 18, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 18 }}>
-      {C.head && <div style={{ fontSize: 12.5, lineHeight: 1.9, color: PAPER.muted }}>{C.head}</div>}
+      {C.head && <div style={{ fontSize: 12.5 * k, lineHeight: 1.9, color: PAPER.muted }}>{C.head}</div>}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: PAPER.faint }}>تقرير المستشار</div>
-          <div style={{ fontSize: 16.5, fontWeight: 800, lineHeight: 1.5 }}>{N.idea || "مشروعك"}{N.city ? ` · ${N.city}` : ""}</div>
+          <div style={{ fontSize: 11.5 * k, fontWeight: 600, color: PAPER.faint }}>تقرير المستشار</div>
+          <div style={{ fontSize: 16.5 * k, fontWeight: 800, lineHeight: 1.5 }}>{N.idea || "مشروعك"}{N.city ? <>{" "}<span style={{ whiteSpace: "nowrap" }}>{"· " + N.city}</span></> : null}</div>
         </div>
-        {stamp && <div style={{ flexShrink: 0, maxWidth: "46%", transform: "rotate(-4deg)", border: `2px solid ${stampC}`, color: stampC, borderRadius: 9, padding: "1px 10px", fontSize: 12, fontWeight: 800, lineHeight: 1.6, textAlign: "center", marginTop: 2 }}>{stamp}</div>}
+        {stamp && <div style={{ flexShrink: 0, maxWidth: "46%", transform: "rotate(-4deg)", border: `2px solid ${stampC}`, color: stampC, borderRadius: 9, padding: "1px 10px", fontSize: 12 * k, fontWeight: 800, lineHeight: 1.6, textAlign: "center", marginTop: 2 }}>{stamp}</div>}
       </div>
-      {sc != null && <PaperScore sc={sc} stampC={stampC} />}
+      {sc != null && <PaperScore sc={sc} stampC={stampC} k={k} />}
       {(C.status || C.chips.length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          {C.status && <div style={{ fontSize: 12.5, color: PAPER.muted, lineHeight: 1.85 }}>الحالة: <b style={{ color: PAPER.ink }}><Inline text={C.status} /></b></div>}
-          <Chips items={C.chips} colorOf={paperLevel} size={11} />
+          {C.status && <div style={{ fontSize: 12.5 * k, color: PAPER.muted, lineHeight: 1.85 }}>الحالة: <b style={{ color: PAPER.ink }}><Inline text={C.status} /></b></div>}
+          <Chips items={C.chips} colorOf={paperLevel} size={11 * k} />
         </div>
       )}
       {rows.length > 0 && (
         <div>
-          <PaperH>الأرقام المعتمدة</PaperH>
+          <PaperH k={k}>الأرقام المعتمدة</PaperH>
           {rows.map(([l, v, col], i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "8px 0", fontSize: 12.5, borderBottom: i < rows.length - 1 ? `1px solid ${PAPER.line}` : "none" }}>
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "8px 0", fontSize: 12.5 * k, borderBottom: i < rows.length - 1 ? `1px solid ${PAPER.line}` : "none" }}>
               <span style={{ color: PAPER.muted }}>{l}</span>
               <b style={{ color: col || PAPER.ink, fontVariantNumeric: "tabular-nums", textAlign: "left" }}><Val v={v} /></b>
             </div>
@@ -958,17 +958,17 @@ function Card10({ C, N, t, a, onGo }) {
       )}
       {C.risks.length > 0 && (
         <div>
-          <PaperH>ملاحظات المخاطر</PaperH>
+          <PaperH k={k}>ملاحظات المخاطر</PaperH>
           {C.risks.map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: i < C.risks.length - 1 ? `1px solid ${PAPER.line}` : "none" }}>
-              <PaperNum n={i + 1} bg={PAPER.amber} />
-              <div style={{ fontSize: 12.5, lineHeight: 1.85, color: PAPER.muted, minWidth: 0 }}>{r.title && <b style={{ color: PAPER.ink }}>{r.title}{r.body ? ". " : ""}</b>}<Inline text={r.body} /></div>
+              <PaperNum n={i + 1} bg={PAPER.amber} k={k} />
+              <div style={{ fontSize: 12.5 * k, lineHeight: 1.85, color: PAPER.muted, minWidth: 0 }}>{r.title && <b style={{ color: PAPER.ink }}>{r.title}{r.body ? ". " : ""}</b>}<Inline text={r.body} /></div>
             </div>
           ))}
         </div>
       )}
-      {(C.steps.length > 0 || a) && <PaperReco steps={C.steps} a={a} onGo={onGo} />}
-      {C.tail.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{C.tail.map((p, i) => <div key={i} style={{ fontSize: 12, lineHeight: 1.85, color: PAPER.faint }}>{p}</div>)}</div>}
+      {(C.steps.length > 0 || a) && <PaperReco steps={C.steps} a={a} onGo={onGo} k={k} />}
+      {C.tail.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{C.tail.map((p, i) => <div key={i} style={{ fontSize: 12 * k, lineHeight: 1.85, color: PAPER.faint }}>{p}</div>)}</div>}
     </div>
   );
 }
@@ -1009,8 +1009,133 @@ export function pickCardLayout(C, N, question) {
   return 5;
 }
 
+/* ═══════════════ وضع المحادثة: فقاعات كبيرة وواضحة (تصميم المحادثة الجديد) ═══════════════
+   الرد يطلع فقاعات متتابعة بخط كبير. التقرير (١٠) والسيولة (٨) يحتفظون بشكلهم الخاص.   */
+const F_STRONG = "clamp(16px, 4.6vw, 18.5px)";
+const F_BODY = "clamp(15px, 4.1vw, 17px)";
+const F_SMALL = "clamp(13px, 3.6vw, 14.5px)";
+const F_NUM = "clamp(17px, 4.8vw, 20px)";
+const REPORT_K = 1.25;
+
+// يحوّل الرد النصي القديم (المشكلة/المخاطر/الخطوات) لنفس شكل البطاقة، فيعرض بنفس الفقاعات
+function cardFromParsed(P) {
+  const status = P.problem ? [P.problem.title, P.problem.body].filter(Boolean).join(". ") : "";
+  return { head: P.intro || "", chips: [], status, stats: [], risks: P.risks || [], steps: P.steps || [], tail: P.rest || [], raw: P.raw || "" };
+}
+function ChatBubble({ t, children, gap = 12 }) {
+  return (
+    <div style={{ alignSelf: "flex-end", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: t.surface, border: `1px solid ${t.sepL}`, borderRadius: "20px 20px 20px 4px", padding: "13px 17px", display: "flex", flexDirection: "column", gap }}>
+      {children}
+    </div>
+  );
+}
+function ChatLabel({ color, children }) {
+  return <div style={{ fontSize: F_SMALL, fontWeight: 700, color, lineHeight: 1.5 }}>{children}</div>;
+}
+function ChatStats({ t, stats }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 230 }}>
+      {stats.map((s, i) => {
+        const neg = isNeg(s.value), unit = unitOf(s.label, s.value);
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 18, padding: "9px 0", borderTop: i ? `1px solid ${t.sepL}` : "none" }}>
+            <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, fontSize: F_BODY, color: t.L3, lineHeight: 1.6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: neg ? t.red : t.blue, flexShrink: 0 }} />
+              <span>{s.label}</span>
+            </span>
+            <span style={{ fontSize: F_NUM, fontWeight: 800, color: neg ? t.red : t.L1, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", textAlign: "left" }}>
+              <Val v={s.value} />{unit && <span style={{ fontSize: F_SMALL, fontWeight: 500, color: t.L3, marginInlineStart: 6 }}>{unit}</span>}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function ChatItems({ t, items, kind }) {
+  const warn = kind === "risk";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {items.map((s, i) => (
+        <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          {warn
+            ? <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: tint(t.orange, "22"), display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}><AlertTriangle size={16} color={t.orange} /></span>
+            : <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: t.blue, color: "#fff", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {s.title && <div style={{ fontSize: F_STRONG, fontWeight: 700, color: t.L1, lineHeight: 1.7 }}><Inline text={s.title} /></div>}
+            {s.body && <div style={{ fontSize: F_BODY, lineHeight: 1.9, color: t.L2 }}><Inline text={s.body} /></div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function ChatArticle({ a, t, onGo }) {
+  if (!a) return null;
+  const Tag = onGo ? "button" : "div";
+  return (
+    <Tag type={onGo ? "button" : undefined} onClick={onGo} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", boxSizing: "border-box", textAlign: "right", padding: "10px 12px", minHeight: 58, borderRadius: 16, border: "none", background: tint(t.blue, "18"), color: t.L1, fontFamily: "inherit", cursor: onGo ? "pointer" : "default" }}>
+      <span style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 12, background: tint(t.blue, "26"), display: "flex", alignItems: "center", justifyContent: "center" }}><BookOpen size={20} color={t.blue} /></span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: F_BODY, fontWeight: 600, lineHeight: 1.55 }}>{a.title}</span>
+        <span style={{ display: "block", fontSize: 13, color: t.L3 }}>مقال في قسم التعلّم</span>
+      </span>
+      {onGo && <ChevronLeft size={20} color={t.blue} />}
+    </Tag>
+  );
+}
+function ChatQuick({ t, items, onAsk }) {
+  if (!onAsk || !items.length) return null;
+  return (
+    <div style={{ alignSelf: "flex-end", display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, paddingTop: 2 }}>
+      {items.map((q) => (
+        <button key={q} type="button" onClick={() => onAsk(q)} style={{ minHeight: 44, padding: "0 16px", borderRadius: 99, border: `1px solid ${tint(t.blue, "88")}`, background: t.surface, color: t.L1, fontFamily: "inherit", fontSize: F_SMALL, fontWeight: 600, cursor: "pointer" }}>{q}</button>
+      ))}
+    </div>
+  );
+}
+const ChatTime = ({ t, time }) => (time ? <div style={{ alignSelf: "flex-end", fontSize: 12, color: t.L3, padding: "0 6px", fontVariantNumeric: "tabular-nums" }}>{time}</div> : null);
+const chatStack = (extra) => ({ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, maxWidth: "94%", minWidth: 0, ...extra });
+
+function ChatReply({ C, N, t, a, onGo, onAsk, time, runway }) {
+  const first = C.steps[0] && (C.steps[0].title || C.steps[0].body);
+  const quick = [first ? `كيف أنفّذ: ${shorten(first, 34)}؟` : null, C.stats.length ? "اشرح لي هذه الأرقام" : null, "وش البديل الأرخص؟"].filter(Boolean);
+  return (
+    <div style={chatStack(runway ? { width: "94%" } : null)}>
+      {(C.head || C.chips.length > 0 || C.status) && (
+        <ChatBubble t={t} gap={10}>
+          {C.head && <div style={{ fontSize: F_BODY, lineHeight: 1.85, color: t.L2 }}>{C.head}</div>}
+          <Chips items={C.chips} colorOf={(l) => levelColor(l, t)} size={14} />
+          {C.status && <div style={{ fontSize: F_STRONG, fontWeight: 600, color: t.L1, lineHeight: 1.9 }}><Inline text={C.status} /></div>}
+        </ChatBubble>
+      )}
+      {runway && <div style={{ alignSelf: "stretch" }}><Runway N={N} t={t} k={1.2} /></div>}
+      {C.stats.length > 0 && <ChatBubble t={t}><ChatLabel color={t.blue}>أرقام تهمّك</ChatLabel><ChatStats t={t} stats={C.stats} /></ChatBubble>}
+      {C.risks.length > 0 && <ChatBubble t={t}><ChatLabel color={t.orange}>نقاط الانتباه</ChatLabel><ChatItems t={t} items={C.risks} kind="risk" /></ChatBubble>}
+      {(C.steps.length > 0 || a) && (
+        <ChatBubble t={t}>
+          {C.steps.length > 0 && <ChatLabel color={t.blue}>{C.steps.length > 1 ? "خطواتك الجاية" : "خطوتك الجاية"}</ChatLabel>}
+          {C.steps.length > 0 && <ChatItems t={t} items={C.steps} kind="step" />}
+          <ChatArticle a={a} t={t} onGo={onGo} />
+        </ChatBubble>
+      )}
+      {C.tail.length > 0 && <ChatBubble t={t}>{C.tail.map((p, i) => <div key={i} style={{ fontSize: F_BODY, lineHeight: 1.85, color: t.L2 }}>{p}</div>)}</ChatBubble>}
+      <ChatTime t={t} time={time} />
+      <ChatQuick t={t} items={quick} onAsk={onAsk} />
+    </div>
+  );
+}
+function ChatPlain({ text, t, time }) {
+  return (
+    <div style={chatStack()}>
+      <ChatBubble t={t}><div style={{ fontSize: F_BODY, lineHeight: 1.9, color: t.L1, whiteSpace: "pre-wrap" }}>{text}</div></ChatBubble>
+      <ChatTime t={t} time={time} />
+    </div>
+  );
+}
+
 /* ═══ المدخل ═══ */
-export default function AdvisorReply({ text, result, question, layout, t, articles, onAsk, onGoLearning }) {
+export default function AdvisorReply({ text, result, question, layout, t, articles, onAsk, onGoLearning, chat, time }) {
   const C = useMemo(() => parseCard(text), [text]);
   const P0 = useMemo(() => (C ? null : parseReply(text)), [text, C]);
   const N = useMemo(() => numbersFrom(result), [result]);
@@ -1024,6 +1149,15 @@ export default function AdvisorReply({ text, result, question, layout, t, articl
   const canRunway = !!(N.budget && N.monthly);
   const box = { width: "100%", maxWidth: 680, minWidth: 0 };
 
+  if (chat) {
+    const CC = C || (P0 && P0.ok ? cardFromParsed(P) : null);
+    if (!CC) return <ChatPlain text={String(text || "").replace(CARD_MARK, "").trim()} t={t} time={time} />;
+    const want = layout || (C ? pickCardLayout(C, N, question) : pickLayout(P0, N, question));
+    if (want === 10) {
+      return <div style={{ width: "94%", minWidth: 0 }}>{C ? <Card10 C={C} N={N} t={t} a={art} onGo={go} k={REPORT_K} /> : <D10 P={P} N={N} t={t} a={art} onGo={go} k={REPORT_K} />}</div>;
+    }
+    return <ChatReply C={CC} N={N} t={t} a={art} onGo={go} onAsk={onAsk} time={time} runway={want === 8 && canRunway} />;
+  }
   if (C) {
     const want = layout || pickCardLayout(C, N, question);
     const L = want === 8 && !canRunway ? 1 : want;
