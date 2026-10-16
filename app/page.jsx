@@ -2211,18 +2211,67 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
   );
 }
 
-// ═══════════════ المستشار — رفيق يمشي معه خطوة بخطوة ═══════════════
+// ═══════════════ المستشار — محادثة بفقاعات كبيرة وواضحة ═══════════════
+const CHAT_STARTERS = ["وش أبدأ فيه أول؟", "كم أحتاج سيولة؟", "فسّر لي الأرقام"];
+// مميزات المستشار (زر بجنب زر الإرسال): كل ميزة ترسل سؤالاً جاهزاً، والمستشار يجاوب من بيانات مشروعك
+const CHAT_FEATURES = [
+  { Icon: DollarSign,  tone: "blue",   label: "احسب لي الأرقام",     hint: "ميزانيتك وتكاليفك ونقطة التعادل", q: "احسب لي أهم أرقام مشروعي: الميزانية والتأسيس والتشغيل الشهري ونقطة التعادل" },
+  { Icon: Clock,       tone: "orange", label: "كم تكفي ميزانيتي؟",   hint: "كم شهر تقدر تكمّل",              q: "كم شهر تكفيني ميزانيتي؟" },
+  { Icon: AlertTriangle, tone: "red",  label: "وش المخاطر؟",         hint: "أهم النقاط اللي تنتبه لها",       q: "وش أهم المخاطر في مشروعي؟" },
+  { Icon: Lightbulb,   tone: "green",  label: "بدائل أرخص",          hint: "طرق تبدأ فيها بأقل تكلفة",        q: "اقترح علي بدائل أرخص للبدء" },
+  { Icon: TrendingUp,  tone: "blue",   label: "حلّل إيراداتي",       hint: "أحسن يوم وأضعف يوم والاتجاه",     q: "حلّل لي إيراداتي: أحسن يوم وأضعف يوم والاتجاه العام" },
+  { Icon: Zap,         tone: "green",  label: "كيف أرفع إيراداتي؟",  hint: "3 طرق عملية لمشروعك",            q: "اقترح علي 3 طرق عملية أرفع بها إيراداتي" },
+  { Icon: Calendar,    tone: "blue",   label: "خطتي لهذا الأسبوع",   hint: "خطوات مرتبة تبدأ فيها الحين",     q: "رتّب لي خطة هذا الأسبوع" },
+  { Icon: CheckCircle, tone: "green",  label: "راجع مهامي",          hint: "وش المتأخر ووش الأهم",           q: "راجع مهامي: وش المتأخر ووش الأهم أبدأ فيه؟" },
+  { Icon: Shield,      tone: "red",    label: "اختبر فكرتي",         hint: "أقوى 3 أسباب ممكن تفشّلها",      q: "اختبر فكرتي: وش أقوى 3 أسباب ممكن تفشّل مشروعي؟" },
+  { Icon: Users,       tone: "orange", label: "نقاط التفاوض",        hint: "رسالة جاهزة للمالك أو المورّد",   q: "جهّز لي نقاط تفاوض ورسالة جاهزة للمالك أو المورّد" },
+  { Icon: BookOpen,    tone: "blue",   label: "رشّح لي مقال",        hint: "أنسب مقال لوضعك الحين",          q: "رشّح لي أنسب مقال من قسم التعلّم لوضعي الحين" },
+  { Icon: FileText,    tone: "blue",   label: "تقرير شامل",          hint: "ورقة وحدة بالتقييم والتوصيات",   q: "عطني تقرير شامل عن مشروعي" },
+];
+const CH_BODY = "clamp(15px, 4.1vw, 17px)";
+function chatTime(m) {
+  let d = null;
+  if (m && m.created_at) d = new Date(m.created_at);
+  else if (m && String(m.id || "").startsWith("tmp-")) { const g = String(m.id).match(/(\d{10,})$/); if (g) d = new Date(Number(g[1])); }
+  if (!d || isNaN(d.getTime())) return "";
+  try { return d.toLocaleTimeString("ar-SA", { hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; }
+}
+function ChatAppsIcon({ size = 24, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/>
+      <rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>
+    </svg>
+  );
+}
 function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team, onGoLearning}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
+  const [menu, setMenu] = useState(false);
   const scrollRef = useRef(null);
+  const lastAdvRef = useRef(null);
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, sending]);
+  // أول ما يوصل رد المستشار: نوريك بدايته (إذا كان طويل)، وإلا ننزل لآخر المحادثة
+  useEffect(() => {
+    const box = scrollRef.current; if (!box) return;
+    const last = messages[messages.length - 1];
+    const el = lastAdvRef.current;
+    if (!sending && last && last.role === "advisor" && el && el.offsetHeight > box.clientHeight - 24) box.scrollTop = Math.max(0, el.offsetTop - 10);
+    else box.scrollTop = box.scrollHeight;
+  }, [messages, sending]);
+
+  // زر Escape يقفل قائمة المميزات
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e) => { if (e.key === "Escape") setMenu(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
 
   async function send(overrideText) {
     const text = (overrideText !== undefined ? overrideText : input).trim();
     if (!text || sending) return;
-    setInput(""); setErr(null); setSending(true);
+    setMenu(false); setInput(""); setErr(null); setSending(true);
     setMessages(prev => [...prev, { role:"user", content:text, id:"tmp-"+Date.now() }]);
     try {
       const res = await fetch("/api/advisor", {
@@ -2246,34 +2295,101 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
     } catch(e) { setErr("تعذّر الاتصال، تحقق من الإنترنت"); } finally { setSending(false); }
   }
 
+  const empty = messages.length === 0 && !sending;
+  const starters = [nextTask ? { label:`ناقش معي: ${nextTask.text}`, q:`أبي أناقش الخطوة الجاية: ${nextTask.text}` } : null, ...CHAT_STARTERS.map(q => ({ label:q, q }))].filter(Boolean);
+  const advBubble = { background:$.surface, border:`1px solid ${$.sepL}`, borderRadius:"20px 20px 20px 4px" };
+
   return (
-    <Card style={{padding:0,overflow:"hidden",boxShadow:AD_SHADOW}}>
-      <div ref={scrollRef} style={{height:360,overflowY:"auto",padding:`${sp[4]}px ${sp[5]}px`}}>
-        {messages.length===0 && <div style={{fontSize:12,color:$.L4,textAlign:"center",padding:`${sp[7]}px 0`,fontWeight:300}}>اسأل المستشار عن أرقامك أو مشروعك</div>}
-        {messages.map((m,i)=>(
-          <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:sp[3]}}>
-            {m.role==="advisor"
-              ? <AdvisorReply text={m.content} result={result} question={i>0&&messages[i-1].role==="user"?messages[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===messages.length-1?send:undefined} onGoLearning={onGoLearning}/>
-              : <div style={{maxWidth:"80%",padding:`${sp[3]}px ${sp[4]}px`,borderRadius:14,fontSize:12.5,lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",background:$.F4,color:$.L1}}>{m.content}</div>}
+    <Card style={{padding:0,overflow:"hidden",boxShadow:AD_SHADOW,display:"flex",flexDirection:"column",height:"clamp(440px, calc(100dvh - 330px), 860px)"}}>
+      <div style={{position:"relative",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
+        <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[4]}px`,borderBottom:`1px solid ${$.sepL}`}}>
+          <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Sparkles size={22} color="#fff"/></div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:17,fontWeight:700,color:$.L1}}>المستشار</div>
+            <div style={{fontSize:13,color:sending?$.green:$.L3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sending ? "يفكّر الحين…" : "يعرف أرقام مشروعك ومقالات التعلّم"}</div>
           </div>
-        ))}
-        {sending && <ThinkingWhale t={$}/>}
-      </div>
-      {err && <div style={{padding:`${sp[2]}px ${sp[5]}px`,fontSize:11,color:$.orange}}>{err}</div>}
-      {nextTask && messages.length===0 && (
-        <div onClick={()=>send(`أبي أناقش الخطوة الجاية: ${nextTask.text}`)} style={{margin:`0 ${sp[4]}px ${sp[2]}px`,padding:`${sp[2]}px ${sp[3]}px`,background:`${$.blue}0F`,border:`1px solid ${$.blue}25`,borderRadius:10,fontSize:11,color:$.blue,cursor:"pointer"}}>
-          ناقش معي: {nextTask.text}
         </div>
-      )}
-      <div style={{display:"flex",gap:sp[2],padding:`${sp[3]}px ${sp[4]}px`,borderTop:`1px solid ${$.sepL}`}}>
-        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,background:$.F4,border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,color:$.L1,fontSize:13,fontFamily:"inherit",outline:"none"}}/>
-        <button onClick={()=>send()} disabled={!input.trim()||sending} style={{width:38,height:38,borderRadius:11,background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0}}><ArrowRight size={16} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
+
+        <div ref={scrollRef} style={{flex:1,minHeight:0,overflowY:"auto",position:"relative",display:"flex",flexDirection:"column",gap:6,padding:`${sp[4]}px ${sp[3]}px ${sp[3]}px`,background:$.bg,backgroundImage:`radial-gradient(${$.F3} 1.2px, transparent 1.2px)`,backgroundSize:"22px 22px"}}>
+          {empty && (
+            <div style={{margin:"auto",textAlign:"center",padding:`${sp[6]}px ${sp[4]}px`}}>
+              <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",margin:`0 auto ${sp[3]}px`}}><Sparkles size={26} color="#fff"/></div>
+              <div style={{fontSize:16,fontWeight:600,color:$.L1}}>اسأل المستشار عن أرقامك أو مشروعك</div>
+              <div style={{fontSize:13.5,color:$.L3,marginTop:4,lineHeight:1.7}}>يرد عليك بناءً على بيانات مشروعك ومقالات التعلّم</div>
+              <button type="button" onClick={()=>setMenu(true)} style={{marginTop:sp[3],minHeight:44,padding:"0 18px",borderRadius:99,border:"none",background:`${$.blue}1F`,color:$.blue,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}><ChatAppsIcon size={18} color={$.blue}/>مميزات المستشار</button>
+            </div>
+          )}
+          {messages.map((m,i)=>{
+            const adv = m.role==="advisor", time = chatTime(m);
+            const top = i>0 && messages[i-1].role!==m.role ? 10 : 0;
+            return (
+              <div key={m.id||i} ref={adv && i===messages.length-1 ? lastAdvRef : null} style={{display:"flex",justifyContent:adv?"flex-end":"flex-start",marginTop:top}}>
+                {adv
+                  ? <AdvisorReply chat time={time} text={m.content} result={result} question={i>0&&messages[i-1].role==="user"?messages[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===messages.length-1?send:undefined} onGoLearning={onGoLearning}/>
+                  : <div style={{maxWidth:"88%",boxSizing:"border-box",padding:"10px 16px 8px",borderRadius:"20px 20px 4px 20px",background:$.blue,color:"#fff"}}>
+                      <div style={{fontSize:CH_BODY,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{m.content}</div>
+                      {time && <div style={{fontSize:12,color:"rgba(255,255,255,0.78)",textAlign:"left",marginTop:2}}>{time}</div>}
+                    </div>}
+              </div>
+            );
+          })}
+          {sending && (
+            <div style={{display:"flex",justifyContent:"flex-end",marginTop:messages.length&&messages[messages.length-1].role!=="advisor"?10:0}}>
+              <div style={{...advBubble,padding:"12px 16px 2px",display:"flex",alignItems:"center",gap:sp[2]}}>
+                <ThinkingWhale t={$} label=""/>
+                <div style={{fontSize:15,color:$.L2,marginInlineStart:-10,marginBottom:10}}>المستشار يفكّر…</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* قائمة المميزات: تطلع من تحت فوق المحادثة، وضغطة على أي ميزة ترسلها للمستشار */}
+        <div aria-hidden={!menu} onClick={()=>setMenu(false)} style={{position:"absolute",top:0,right:0,bottom:0,left:0,zIndex:20,display:"flex",flexDirection:"column",justifyContent:"flex-end",background:menu?"rgba(0,0,0,0.34)":"rgba(0,0,0,0)",visibility:menu?"visible":"hidden",transition:menu?"background .2s ease":"background .2s ease, visibility 0s linear .24s"}}>
+          <div role="dialog" aria-label="مميزات المستشار" onClick={e=>e.stopPropagation()} style={{background:$.surface,borderRadius:"22px 22px 0 0",maxHeight:"calc(100% - 28px)",overflowY:"auto",boxSizing:"border-box",padding:`${sp[4]}px ${sp[4]}px ${sp[4]}px`,boxShadow:"0 -10px 30px rgba(0,0,0,0.14)",transform:menu?"translateY(0)":"translateY(28px)",opacity:menu?1:0,transition:"transform .24s ease, opacity .2s ease"}}>
+            <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[3]}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:17,fontWeight:700,color:$.L1,lineHeight:1.5}}>وش تبغى المستشار يسوي لك؟</div>
+                <div style={{fontSize:13.5,color:$.L3,marginTop:2,lineHeight:1.6}}>اضغط على أي ميزة وينفّذها بأرقام مشروعك</div>
+              </div>
+              <button type="button" aria-label="إغلاق" onClick={()=>setMenu(false)} style={{width:44,height:44,borderRadius:"50%",border:"none",background:$.F4,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={20} color={$.L2}/></button>
+            </div>
+            <div style={{display:"grid",gap:10,gridTemplateColumns:"repeat(auto-fill, minmax(min(100%, 240px), 1fr))"}}>
+              {CHAT_FEATURES.map(f=>{
+                const c = $[f.tone], Ic = f.Icon;
+                return (
+                  <button key={f.label} type="button" disabled={sending} onClick={()=>send(f.q)} style={{display:"flex",alignItems:"center",gap:12,width:"100%",boxSizing:"border-box",minHeight:68,padding:"10px 14px",borderRadius:18,border:`1px solid ${$.sepL}`,background:$.bg,color:$.L1,fontFamily:"inherit",textAlign:"start",cursor:sending?"default":"pointer"}}>
+                    <span style={{flexShrink:0,width:42,height:42,borderRadius:13,background:`${c}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic size={21} color={c}/></span>
+                    <span style={{flex:1,minWidth:0}}>
+                      <span style={{display:"block",fontSize:16,fontWeight:700,lineHeight:1.5}}>{f.label}</span>
+                      <span style={{display:"block",fontSize:13,color:$.L3,lineHeight:1.5}}>{f.hint}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flexShrink:0,background:$.surface,borderTop:`1px solid ${$.sepL}`,padding:`${sp[2]}px ${sp[3]}px ${sp[3]}px`}}>
+        {err && <div style={{fontSize:13,color:$.orange,padding:`${sp[1]}px ${sp[2]}px ${sp[2]}px`}}>{err}</div>}
+        {empty && (
+          <div style={{display:"flex",gap:sp[2],overflowX:"auto",paddingBottom:sp[2],scrollbarWidth:"none"}}>
+            {starters.map(s=>(
+              <button key={s.q} type="button" onClick={()=>send(s.q)} style={{flexShrink:0,maxWidth:300,minHeight:44,padding:"0 16px",borderRadius:99,border:`1px solid ${$.blue}66`,background:$.F4,color:$.L1,fontFamily:"inherit",fontSize:15,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{s.label}</button>
+            ))}
+          </div>
+        )}
+        <div style={{display:"flex",gap:sp[2],alignItems:"center"}}>
+          <input aria-label="اكتب سؤالك" enterKeyHint="send" value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setMenu(false)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,minWidth:0,height:52,boxSizing:"border-box",background:$.F4,border:"none",borderRadius:99,padding:`0 ${sp[5]}px`,color:$.L1,fontSize:17,fontFamily:"inherit",outline:"none"}}/>
+          <button type="button" aria-label="مميزات المستشار" title="المميزات" aria-haspopup="dialog" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} disabled={sending} style={{width:52,height:52,borderRadius:"50%",background:menu?$.blue:`${$.blue}1F`,border:"none",cursor:sending?"default":"pointer",opacity:sending?0.45:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{menu ? <X size={22} color="#fff"/> : <ChatAppsIcon size={24} color={$.blue}/>}</button>
+          <button type="button" aria-label="إرسال" onClick={()=>send()} disabled={!input.trim()||sending} style={{width:52,height:52,borderRadius:"50%",background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><ArrowRight size={22} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
+        </div>
       </div>
     </Card>
   );
 }
 
-// ═══════════════ السجل ═══════════════
 function LogSection({entries, messages, documents, metrics, team}) {
   const events = [
     ...entries.map(e=>({date:e.created_at||e.entry_date, text:`إدخال مالي جديد — ربح ${numWithCommas(e.profit||0)} ريال`, color:$.blue})),
