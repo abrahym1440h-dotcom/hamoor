@@ -1178,7 +1178,7 @@ function AdvisorTour({onNavigate, onFinish}) {
   );
 }
 
-function AdvisorDashboard({result, user, isDemo, onNeedUpgrade, onGoLearning}) {
+function AdvisorDashboard({result, user, isDemo, isPremium, onNeedUpgrade, onGoLearning}) {
   const [section, setSection] = useState("overview");
   const [entries, setEntries] = useState(isDemo ? DEMO_FINANCE_ENTRIES : []);
   const [doneTasks, setDoneTasks] = useState(isDemo ? DEMO_DONE_TASKS : []);
@@ -1189,6 +1189,9 @@ function AdvisorDashboard({result, user, isDemo, onNeedUpgrade, onGoLearning}) {
   const [team, setTeam] = useState(isDemo ? DEMO_TEAM : []);
   const [loading, setLoading] = useState(!isDemo);
   const [showTour, setShowTour] = useState(!!isDemo);
+  // آخر قسم كان فيه قبل المحادثة، عشان زر الرجوع يرجّعه له
+  const prevSection = useRef("overview");
+  useEffect(() => { if (section !== "chat") prevSection.current = section; }, [section]);
 
   const analysisId = result?.id;
   const fa = result?.financial_analysis || {};
@@ -1341,7 +1344,7 @@ function AdvisorDashboard({result, user, isDemo, onNeedUpgrade, onGoLearning}) {
           onDelete={async (docId)=>{ if (!isDemo) await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
       )}
       {section === "chat" && (
-        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team} onGoLearning={onGoLearning}/>
+        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team} onGoLearning={onGoLearning} onBack={()=>setSection(prevSection.current)} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
       )}
       {section === "log" && (
         <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics} team={team}/>
@@ -2211,7 +2214,7 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
   );
 }
 
-// ═══════════════ المستشار — محادثة بفقاعات كبيرة وواضحة ═══════════════
+// ═══════════════ المستشار — محادثة بشاشة كاملة وفقاعات كبيرة وواضحة ═══════════════
 const CHAT_STARTERS = ["وش أبدأ فيه أول؟", "كم أحتاج سيولة؟", "فسّر لي الأرقام"];
 // مميزات المستشار (زر بجنب زر الإرسال): كل ميزة ترسل سؤالاً جاهزاً، والمستشار يجاوب من بيانات مشروعك
 const CHAT_FEATURES = [
@@ -2228,7 +2231,8 @@ const CHAT_FEATURES = [
   { Icon: BookOpen,    tone: "blue",   label: "رشّح لي مقال",        hint: "أنسب مقال لوضعك الحين",          q: "رشّح لي أنسب مقال من قسم التعلّم لوضعي الحين" },
   { Icon: FileText,    tone: "blue",   label: "تقرير شامل",          hint: "ورقة وحدة بالتقييم والتوصيات",   q: "عطني تقرير شامل عن مشروعي" },
 ];
-const CH_BODY = "clamp(15px, 4.1vw, 17px)";
+const CH_BODY = "clamp(15px, 4.1vw, 18px)";
+const CH_W = 920; // أقصى عرض لعمود المحادثة على الشاشات الواسعة
 function chatTime(m) {
   let d = null;
   if (m && m.created_at) d = new Date(m.created_at);
@@ -2244,12 +2248,54 @@ function ChatAppsIcon({ size = 24, color = "currentColor" }) {
     </svg>
   );
 }
-function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team, onGoLearning}) {
+
+// المقال اللي رشّحه المستشار يتفتح هنا فوق المحادثة نفسها (مو في قسم التعلّم)
+function ChatArticleView({article, onClose}) {
+  const cat = ARTICLE_CATEGORIES.find(c => c.id === article.category) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
+  const CatIcon = CATEGORY_ICONS[cat.iconName] || BookOpen;
+  const paras = String(article.content || "").split("\n\n").filter(p => p.trim());
+  return (
+    <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
+      <div style={{background:cat.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5]}}>
+        <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
+            <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
+            <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{cat.name}</span>
+          </div>
+          <Chip text={article.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
+        </div>
+        <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3}}>{article.title}</h2>
+      </div>
+      <div style={{fontSize:16,color:$.L1,lineHeight:1.95}}>
+        {paras.map((paragraph,i) => {
+          const trimmed = paragraph.trim();
+          if (trimmed.startsWith("═══")) {
+            const headerText = trimmed.replace(/═/g,"").trim();
+            return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3]}}>{headerText}</h3>;
+          }
+          return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
+        })}
+      </div>
+      <button type="button" onClick={onClose} style={{width:"100%",minHeight:52,marginTop:sp[5],border:"none",borderRadius:14,background:$.blue,color:"#fff",fontFamily:"inherit",fontSize:16,fontWeight:700,cursor:"pointer"}}>رجوع للمحادثة</button>
+    </div>
+  );
+}
+
+function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team, onGoLearning, onBack, isPremium, onNeedUpgrade}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
   const [menu, setMenu] = useState(false);
+  const [artOpen, setArtOpen] = useState(null);
   const scrollRef = useRef(null);
   const lastAdvRef = useRef(null);
+
+  // الشات يملأ الشاشة، فنثبّت الصفحة اللي وراه طول ما هو مفتوح
+  useEffect(() => {
+    const html = document.documentElement, body = document.body;
+    const prevHtml = html.style.overflow, prevBody = body.style.overflow;
+    html.style.overflow = "hidden"; body.style.overflow = "hidden";
+    return () => { html.style.overflow = prevHtml; body.style.overflow = prevBody; };
+  }, []);
 
   // أول ما يوصل رد المستشار: نوريك بدايته (إذا كان طويل)، وإلا ننزل لآخر المحادثة
   useEffect(() => {
@@ -2260,13 +2306,13 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
     else box.scrollTop = box.scrollHeight;
   }, [messages, sending]);
 
-  // زر Escape يقفل قائمة المميزات
+  // زر Escape يقفل المقال المفتوح، وإلا قائمة المميزات
   useEffect(() => {
-    if (!menu) return;
-    const onKey = (e) => { if (e.key === "Escape") setMenu(false); };
+    if (!menu && !artOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") { if (artOpen) setArtOpen(null); else setMenu(false); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu]);
+  }, [menu, artOpen]);
 
   async function send(overrideText) {
     const text = (overrideText !== undefined ? overrideText : input).trim();
@@ -2295,98 +2341,124 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
     } catch(e) { setErr("تعذّر الاتصال، تحقق من الإنترنت"); } finally { setSending(false); }
   }
 
+  // زر المقال المرشّح: يفتح نفس المقال هنا (المقالات المميّزة تطلب اشتراك زي قسم التعلّم)
+  function openArticle(a) {
+    if (a && a.content) {
+      if (!isPremium && !FREE_ARTICLE_IDS.includes(a.id)) { if (onNeedUpgrade) onNeedUpgrade(); return; }
+      setArtOpen(a);
+    } else if (onGoLearning) onGoLearning();
+  }
+
   const empty = messages.length === 0 && !sending;
   const starters = [nextTask ? { label:`ناقش معي: ${nextTask.text}`, q:`أبي أناقش الخطوة الجاية: ${nextTask.text}` } : null, ...CHAT_STARTERS.map(q => ({ label:q, q }))].filter(Boolean);
   const advBubble = { background:$.surface, border:`1px solid ${$.sepL}`, borderRadius:"20px 20px 20px 4px" };
+  const sub = sending ? "يفكّر الحين…" : (result && result.idea ? result.idea : "يعرف أرقام مشروعك ومقالات التعلّم");
 
   return (
-    <Card style={{padding:0,overflow:"hidden",boxShadow:AD_SHADOW,display:"flex",flexDirection:"column",height:"clamp(440px, calc(100dvh - 330px), 860px)"}}>
-      <div style={{position:"relative",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
-        <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[3]}px ${sp[4]}px`,borderBottom:`1px solid ${$.sepL}`}}>
-          <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Sparkles size={22} color="#fff"/></div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:17,fontWeight:700,color:$.L1}}>المستشار</div>
-            <div style={{fontSize:13,color:sending?$.green:$.L3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sending ? "يفكّر الحين…" : "يعرف أرقام مشروعك ومقالات التعلّم"}</div>
+    <>
+      <div className="hm-chat" role="region" aria-label="محادثة المستشار" style={{background:$.bg}}>
+        <style>{`.hm-chat{position:fixed;left:0;right:0;bottom:0;top:calc(max(12px, env(safe-area-inset-top)) + 51px);z-index:60;display:flex;flex-direction:column}@media (min-width:1024px){.hm-chat{right:260px;top:0}}`}</style>
+
+        <div style={{flexShrink:0,background:$.surface,borderBottom:`1px solid ${$.sepL}`}}>
+          <div style={{maxWidth:CH_W,margin:"0 auto",boxSizing:"border-box",display:"flex",alignItems:"center",gap:sp[3],padding:`${sp[2]}px ${sp[3]}px`}}>
+            {onBack && (
+              <button type="button" aria-label="رجوع" onClick={onBack} style={{flexShrink:0,minHeight:44,padding:"0 6px",border:"none",background:"transparent",color:$.blue,fontFamily:"inherit",fontSize:16,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><ArrowRight size={24}/><span>رجوع</span></button>
+            )}
+            <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Sparkles size={22} color="#fff"/></div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:17,fontWeight:700,color:$.L1}}>المستشار</div>
+              <div style={{fontSize:13,color:sending?$.green:$.L3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sub}</div>
+            </div>
           </div>
         </div>
 
-        <div ref={scrollRef} style={{flex:1,minHeight:0,overflowY:"auto",position:"relative",display:"flex",flexDirection:"column",gap:6,padding:`${sp[4]}px ${sp[3]}px ${sp[3]}px`,background:$.bg,backgroundImage:`radial-gradient(${$.F3} 1.2px, transparent 1.2px)`,backgroundSize:"22px 22px"}}>
-          {empty && (
-            <div style={{margin:"auto",textAlign:"center",padding:`${sp[6]}px ${sp[4]}px`}}>
-              <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",margin:`0 auto ${sp[3]}px`}}><Sparkles size={26} color="#fff"/></div>
-              <div style={{fontSize:16,fontWeight:600,color:$.L1}}>اسأل المستشار عن أرقامك أو مشروعك</div>
-              <div style={{fontSize:13.5,color:$.L3,marginTop:4,lineHeight:1.7}}>يرد عليك بناءً على بيانات مشروعك ومقالات التعلّم</div>
-              <button type="button" onClick={()=>setMenu(true)} style={{marginTop:sp[3],minHeight:44,padding:"0 18px",borderRadius:99,border:"none",background:`${$.blue}1F`,color:$.blue,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}><ChatAppsIcon size={18} color={$.blue}/>مميزات المستشار</button>
-            </div>
-          )}
-          {messages.map((m,i)=>{
-            const adv = m.role==="advisor", time = chatTime(m);
-            const top = i>0 && messages[i-1].role!==m.role ? 10 : 0;
-            return (
-              <div key={m.id||i} ref={adv && i===messages.length-1 ? lastAdvRef : null} style={{display:"flex",justifyContent:adv?"flex-end":"flex-start",marginTop:top}}>
-                {adv
-                  ? <AdvisorReply chat time={time} text={m.content} result={result} question={i>0&&messages[i-1].role==="user"?messages[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===messages.length-1?send:undefined} onGoLearning={onGoLearning}/>
-                  : <div style={{maxWidth:"88%",boxSizing:"border-box",padding:"10px 16px 8px",borderRadius:"20px 20px 4px 20px",background:$.blue,color:"#fff"}}>
-                      <div style={{fontSize:CH_BODY,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{m.content}</div>
-                      {time && <div style={{fontSize:12,color:"rgba(255,255,255,0.78)",textAlign:"left",marginTop:2}}>{time}</div>}
-                    </div>}
-              </div>
-            );
-          })}
-          {sending && (
-            <div style={{display:"flex",justifyContent:"flex-end",marginTop:messages.length&&messages[messages.length-1].role!=="advisor"?10:0}}>
-              <div style={{...advBubble,padding:"12px 16px 2px",display:"flex",alignItems:"center",gap:sp[2]}}>
-                <ThinkingWhale t={$} label=""/>
-                <div style={{fontSize:15,color:$.L2,marginInlineStart:-10,marginBottom:10}}>المستشار يفكّر…</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* قائمة المميزات: تطلع من تحت فوق المحادثة، وضغطة على أي ميزة ترسلها للمستشار */}
-        <div aria-hidden={!menu} onClick={()=>setMenu(false)} style={{position:"absolute",top:0,right:0,bottom:0,left:0,zIndex:20,display:"flex",flexDirection:"column",justifyContent:"flex-end",background:menu?"rgba(0,0,0,0.34)":"rgba(0,0,0,0)",visibility:menu?"visible":"hidden",transition:menu?"background .2s ease":"background .2s ease, visibility 0s linear .24s"}}>
-          <div role="dialog" aria-label="مميزات المستشار" onClick={e=>e.stopPropagation()} style={{background:$.surface,borderRadius:"22px 22px 0 0",maxHeight:"calc(100% - 28px)",overflowY:"auto",boxSizing:"border-box",padding:`${sp[4]}px ${sp[4]}px ${sp[4]}px`,boxShadow:"0 -10px 30px rgba(0,0,0,0.14)",transform:menu?"translateY(0)":"translateY(28px)",opacity:menu?1:0,transition:"transform .24s ease, opacity .2s ease"}}>
-            <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[3]}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:17,fontWeight:700,color:$.L1,lineHeight:1.5}}>وش تبغى المستشار يسوي لك؟</div>
-                <div style={{fontSize:13.5,color:$.L3,marginTop:2,lineHeight:1.6}}>اضغط على أي ميزة وينفّذها بأرقام مشروعك</div>
-              </div>
-              <button type="button" aria-label="إغلاق" onClick={()=>setMenu(false)} style={{width:44,height:44,borderRadius:"50%",border:"none",background:$.F4,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={20} color={$.L2}/></button>
-            </div>
-            <div style={{display:"grid",gap:10,gridTemplateColumns:"repeat(auto-fill, minmax(min(100%, 240px), 1fr))"}}>
-              {CHAT_FEATURES.map(f=>{
-                const c = $[f.tone], Ic = f.Icon;
+        <div style={{position:"relative",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
+          <div ref={scrollRef} style={{flex:1,minHeight:0,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",position:"relative",display:"flex",flexDirection:"column",background:$.bg,backgroundImage:`radial-gradient(${$.F3} 1.2px, transparent 1.2px)`,backgroundSize:"22px 22px"}}>
+            <div style={{width:"100%",maxWidth:CH_W,margin:"0 auto",flex:"1 0 auto",boxSizing:"border-box",display:"flex",flexDirection:"column",gap:6,padding:`${sp[4]}px clamp(12px, 3vw, 24px) ${sp[3]}px`}}>
+              {empty && (
+                <div style={{margin:"auto",textAlign:"center",padding:`${sp[6]}px ${sp[4]}px`}}>
+                  <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",margin:`0 auto ${sp[3]}px`}}><Sparkles size={26} color="#fff"/></div>
+                  <div style={{fontSize:17,fontWeight:600,color:$.L1}}>اسأل المستشار عن أرقامك أو مشروعك</div>
+                  <div style={{fontSize:14,color:$.L3,marginTop:4,lineHeight:1.7}}>يرد عليك بناءً على بيانات مشروعك ومقالات التعلّم</div>
+                  <button type="button" onClick={()=>setMenu(true)} style={{marginTop:sp[3],minHeight:44,padding:"0 18px",borderRadius:99,border:"none",background:`${$.blue}1F`,color:$.blue,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}><ChatAppsIcon size={18} color={$.blue}/>مميزات المستشار</button>
+                </div>
+              )}
+              {messages.map((m,i)=>{
+                const adv = m.role==="advisor", time = chatTime(m);
+                const top = i>0 && messages[i-1].role!==m.role ? 10 : 0;
                 return (
-                  <button key={f.label} type="button" disabled={sending} onClick={()=>send(f.q)} style={{display:"flex",alignItems:"center",gap:12,width:"100%",boxSizing:"border-box",minHeight:68,padding:"10px 14px",borderRadius:18,border:`1px solid ${$.sepL}`,background:$.bg,color:$.L1,fontFamily:"inherit",textAlign:"start",cursor:sending?"default":"pointer"}}>
-                    <span style={{flexShrink:0,width:42,height:42,borderRadius:13,background:`${c}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic size={21} color={c}/></span>
-                    <span style={{flex:1,minWidth:0}}>
-                      <span style={{display:"block",fontSize:16,fontWeight:700,lineHeight:1.5}}>{f.label}</span>
-                      <span style={{display:"block",fontSize:13,color:$.L3,lineHeight:1.5}}>{f.hint}</span>
-                    </span>
-                  </button>
+                  <div key={m.id||i} ref={adv && i===messages.length-1 ? lastAdvRef : null} style={{display:"flex",justifyContent:adv?"flex-end":"flex-start",marginTop:top}}>
+                    {adv
+                      ? <AdvisorReply chat time={time} text={m.content} result={result} question={i>0&&messages[i-1].role==="user"?messages[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===messages.length-1?send:undefined} onGoLearning={openArticle}/>
+                      : <div style={{maxWidth:"min(88%, 560px)",boxSizing:"border-box",padding:"10px 16px 8px",borderRadius:"20px 20px 4px 20px",background:$.blue,color:"#fff"}}>
+                          <div style={{fontSize:CH_BODY,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{m.content}</div>
+                          {time && <div style={{fontSize:12,color:"rgba(255,255,255,0.78)",textAlign:"left",marginTop:2}}>{time}</div>}
+                        </div>}
+                  </div>
                 );
               })}
+              {sending && (
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:messages.length&&messages[messages.length-1].role!=="advisor"?10:0}}>
+                  <div style={{...advBubble,padding:"12px 16px 2px",display:"flex",alignItems:"center",gap:sp[2]}}>
+                    <ThinkingWhale t={$} label=""/>
+                    <div style={{fontSize:15,color:$.L2,marginInlineStart:-10,marginBottom:10}}>المستشار يفكّر…</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* قائمة المميزات: تطلع من تحت فوق المحادثة، وضغطة على أي ميزة ترسلها للمستشار */}
+          <div aria-hidden={!menu} onClick={()=>setMenu(false)} style={{position:"absolute",top:0,right:0,bottom:0,left:0,zIndex:20,display:"flex",flexDirection:"column",justifyContent:"flex-end",background:menu?"rgba(0,0,0,0.34)":"rgba(0,0,0,0)",visibility:menu?"visible":"hidden",transition:menu?"background .2s ease":"background .2s ease, visibility 0s linear .24s"}}>
+            <div role="dialog" aria-label="مميزات المستشار" onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:860,margin:"0 auto",background:$.surface,borderRadius:"22px 22px 0 0",maxHeight:"calc(100% - 28px)",overflowY:"auto",boxSizing:"border-box",padding:`${sp[4]}px ${sp[4]}px ${sp[4]}px`,boxShadow:"0 -10px 30px rgba(0,0,0,0.14)",transform:menu?"translateY(0)":"translateY(28px)",opacity:menu?1:0,transition:"transform .24s ease, opacity .2s ease"}}>
+              <div style={{display:"flex",alignItems:"center",gap:sp[3],marginBottom:sp[3]}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:17,fontWeight:700,color:$.L1,lineHeight:1.5}}>وش تبغى المستشار يسوي لك؟</div>
+                  <div style={{fontSize:13.5,color:$.L3,marginTop:2,lineHeight:1.6}}>اضغط على أي ميزة وينفّذها بأرقام مشروعك</div>
+                </div>
+                <button type="button" aria-label="إغلاق" onClick={()=>setMenu(false)} style={{width:44,height:44,borderRadius:"50%",border:"none",background:$.F4,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={20} color={$.L2}/></button>
+              </div>
+              <div style={{display:"grid",gap:10,gridTemplateColumns:"repeat(auto-fill, minmax(min(100%, 240px), 1fr))"}}>
+                {CHAT_FEATURES.map(f=>{
+                  const c = $[f.tone], Ic = f.Icon;
+                  return (
+                    <button key={f.label} type="button" disabled={sending} onClick={()=>send(f.q)} style={{display:"flex",alignItems:"center",gap:12,width:"100%",boxSizing:"border-box",minHeight:68,padding:"10px 14px",borderRadius:18,border:`1px solid ${$.sepL}`,background:$.bg,color:$.L1,fontFamily:"inherit",textAlign:"start",cursor:sending?"default":"pointer"}}>
+                      <span style={{flexShrink:0,width:42,height:42,borderRadius:13,background:`${c}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic size={21} color={c}/></span>
+                      <span style={{flex:1,minWidth:0}}>
+                        <span style={{display:"block",fontSize:16,fontWeight:700,lineHeight:1.5}}>{f.label}</span>
+                        <span style={{display:"block",fontSize:13,color:$.L3,lineHeight:1.5}}>{f.hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{flexShrink:0,background:$.surface,borderTop:`1px solid ${$.sepL}`,paddingBottom:"env(safe-area-inset-bottom)"}}>
+          <div style={{maxWidth:CH_W,margin:"0 auto",boxSizing:"border-box",padding:`${sp[2]}px ${sp[3]}px ${sp[3]}px`}}>
+            {err && <div style={{fontSize:13,color:$.orange,padding:`${sp[1]}px ${sp[2]}px ${sp[2]}px`}}>{err}</div>}
+            {empty && (
+              <div style={{display:"flex",gap:sp[2],overflowX:"auto",paddingBottom:sp[2],scrollbarWidth:"none"}}>
+                {starters.map(s=>(
+                  <button key={s.q} type="button" onClick={()=>send(s.q)} style={{flexShrink:0,maxWidth:300,minHeight:44,padding:"0 16px",borderRadius:99,border:`1px solid ${$.blue}66`,background:$.F4,color:$.L1,fontFamily:"inherit",fontSize:15,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{s.label}</button>
+                ))}
+              </div>
+            )}
+            <div style={{display:"flex",gap:sp[2],alignItems:"center"}}>
+              <input aria-label="اكتب سؤالك" enterKeyHint="send" value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setMenu(false)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,minWidth:0,height:52,boxSizing:"border-box",background:$.F4,border:"none",borderRadius:99,padding:`0 ${sp[5]}px`,color:$.L1,fontSize:17,fontFamily:"inherit",outline:"none"}}/>
+              <button type="button" aria-label="مميزات المستشار" title="المميزات" aria-haspopup="dialog" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} disabled={sending} style={{width:52,height:52,borderRadius:"50%",background:menu?$.blue:`${$.blue}1F`,border:"none",cursor:sending?"default":"pointer",opacity:sending?0.45:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{menu ? <X size={22} color="#fff"/> : <ChatAppsIcon size={24} color={$.blue}/>}</button>
+              <button type="button" aria-label="إرسال" onClick={()=>send()} disabled={!input.trim()||sending} style={{width:52,height:52,borderRadius:"50%",background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><ArrowRight size={22} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{flexShrink:0,background:$.surface,borderTop:`1px solid ${$.sepL}`,padding:`${sp[2]}px ${sp[3]}px ${sp[3]}px`}}>
-        {err && <div style={{fontSize:13,color:$.orange,padding:`${sp[1]}px ${sp[2]}px ${sp[2]}px`}}>{err}</div>}
-        {empty && (
-          <div style={{display:"flex",gap:sp[2],overflowX:"auto",paddingBottom:sp[2],scrollbarWidth:"none"}}>
-            {starters.map(s=>(
-              <button key={s.q} type="button" onClick={()=>send(s.q)} style={{flexShrink:0,maxWidth:300,minHeight:44,padding:"0 16px",borderRadius:99,border:`1px solid ${$.blue}66`,background:$.F4,color:$.L1,fontFamily:"inherit",fontSize:15,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{s.label}</button>
-            ))}
-          </div>
-        )}
-        <div style={{display:"flex",gap:sp[2],alignItems:"center"}}>
-          <input aria-label="اكتب سؤالك" enterKeyHint="send" value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setMenu(false)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,minWidth:0,height:52,boxSizing:"border-box",background:$.F4,border:"none",borderRadius:99,padding:`0 ${sp[5]}px`,color:$.L1,fontSize:17,fontFamily:"inherit",outline:"none"}}/>
-          <button type="button" aria-label="مميزات المستشار" title="المميزات" aria-haspopup="dialog" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} disabled={sending} style={{width:52,height:52,borderRadius:"50%",background:menu?$.blue:`${$.blue}1F`,border:"none",cursor:sending?"default":"pointer",opacity:sending?0.45:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{menu ? <X size={22} color="#fff"/> : <ChatAppsIcon size={24} color={$.blue}/>}</button>
-          <button type="button" aria-label="إرسال" onClick={()=>send()} disabled={!input.trim()||sending} style={{width:52,height:52,borderRadius:"50%",background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><ArrowRight size={22} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
-        </div>
-      </div>
-    </Card>
+      <Sheet open={!!artOpen} onClose={()=>setArtOpen(null)}>
+        {artOpen && <ChatArticleView article={artOpen} onClose={()=>setArtOpen(null)}/>}
+      </Sheet>
+    </>
   );
 }
 
@@ -3102,7 +3174,7 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremi
               <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{DEMO_RESULT.city}</span></div>
             </div>
           </div>
-          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo onNeedUpgrade={onNeedUpgrade} onGoLearning={onGoLearning}/>
+          <AdvisorDashboard result={DEMO_RESULT} user={user} isDemo isPremium={isPremium} onNeedUpgrade={onNeedUpgrade} onGoLearning={onGoLearning}/>
         </div>
       </div>
     );
@@ -3139,7 +3211,7 @@ function AdvisorHubScreen({analyses, user, selectedId, onSelect, onBack, isPremi
               <div style={{fontSize:12,color:$.L3,display:"flex",alignItems:"center",gap:3}}><MapPin size={11}/><span>{selected.city}</span></div>
             </div>
           </div>
-          <AdvisorDashboard result={selected} user={user} onGoLearning={onGoLearning}/>
+          <AdvisorDashboard result={selected} user={user} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade} onGoLearning={onGoLearning}/>
         </div>
       </div>
     );
