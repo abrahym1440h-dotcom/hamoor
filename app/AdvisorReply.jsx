@@ -1011,10 +1011,10 @@ export function pickCardLayout(C, N, question) {
 
 /* ═══════════════ وضع المحادثة: فقاعات كبيرة وواضحة (تصميم المحادثة الجديد) ═══════════════
    الرد يطلع فقاعات متتابعة بخط كبير. التقرير (١٠) والسيولة (٨) يحتفظون بشكلهم الخاص.   */
-const F_STRONG = "clamp(16px, 4.6vw, 18.5px)";
-const F_BODY = "clamp(15px, 4.1vw, 17px)";
-const F_SMALL = "clamp(13px, 3.6vw, 14.5px)";
-const F_NUM = "clamp(17px, 4.8vw, 20px)";
+const F_STRONG = "clamp(16px, 4.6vw, 19.5px)";
+const F_BODY = "clamp(15px, 4.1vw, 18px)";
+const F_SMALL = "clamp(13px, 3.6vw, 15.5px)";
+const F_NUM = "clamp(17px, 4.8vw, 21px)";
 const REPORT_K = 1.25;
 
 // يحوّل الرد النصي القديم (المشكلة/المخاطر/الخطوات) لنفس شكل البطاقة، فيعرض بنفس الفقاعات
@@ -1039,7 +1039,7 @@ function ChatStats({ t, stats }) {
         const neg = isNeg(s.value), unit = unitOf(s.label, s.value);
         return (
           <div key={i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 18, padding: "9px 0", borderTop: i ? `1px solid ${t.sepL}` : "none" }}>
-            <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, fontSize: F_BODY, color: t.L3, lineHeight: 1.6 }}>
+            <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, fontSize: F_BODY, color: t.L2, lineHeight: 1.6 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: neg ? t.red : t.blue, flexShrink: 0 }} />
               <span>{s.label}</span>
             </span>
@@ -1063,7 +1063,7 @@ function ChatItems({ t, items, kind }) {
             : <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: t.blue, color: "#fff", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>}
           <div style={{ minWidth: 0, flex: 1 }}>
             {s.title && <div style={{ fontSize: F_STRONG, fontWeight: 700, color: t.L1, lineHeight: 1.7 }}><Inline text={s.title} /></div>}
-            {s.body && <div style={{ fontSize: F_BODY, lineHeight: 1.9, color: t.L2 }}><Inline text={s.body} /></div>}
+            {s.body && <div style={{ fontSize: F_BODY, lineHeight: 1.9, color: t.L1 }}><Inline text={s.body} /></div>}
           </div>
         </div>
       ))}
@@ -1078,7 +1078,7 @@ function ChatArticle({ a, t, onGo }) {
       <span style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 12, background: tint(t.blue, "26"), display: "flex", alignItems: "center", justifyContent: "center" }}><BookOpen size={20} color={t.blue} /></span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: F_BODY, fontWeight: 600, lineHeight: 1.55 }}>{a.title}</span>
-        <span style={{ display: "block", fontSize: 13, color: t.L3 }}>مقال في قسم التعلّم</span>
+        <span style={{ display: "block", fontSize: 13, color: t.L3 }}>{onGo ? "اضغط واقرأ المقال" : "مقال في قسم التعلّم"}</span>
       </span>
       {onGo && <ChevronLeft size={20} color={t.blue} />}
     </Tag>
@@ -1095,7 +1095,7 @@ function ChatQuick({ t, items, onAsk }) {
   );
 }
 const ChatTime = ({ t, time }) => (time ? <div style={{ alignSelf: "flex-end", fontSize: 12, color: t.L3, padding: "0 6px", fontVariantNumeric: "tabular-nums" }}>{time}</div> : null);
-const chatStack = (extra) => ({ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, maxWidth: "94%", minWidth: 0, ...extra });
+const chatStack = (extra) => ({ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, maxWidth: "min(94%, 640px)", minWidth: 0, ...extra });
 
 function ChatReply({ C, N, t, a, onGo, onAsk, time, runway }) {
   const first = C.steps[0] && (C.steps[0].title || C.steps[0].body);
@@ -1104,7 +1104,7 @@ function ChatReply({ C, N, t, a, onGo, onAsk, time, runway }) {
     <div style={chatStack(runway ? { width: "94%" } : null)}>
       {(C.head || C.chips.length > 0 || C.status) && (
         <ChatBubble t={t} gap={10}>
-          {C.head && <div style={{ fontSize: F_BODY, lineHeight: 1.85, color: t.L2 }}>{C.head}</div>}
+          {C.head && <div style={{ fontSize: F_BODY, lineHeight: 1.85, color: t.L1 }}>{C.head}</div>}
           <Chips items={C.chips} colorOf={(l) => levelColor(l, t)} size={14} />
           {C.status && <div style={{ fontSize: F_STRONG, fontWeight: 600, color: t.L1, lineHeight: 1.9 }}><Inline text={C.status} /></div>}
         </ChatBubble>
@@ -1119,7 +1119,7 @@ function ChatReply({ C, N, t, a, onGo, onAsk, time, runway }) {
           <ChatArticle a={a} t={t} onGo={onGo} />
         </ChatBubble>
       )}
-      {C.tail.length > 0 && <ChatBubble t={t}>{C.tail.map((p, i) => <div key={i} style={{ fontSize: F_BODY, lineHeight: 1.85, color: t.L2 }}>{p}</div>)}</ChatBubble>}
+      {C.tail.length > 0 && <ChatBubble t={t}>{C.tail.map((p, i) => <div key={i} style={{ fontSize: F_BODY, lineHeight: 1.85, color: t.L1 }}>{p}</div>)}</ChatBubble>}
       <ChatTime t={t} time={time} />
       <ChatQuick t={t} items={quick} onAsk={onAsk} />
     </div>
@@ -1154,7 +1154,7 @@ export default function AdvisorReply({ text, result, question, layout, t, articl
     if (!CC) return <ChatPlain text={String(text || "").replace(CARD_MARK, "").trim()} t={t} time={time} />;
     const want = layout || (C ? pickCardLayout(C, N, question) : pickLayout(P0, N, question));
     if (want === 10) {
-      return <div style={{ width: "94%", minWidth: 0 }}>{C ? <Card10 C={C} N={N} t={t} a={art} onGo={go} k={REPORT_K} /> : <D10 P={P} N={N} t={t} a={art} onGo={go} k={REPORT_K} />}</div>;
+      return <div style={{ width: "94%", maxWidth: 680, minWidth: 0 }}>{C ? <Card10 C={C} N={N} t={t} a={art} onGo={go} k={REPORT_K} /> : <D10 P={P} N={N} t={t} a={art} onGo={go} k={REPORT_K} />}</div>;
     }
     return <ChatReply C={CC} N={N} t={t} a={art} onGo={go} onAsk={onAsk} time={time} runway={want === 8 && canRunway} />;
   }
