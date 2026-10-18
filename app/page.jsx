@@ -4,7 +4,7 @@ import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
 import ThinkingWhale from "./ThinkingWhale";
 import AdvisorReply from "./AdvisorReply";
 import { ADVISOR_AVATARS } from "./advisorAvatars";
-import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getPremiumUsage, incrementPremiumUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
+import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getPremiumUsage, incrementPremiumUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember, getFavoritesCloud, addFavoriteCloud, removeFavoriteCloud } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
   AlertTriangle, MapPin, Coffee, ShoppingBag, Building2, Utensils, Wifi, Car,
@@ -96,6 +96,16 @@ function writeBoot(data) {
 }
 function clearBoot() {
   try { localStorage.removeItem(BOOT_KEY); } catch(e) {}
+}
+
+// المفضلة: نسخة على الجهاز (تظهر فوراً وتشتغل حتى لو السحابة ما ردّت) + نسخة في السحابة
+const FAV_KEY_PREFIX = "hamour_fav_v1_";
+function favKey(name) { return String(name || "").trim().toLowerCase(); }
+function readFavLocal(uid) {
+  try { const raw = localStorage.getItem(FAV_KEY_PREFIX + uid); const v = raw ? JSON.parse(raw) : []; return Array.isArray(v) ? v : []; } catch(e) { return []; }
+}
+function writeFavLocal(uid, list) {
+  try { localStorage.setItem(FAV_KEY_PREFIX + uid, JSON.stringify(list)); } catch(e) {}
 }
 
 // يلوّن خلفية الصفحة كاملة (بما فيها الشريط العلوي) بلون الثيم — يشيل الأبيض اللي فوق
@@ -798,7 +808,7 @@ function AnalyzeForm({onAnalyze, onClose, user, analysesCount, isPremium, onNeed
     </div>
   );
 }
-function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, user, analyses, usageCount, premiumUsageCount, isPremium, onNeedUpgrade}) {
+function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearning, onGoSuggestions, onGoFavorites, favorites, user, analyses, usageCount, premiumUsageCount, isPremium, onNeedUpgrade}) {
   const screen = useScreenSize();
   const [showForm, setShowForm] = useState(false);
 
@@ -928,6 +938,28 @@ function HomeScreen({onAnalyze, onViewLast, onViewSaved, onGoSectors, onGoLearni
                     </Card>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {Array.isArray(favorites) && favorites.length > 0 && (
+            <div style={{marginBottom:sp[6]}}>
+              <SectionLabel action={<button onClick={onGoFavorites} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:600,color:$.blue,fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}><span>عرض الكل</span><ChevronRight size={14}/></button>}>أفكارك المفضلة</SectionLabel>
+              <div style={{display:"flex",gap:sp[3],overflowX:"auto",paddingBottom:sp[2]}}>
+                {favorites.slice(0,8).map(f => (
+                  <Card key={f.id} onClick={onGoFavorites} style={{flex:"none",width:260,padding:sp[4],cursor:"pointer"}}>
+                    <div style={{display:"flex",alignItems:"flex-start",gap:sp[3],marginBottom:sp[3]}}>
+                      <IconBadge Icon={Star} color={$.orange} size={40}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:700,color:$.L1,lineHeight:1.45,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{f.name}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[2],paddingTop:sp[2],borderTop:`0.5px solid ${$.sepL}`}}>
+                      {f.type ? <Chip text={f.type} color={sugTypeColor(f.type)} bg={`${sugTypeColor(f.type)}15`} size={10}/> : <span/>}
+                      <div style={{fontSize:11,fontWeight:700,color:$.green,textAlign:"left"}}>{f.monthly_profit_estimate ? `ربح ${f.monthly_profit_estimate}` : ""}</div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             </div>
           )}
@@ -4173,14 +4205,152 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
     </div>
   );
 }
-function SuggestionsScreen({isPremium, onNeedUpgrade}) {
+// ───────────── اقتراحات المشاريع + المفضلة + زر التحليل ─────────────
+// آخر اقتراحات ظهرت — تبقى محفوظة لو تنقّل الشخص بين الشاشات (ما تضيع بعد التحليل)
+let _sugCache = null;
+// لو ضغط الشخص على فكرة من الرئيسية نفتح له قسم المفضلة مباشرة
+let _sugOpenView = null;
+
+function sugTypeColor(t) {
+  if (t==="آمن") return $.green;
+  if (t==="نمو") return $.blue;
+  if (t==="مبتكر") return $.purple;
+  return $.L3;
+}
+function sugRiskColor(r) {
+  if (r==="منخفض") return $.green;
+  if (r==="متوسط") return $.orange;
+  return $.red;
+}
+
+// بطاقة فكرة واحدة — تُستخدم في الاقتراحات الجديدة وفي المفضلة
+function SuggestionCard({s, isFav, onToggleFav, an}) {
+  return (
+    <Card style={{padding:sp[5]}}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:sp[3],marginBottom:sp[3]}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:16,fontWeight:800,color:$.L1,lineHeight:1.4,marginBottom:sp[2]}}>{s.name}</div>
+          <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
+            {s.sector && <Chip text={s.sector} color={$.L3} bg={$.F4}/>}
+            {s.type && <Chip text={s.type} color={sugTypeColor(s.type)} bg={`${sugTypeColor(s.type)}15`}/>}
+            {s.risk_level && <Chip text={`مخاطرة ${s.risk_level}`} color={sugRiskColor(s.risk_level)} bg={`${sugRiskColor(s.risk_level)}15`}/>}
+          </div>
+        </div>
+        <button
+          onClick={onToggleFav}
+          aria-label={isFav ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+          style={{flexShrink:0,width:40,height:40,borderRadius:12,border:"none",cursor:"pointer",background:isFav?`${$.orange}18`:$.F5,display:"flex",alignItems:"center",justifyContent:"center"}}
+        >
+          <Star size={19} color={isFav?$.orange:$.L4} fill={isFav?$.orange:"none"} strokeWidth={2}/>
+        </button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[2],marginBottom:sp[3]}}>
+        <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
+          <div style={{fontSize:10,color:$.L4,marginBottom:2}}>التأسيس</div>
+          <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.setup_cost}</div>
+        </div>
+        <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
+          <div style={{fontSize:10,color:$.L4,marginBottom:2}}>ربح شهري</div>
+          <div style={{fontSize:12,fontWeight:700,color:$.green}}>{s.monthly_profit_estimate}</div>
+        </div>
+        <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
+          <div style={{fontSize:10,color:$.L4,marginBottom:2}}>التعادل</div>
+          <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.break_even}</div>
+        </div>
+      </div>
+      {s.why_fits && (
+        <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
+          <CheckCircle size={14} color={$.green} style={{flexShrink:0,marginTop:2}}/>
+          <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{s.why_fits}</span>
+        </div>
+      )}
+      {s.main_challenge && (
+        <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
+          <AlertTriangle size={14} color={$.orange} style={{flexShrink:0,marginTop:2}}/>
+          <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{s.main_challenge}</span>
+        </div>
+      )}
+      {s.success_tip && (
+        <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3]}}>
+          <Lightbulb size={14} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
+          <span style={{fontSize:12.5,color:$.L2,lineHeight:1.6}}>{s.success_tip}</span>
+        </div>
+      )}
+
+      {/* ── زر التحليل: يخصم تحليل واحد من أعداد الشخص ويحفظه في المستشار وتحليلاتي ── */}
+      <div style={{marginTop:sp[4],paddingTop:sp[4],borderTop:`0.5px solid ${$.sepL}`}}>
+        {an.analyzing ? (
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:`${sp[3]}px`,background:`${$.blue}10`,borderRadius:12,color:$.blue,fontSize:13,fontWeight:700}}>
+            <Spinner sz={16} clr={$.blue}/>
+            <span>جاري التحليل… قد يأخذ نصف دقيقة</span>
+          </div>
+        ) : an.confirming ? (
+          <div style={{background:$.F5,borderRadius:14,padding:sp[4]}}>
+            <p style={{fontSize:13,color:$.L2,lineHeight:1.7,marginBottom:sp[3]}}>
+              سيحلّل <HamoorWord /> هذه الفكرة بالتفصيل ويحفظها في «تحليلاتي» و«المستشار».
+              {an.budgetText ? ` الميزانية المستخدمة: ${an.budgetText} ريال.` : ""}
+              {` سيُستخدم تحليل واحد (تبقّى ${an.remaining} من ${an.limit}).`}
+            </p>
+            <FormField label="مدينة المشروع" icon={<MapPin size={14} color={$.L4}/>}>
+              <div style={{position:"relative"}}>
+                <select value={an.city} onChange={e=>an.onCity(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer"}}>
+                  {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+              </div>
+            </FormField>
+            <div style={{display:"flex",gap:sp[2],marginTop:sp[2]}}>
+              <button onClick={an.onGo} style={{flex:1,background:"linear-gradient(145deg,#007AFF,#0055D4)",color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+                <Sparkles size={15}/>ابدأ التحليل
+              </button>
+              <button onClick={an.onCancel} style={{background:$.F3,color:$.L2,border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[5]}px`,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>إلغاء</button>
+            </div>
+          </div>
+        ) : an.reached ? (
+          an.isPremium ? (
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:`${sp[3]}px`,background:`${$.orange}10`,borderRadius:12,fontSize:12.5,fontWeight:600,color:$.L2,lineHeight:1.6,textAlign:"center"}}>
+              <Crown size={14} color={$.orange} style={{flexShrink:0}}/>
+              <span>استخدمت كل تحليلاتك ({an.limit} من {an.limit}) — تتجدد مع اشتراكك القادم</span>
+            </div>
+          ) : (
+            <button onClick={an.onUpgrade} style={{width:"100%",background:$.orange,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+              <Crown size={15}/>اشترك لتحليل هذه الفكرة
+            </button>
+          )
+        ) : (
+          <button
+            onClick={an.onAsk}
+            disabled={an.busyElsewhere}
+            style={{width:"100%",background:an.busyElsewhere?$.F3:`${$.blue}12`,color:an.busyElsewhere?$.L4:$.blue,border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:14,fontWeight:700,cursor:an.busyElsewhere?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}
+          >
+            <Sparkles size={15}/>
+            <span>حلّل هذه الفكرة</span>
+            <span style={{fontSize:11,fontWeight:600,opacity:0.75}}>· تبقّى {an.remaining} من {an.limit}</span>
+          </button>
+        )}
+        {an.err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{an.err}</div>}
+      </div>
+    </Card>
+  );
+}
+
+function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleFavorite, onAnalyze, analysesCount}) {
   const screen = useScreenSize();
-  const [budget,setBudget]=useState("");
-  const [city,setCity]=useState("");
-  const [sector,setSector]=useState("");
+  const favs = Array.isArray(favorites) ? favorites : [];
+  const [budget,setBudget]=useState(_sugCache ? _sugCache.budget : "");
+  const [city,setCity]=useState(_sugCache ? _sugCache.city : "");
+  const [sector,setSector]=useState(_sugCache ? _sugCache.sector : "");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
-  const [result,setResult]=useState(null);
+  const [result,setResult]=useState(_sugCache ? _sugCache.result : null);
+  const [view,setView]=useState(_sugOpenView || "new"); // "new" = اقتراحات جديدة، "fav" = المفضلة
+  const [confirmKey,setConfirmKey]=useState(null);
+  const [analyzingKey,setAnalyzingKey]=useState(null);
+  const [anCity,setAnCity]=useState("");
+  const [anErr,setAnErr]=useState(null);
+
+  useEffect(()=>{ _sugCache = { budget, city, sector, result }; }, [budget, city, sector, result]);
+  useEffect(()=>{ _sugOpenView = null; }, []);
 
   function handleBudgetChange(e) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -4191,26 +4361,61 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
   async function go() {
     if (!isPremium) { onNeedUpgrade(); return; }
     if (!budget.trim() || busy) return;
-    setBusy(true); setErr(null); setResult(null);
+    setBusy(true); setErr(null); setResult(null); setConfirmKey(null);
     try {
       const cleanBudget = budget.replace(/,/g, "");
       const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null });
-      setResult(r);
+      setResult({ ...r, _meta: { budget: cleanBudget, city: city || "", sector: sector || "" } });
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
   }
 
-  function typeColor(t) {
-    if (t==="آمن") return $.green;
-    if (t==="نمو") return $.blue;
-    if (t==="مبتكر") return $.purple;
-    return $.L3;
+  // تحليل فكرة: يستخدم نفس مسار «حلّل مشروعك»، وبعد النجاح يُخصم من الأعداد ويُحفظ في تحليلاتي والمستشار
+  async function runAnalysis(key, s, meta) {
+    if (analyzingKey) return;
+    const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
+    if (analysesCount >= limit) { if (!isPremium) onNeedUpgrade(); return; }
+    const cleanBudget = String((meta && meta.budget) || "").replace(/,/g, "");
+    if (!cleanBudget) { setAnErr({ key, msg: "حدّد الميزانية أولاً ثم أعد المحاولة" }); return; }
+    setAnalyzingKey(key); setAnErr(null); setConfirmKey(null);
+    try {
+      const cityName = anCity || (meta && meta.city) || "الرياض";
+      const chosenSector = (meta && meta.sector) || null; // لو ما اختار قطاع، هامور يحدده من اسم الفكرة
+      const r = await apiCall("analyze", { idea:s.name, sector:chosenSector, city:cityName, budget:cleanBudget, extras:null });
+      const analysis = { ...r, idea:s.name, sector:chosenSector || r._sector || "", city:cityName, budget:cleanBudget };
+      let saved = analysis;
+      try {
+        if (user) saved = await saveAnalysisCloud(analysis, user.id);
+      } catch(e) {}
+      onAnalyze(saved);
+    } catch(e) { setAnErr({ key, msg: e.message }); }
+    finally { setAnalyzingKey(null); }
   }
-  function riskColor(r) {
-    if (r==="منخفض") return $.green;
-    if (r==="متوسط") return $.orange;
-    return $.red;
+
+  function anFor(s, meta) {
+    const key = favKey(s.name);
+    const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
+    return {
+      limit,
+      remaining: Math.max(0, limit - analysesCount),
+      reached: analysesCount >= limit,
+      isPremium,
+      confirming: confirmKey === key,
+      analyzing: analyzingKey === key,
+      busyElsewhere: !!analyzingKey && analyzingKey !== key,
+      err: anErr && anErr.key === key ? anErr.msg : null,
+      city: anCity,
+      onCity: setAnCity,
+      budgetText: meta && meta.budget ? numWithCommas(parseInt(meta.budget)) : "",
+      onAsk: () => { setAnErr(null); setAnCity((meta && meta.city) || "الرياض"); setConfirmKey(key); },
+      onCancel: () => setConfirmKey(null),
+      onGo: () => runAnalysis(key, s, meta),
+      onUpgrade: onNeedUpgrade
+    };
   }
+
+  const favKeys = new Set(favs.map(f => favKey(f.name)));
+  const resultMeta = (result && result._meta) || { budget: budget.replace(/,/g, ""), city: city || "", sector: sector || "" };
 
   const containerStyle = screen.isDesktop ? {maxWidth:1100, margin:"0 auto"} : screen.isTablet ? {maxWidth:850, margin:"0 auto"} : {};
 
@@ -4223,111 +4428,120 @@ function SuggestionsScreen({isPremium, onNeedUpgrade}) {
           </div>
           <h1 style={{fontSize:screen.isDesktop?38:28,fontWeight:800,color:$.L1,letterSpacing:"-0.6px"}}>اقتراحات المشاريع</h1>
         </div>
-        <p style={{fontSize:14,color:$.L3,marginBottom:sp[6],lineHeight:1.7}}>أدخل ميزانيتك واحصل على مشاريع واقعية تناسب قدرتك المالية، مدروسة حسب السوق السعودي</p>
+        <p style={{fontSize:14,color:$.L3,marginBottom:sp[5],lineHeight:1.7}}>أدخل ميزانيتك واحصل على مشاريع واقعية تناسب قدرتك المالية، مدروسة حسب السوق السعودي</p>
 
-        {!isPremium && (
-          <Card style={{padding:sp[5],border:`1.5px solid ${$.orange}30`,background:`${$.orange}08`,marginBottom:sp[5],textAlign:"center"}}>
-            <Crown size={28} color={$.orange} style={{marginBottom:sp[2]}}/>
-            <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>قسم خاص بالمشتركين</div>
-            <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات مشاريع مخصصة لميزانيتك ومدينتك</p>
-            <button onClick={onNeedUpgrade} style={{background:$.orange,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>اشترك الآن</button>
-          </Card>
-        )}
+        {/* تبديل بين الاقتراحات الجديدة والمفضلة */}
+        <div style={{display:"flex",gap:sp[2],marginBottom:sp[5]}}>
+          {[["new","اقتراحات جديدة",null],["fav","المفضلة",favs.length]].map(([id,label,count])=>{
+            const active = view === id;
+            return (
+              <button key={id} onClick={()=>setView(id)} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:active?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F5,color:active?"#fff":$.L2,border:"none",borderRadius:14,padding:`${sp[3]}px ${sp[4]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                {id==="fav" && <Star size={15} color={active?"#fff":$.orange} fill={active?"#fff":$.orange} strokeWidth={2}/>}
+                <span>{label}</span>
+                {count !== null && count > 0 && <span style={{fontSize:11,fontWeight:800,background:active?"rgba(255,255,255,0.25)":`${$.orange}20`,color:active?"#fff":$.orange,borderRadius:99,padding:"2px 8px"}}>{count}</span>}
+              </button>
+            );
+          })}
+        </div>
 
-        <Card style={{padding:sp[5],marginBottom:sp[5],opacity:isPremium?1:0.55,pointerEvents:isPremium?"auto":"none"}}>
-          <FormField label="الميزانية المتاحة بالريال" icon={<Briefcase size={14} color={$.L4}/>}>
-            <div style={{position:"relative"}}>
-              <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
-              <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
-            </div>
-          </FormField>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
-            <FormField label="المدينة (اختياري)" icon={<MapPin size={14} color={$.L4}/>}>
-              <div style={{position:"relative"}}>
-                <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:city?$.L1:$.L4}}>
-                  <option value="">كل المدن</option>
-                  {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-              </div>
-            </FormField>
-            <FormField label="القطاع (اختياري)" icon={<Layers size={14} color={$.L4}/>}>
-              <div style={{position:"relative"}}>
-                <select value={sector} onChange={e=>setSector(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:sector?$.L1:$.L4}}>
-                  <option value="">كل القطاعات</option>
-                  {SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-                <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
-              </div>
-            </FormField>
-          </div>
-          {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
-          <button onClick={go} disabled={!budget.trim()||busy} style={{width:"100%",marginTop:sp[4],background:budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3,color:budget.trim()&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:budget.trim()&&!busy?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
-            {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
-          </button>
-        </Card>
-
-        {result && (
+        {view === "new" && (
           <>
-            {result.budget_assessment && (
-              <Card style={{padding:sp[5],marginBottom:sp[4],border:`1.5px solid ${$.purple}25`,background:`${$.purple}06`}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
-                  <Info size={15} color={$.purple}/>
-                  <span style={{fontSize:13,fontWeight:800,color:$.purple}}>تقييم ميزانيتك</span>
-                </div>
-                <p style={{fontSize:14,color:$.L1,lineHeight:1.8}}>{result.budget_assessment}</p>
+            {!isPremium && (
+              <Card style={{padding:sp[5],border:`1.5px solid ${$.orange}30`,background:`${$.orange}08`,marginBottom:sp[5],textAlign:"center"}}>
+                <Crown size={28} color={$.orange} style={{marginBottom:sp[2]}}/>
+                <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>قسم خاص بالمشتركين</div>
+                <p style={{fontSize:13,color:$.L3,lineHeight:1.7,marginBottom:sp[4]}}>اشترك للحصول على اقتراحات مشاريع مخصصة لميزانيتك ومدينتك</p>
+                <button onClick={onNeedUpgrade} style={{background:$.orange,color:"#fff",border:"none",borderRadius:12,padding:`${sp[3]}px ${sp[6]}px`,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>اشترك الآن</button>
               </Card>
             )}
-            <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
-              {(result.suggestions||[]).map((s,i)=>(
-                <Card key={i} style={{padding:sp[5]}}>
-                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:sp[3],marginBottom:sp[3]}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:16,fontWeight:800,color:$.L1,lineHeight:1.4,marginBottom:sp[2]}}>{s.name}</div>
-                      <div style={{display:"flex",gap:sp[2],flexWrap:"wrap"}}>
-                        {s.sector && <Chip text={s.sector} color={$.L3} bg={$.F4}/>}
-                        {s.type && <Chip text={s.type} color={typeColor(s.type)} bg={`${typeColor(s.type)}15`}/>}
-                        {s.risk_level && <Chip text={`مخاطرة ${s.risk_level}`} color={riskColor(s.risk_level)} bg={`${riskColor(s.risk_level)}15`}/>}
-                      </div>
-                    </div>
+
+            <Card style={{padding:sp[5],marginBottom:sp[5],opacity:isPremium?1:0.55,pointerEvents:isPremium?"auto":"none"}}>
+              <FormField label="الميزانية المتاحة بالريال" icon={<Briefcase size={14} color={$.L4}/>}>
+                <div style={{position:"relative"}}>
+                  <input value={budget} onChange={handleBudgetChange} placeholder="150,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],fontSize:17,fontWeight:600,direction:"ltr",textAlign:"right"}}/>
+                  <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
+                </div>
+              </FormField>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+                <FormField label="المدينة (اختياري)" icon={<MapPin size={14} color={$.L4}/>}>
+                  <div style={{position:"relative"}}>
+                    <select value={city} onChange={e=>setCity(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:city?$.L1:$.L4}}>
+                      <option value="">كل المدن</option>
+                      {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:sp[2],marginBottom:sp[3]}}>
-                    <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
-                      <div style={{fontSize:10,color:$.L4,marginBottom:2}}>التأسيس</div>
-                      <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.setup_cost}</div>
-                    </div>
-                    <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
-                      <div style={{fontSize:10,color:$.L4,marginBottom:2}}>ربح شهري</div>
-                      <div style={{fontSize:12,fontWeight:700,color:$.green}}>{s.monthly_profit_estimate}</div>
-                    </div>
-                    <div style={{background:$.F5,borderRadius:10,padding:`${sp[3]}px ${sp[2]}px`,textAlign:"center"}}>
-                      <div style={{fontSize:10,color:$.L4,marginBottom:2}}>التعادل</div>
-                      <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.break_even}</div>
-                    </div>
+                </FormField>
+                <FormField label="القطاع (اختياري)" icon={<Layers size={14} color={$.L4}/>}>
+                  <div style={{position:"relative"}}>
+                    <select value={sector} onChange={e=>setSector(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:sector?$.L1:$.L4}}>
+                      <option value="">كل القطاعات</option>
+                      {SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
                   </div>
-                  {s.why_fits && (
-                    <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
-                      <CheckCircle size={14} color={$.green} style={{flexShrink:0,marginTop:2}}/>
-                      <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{s.why_fits}</span>
+                </FormField>
+              </div>
+              {err && <div style={{marginTop:sp[3],background:`${$.red}09`,border:`1px solid ${$.red}25`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,fontSize:13,color:$.red,lineHeight:1.6}}>{err}</div>}
+              <button onClick={go} disabled={!budget.trim()||busy} style={{width:"100%",marginTop:sp[4],background:budget.trim()&&!busy?"linear-gradient(145deg,#AF52DE,#7830B0)":$.F3,color:budget.trim()&&!busy?"#fff":$.L4,border:"none",borderRadius:14,padding:`${sp[4]}px`,fontSize:15,fontWeight:700,cursor:budget.trim()&&!busy?"pointer":"not-allowed",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2]}}>
+                {busy?<><Spinner sz={16}/>جاري إعداد الاقتراحات…</>:<><Sparkles size={16}/>اقترح لي مشاريع</>}
+              </button>
+            </Card>
+
+            {result && (
+              <>
+                {result.budget_assessment && (
+                  <Card style={{padding:sp[5],marginBottom:sp[4],border:`1.5px solid ${$.purple}25`,background:`${$.purple}06`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:sp[2]}}>
+                      <Info size={15} color={$.purple}/>
+                      <span style={{fontSize:13,fontWeight:800,color:$.purple}}>تقييم ميزانيتك</span>
                     </div>
-                  )}
-                  {s.main_challenge && (
-                    <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
-                      <AlertTriangle size={14} color={$.orange} style={{flexShrink:0,marginTop:2}}/>
-                      <span style={{fontSize:13,color:$.L2,lineHeight:1.6}}>{s.main_challenge}</span>
-                    </div>
-                  )}
-                  {s.success_tip && (
-                    <div style={{display:"flex",gap:6,background:`${$.blue}08`,borderRadius:10,padding:`${sp[2]}px ${sp[3]}px`,marginTop:sp[3]}}>
-                      <Lightbulb size={14} color={$.blue} style={{flexShrink:0,marginTop:2}}/>
-                      <span style={{fontSize:12.5,color:$.L2,lineHeight:1.6}}>{s.success_tip}</span>
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
-            <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[5],lineHeight:1.7}}>الأرقام تقديرية مبنية على متوسطات السوق. ننصح بدراسة جدوى تفصيلية قبل أي قرار استثماري.</p>
+                    <p style={{fontSize:14,color:$.L1,lineHeight:1.8}}>{result.budget_assessment}</p>
+                  </Card>
+                )}
+                <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
+                  {(result.suggestions||[]).map((s,i)=>(
+                    <SuggestionCard
+                      key={i}
+                      s={s}
+                      isFav={favKeys.has(favKey(s.name))}
+                      onToggleFav={()=>onToggleFavorite(s, resultMeta)}
+                      an={anFor(s, resultMeta)}
+                    />
+                  ))}
+                </div>
+                <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[5],lineHeight:1.7}}>الأرقام تقديرية مبنية على متوسطات السوق. ننصح بدراسة جدوى تفصيلية قبل أي قرار استثماري.</p>
+              </>
+            )}
           </>
+        )}
+
+        {view === "fav" && (
+          favs.length === 0 ? (
+            <Card style={{padding:sp[6],textAlign:"center"}}>
+              <Star size={30} color={$.orange} style={{marginBottom:sp[2]}}/>
+              <div style={{fontSize:15,fontWeight:800,color:$.L1,marginBottom:sp[1]}}>ما عندك أفكار محفوظة بعد</div>
+              <p style={{fontSize:13,color:$.L3,lineHeight:1.7}}>اضغط على النجمة في أي اقتراح يعجبك، وتبقى هنا وفي الشاشة الرئيسية حتى لو طلبت اقتراحات جديدة.</p>
+            </Card>
+          ) : (
+            <>
+              <div style={{display:"grid",gridTemplateColumns:screen.isDesktop?"1fr 1fr":"1fr",gap:sp[3]}}>
+                {favs.map(f=>{
+                  const meta = { budget: f.budget || "", city: f.city || "", sector: f.sectorFilter || "" };
+                  return (
+                    <SuggestionCard
+                      key={f.id}
+                      s={f}
+                      isFav={true}
+                      onToggleFav={()=>onToggleFavorite(f, meta)}
+                      an={anFor(f, meta)}
+                    />
+                  );
+                })}
+              </div>
+              <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[5],lineHeight:1.7}}>الأرقام تقديرية مبنية على متوسطات السوق. ننصح بدراسة جدوى تفصيلية قبل أي قرار استثماري.</p>
+            </>
+          )
         )}
       </div>
     </div>
@@ -4707,6 +4921,9 @@ function HamourApp({ onReady }) {
   const [analyses, setAnalyses] = useState([]);
   const [usageCount, setUsageCount] = useState(0);
   const [premiumUsageCount, setPremiumUsageCount] = useState(0);
+  const [favorites, setFavorites] = useState([]);
+  const favoritesRef = useRef([]);
+  favoritesRef.current = favorites;
   const [loading, setLoading] = useState(true);
   const [dark, setDark] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -4731,6 +4948,7 @@ function HamourApp({ onReady }) {
       setUsageCount(c.usageCount || 0);
       setPremiumUsageCount(c.premiumUsageCount || 0);
       setAnalyses(Array.isArray(c.analyses) ? c.analyses : []);
+      setFavorites(readFavLocal(c.user.id));
       setLoading(false);
     }
   }, []);
@@ -4755,15 +4973,44 @@ function HamourApp({ onReady }) {
     setPremiumUsageCount(premiumUsed);
   }, []);
 
-  // يحمّل البروفايل والتحليلات بالخلفية وبشكل متوازي — التطبيق ما ينتظرها
+  // المفضلة: تظهر فوراً من الجهاز، ثم نزامنها مع السحابة (لو الجدول جاهز)
+  const loadFavorites = useCallback(async (uid) => {
+    const local = readFavLocal(uid);
+    setFavorites(local);
+    let cloud = null;
+    try { cloud = await getFavoritesCloud(uid); } catch(e) {}
+    if (cloud === null) return; // السحابة غير جاهزة — نكمل على نسخة الجهاز
+    const cloudKeys = new Set(cloud.map(f => favKey(f.name)));
+    const pending = local.filter(f => String(f.id).startsWith("local_") && !cloudKeys.has(favKey(f.name)));
+    const merged = [...pending, ...cloud];
+    setFavorites(merged);
+    writeFavLocal(uid, merged);
+    // أي فكرة انحفظت على الجهاز فقط نرفعها للسحابة
+    for (const item of pending) {
+      try {
+        const row = await addFavoriteCloud(uid, item);
+        if (row && row.id) {
+          setFavorites(prev => {
+            const upd = prev.map(f => f.id === item.id ? { ...f, id: row.id } : f);
+            writeFavLocal(uid, upd);
+            return upd;
+          });
+        }
+      } catch(e) {}
+    }
+  }, []);
+
+  // يحمّل البروفايل والتحليلات والمفضلة بالخلفية وبشكل متوازي — التطبيق ما ينتظرها
   const loadAll = useCallback(async (uid) => {
     const last = lastLoadRef.current;
     if (last.uid === uid && Date.now() - last.t < 4000) return; // نفس الطلب قبل لحظات
     lastLoadRef.current = { uid, t: Date.now() };
     const reqAnalyses = getAnalysesCloud(uid).then(list => setAnalyses(list)).catch(() => {});
+    const reqFavorites = loadFavorites(uid).catch(() => {});
     await loadProfile(uid).catch(() => {});
     await reqAnalyses;
-  }, [loadProfile]);
+    await reqFavorites;
+  }, [loadProfile, loadFavorites]);
 
   const refreshAnalyses = useCallback(async () => {
     const u = await getCurrentUser();
@@ -4789,13 +5036,13 @@ function HamourApp({ onReady }) {
         if (u) {
           // دخل حساب غير المحفوظ؟ نصفّر البيانات القديمة
           if (bootUidRef.current && bootUidRef.current !== u.id) {
-            setProfile(null); setIsPremium(false); setAnalyses([]);
+            setProfile(null); setIsPremium(false); setAnalyses([]); setFavorites([]);
             setUsageCount(0); setPremiumUsageCount(0);
           }
           setUser(u);
         } else {
           clearBoot();
-          setUser(null); setProfile(null); setIsPremium(false); setAnalyses([]);
+          setUser(null); setProfile(null); setIsPremium(false); setAnalyses([]); setFavorites([]);
         }
       }
       setLoading(false); // افتح التطبيق الحين، والبيانات تكمل بالخلفية
@@ -4808,6 +5055,7 @@ function HamourApp({ onReady }) {
         } else {
           clearBoot();
           setAnalyses([]);
+          setFavorites([]);
           setProfile(null);
           setIsPremium(false);
           setResult(null);
@@ -4832,11 +5080,13 @@ function HamourApp({ onReady }) {
   }
 
   async function handleLogout() {
+    _sugCache = null; // نمسح آخر اقتراحات الحساب السابق
     clearBoot();
     lastLoadRef.current = { uid: null, t: 0 };
     await signOut();
     setUser(null);
     setAnalyses([]);
+    setFavorites([]);
     setProfile(null);
     setIsPremium(false);
     setResult(null);
@@ -4864,6 +5114,48 @@ function HamourApp({ onReady }) {
   function handleViewAnalysis(analysis) {
     setResult(analysis);
     setTab("analysis");
+  }
+
+  // إضافة/إزالة فكرة من المفضلة (النجمة)
+  async function handleToggleFavorite(s, meta) {
+    if (!user || !s) return;
+    const uid = user.id;
+    const existing = favoritesRef.current.find(f => favKey(f.name) === favKey(s.name));
+    if (existing) {
+      const next = favoritesRef.current.filter(f => f.id !== existing.id);
+      favoritesRef.current = next;
+      setFavorites(next);
+      writeFavLocal(uid, next);
+      if (!String(existing.id).startsWith("local_")) removeFavoriteCloud(existing.id).catch(() => {});
+      return;
+    }
+    const fields = { ...s };
+    delete fields.id;
+    delete fields.favSavedAt;
+    const item = {
+      ...fields,
+      budget: (meta && meta.budget) || "",
+      city: (meta && meta.city) || "",
+      sectorFilter: (meta && meta.sector) || "",
+      favSavedAt: new Date().toISOString(),
+      id: "local_" + Date.now()
+    };
+    const next = [item, ...favoritesRef.current];
+    favoritesRef.current = next;
+    setFavorites(next);
+    writeFavLocal(uid, next);
+    try {
+      const row = await addFavoriteCloud(uid, item);
+      if (row && row.id) {
+        // لو شالها الشخص قبل ما يخلص الحفظ، نشيلها من السحابة بعد
+        if (!favoritesRef.current.some(f => f.id === item.id)) { removeFavoriteCloud(row.id).catch(() => {}); return; }
+        setFavorites(prev => {
+          const upd = prev.map(f => f.id === item.id ? { ...f, id: row.id } : f);
+          writeFavLocal(uid, upd);
+          return upd;
+        });
+      }
+    } catch(e) { /* تبقى محفوظة على الجهاز */ }
   }
 
   function handleUpdateResult(updated) {
@@ -4933,9 +5225,9 @@ function HamourApp({ onReady }) {
       <div className="_spark" style={{width:5,height:5,top:"48%",left:"55%",animation:"_float2 8.5s infinite"}}/>
 
       <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingTop:screen.isDesktop?0:`calc(52px + env(safe-area-inset-top))`}}>
-        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} user={user} analyses={analyses} usageCount={usageCount} premiumUsageCount={premiumUsageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} onGoFavorites={()=>{ _sugOpenView = "fav"; setTab("suggestions"); }} favorites={favorites} user={user} analyses={analyses} usageCount={usageCount} premiumUsageCount={premiumUsageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
+        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} user={user} favorites={favorites} onToggleFavorite={handleToggleFavorite} onAnalyze={handleAnalyze} analysesCount={isPremium?premiumUsageCount:usageCount}/>}
         {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} onGoLearning={()=>setTab("learning")}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
