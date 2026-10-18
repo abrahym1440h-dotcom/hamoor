@@ -22,7 +22,13 @@ export async function POST(req) {
       return Response.json({ error: "الميزانية مطلوبة" }, { status: 400 });
     }
 
-    if (!process.env.CEREBRAS_API_KEY && !process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+    if (
+      !process.env.CEREBRAS_API_KEY &&
+      !process.env.GROQ_API_KEY &&
+      !process.env.GEMINI_API_KEY &&
+      !process.env.OPENROUTER_API_KEY &&
+      !process.env.ZAI_API_KEY
+    ) {
       return Response.json({ error: "إعدادات الخدمة غير مكتملة - تأكد من مفاتيح API" }, { status: 500 });
     }
 
@@ -123,101 +129,181 @@ ${targetBlock}
 
 ملاحظة: مصفوفة suggestions يجب أن تحتوي 6 مشاريع بالضبط.`;
 
-    // ═══ دوال الاستدعاء (سلسلة Cerebras → Groq → Gemini) ═══
-    async function callCerebras() {
-      const key = process.env.CEREBRAS_API_KEY;
-      if (!key) throw new Error("CEREBRAS_NO_KEY");
+    // ═══ أدوات مساعدة ═══
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const errors = []; // نجمع أخطاء كل المزودات عشان نعرف وش صار بالضبط
+
+    // إعادة محاولة تلقائية لو المزود مزدحم (503/429/500...) أو رجع JSON ناقص
+    async function withRetry(fn, tries = 2, delayMs = 800) {
+      let lastErr;
+      for (let i = 0; i < tries; i++) {
+        try {
+          return await fn();
+        } catch (e) {
+          lastErr = e;
+          const m = e.message || "";
+          const retryable = /_FAIL_(429|500|502|503|504|PARSE)$/.test(m);
+          if (!retryable || i === tries - 1 || remaining() < 9000) break;
+          await sleep(delayMs * (i + 1));
+        }
+      }
+      throw lastErr;
+    }
+
+    // استدعاء أي مزود يدعم صيغة OpenAI (Cerebras / Groq / OpenRouter / Zai)
+    async function callOpenAICompat({ name, url, key, model, capMs, extraBody = {} }) {
       const ctrl = new AbortController();
-      const ms = Math.max(1000, Math.min(22000, remaining() - 1000));
+      const ms = Math.max(1000, Math.min(capMs, remaining() - 1000));
       const timer = setTimeout(() => ctrl.abort(), ms);
-      let res;
       try {
-        res = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
           body: JSON.stringify({
-            model: "gpt-oss-120b",
+            model,
             messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-            temperature: 0.5, max_tokens: 5000, response_format: { type: "json_object" }
+            temperature: 0.5,
+            max_tokens: 6000,
+            response_format: { type: "json_object" },
+            ...extraBody
           }),
           signal: ctrl.signal
         });
+        if (!res.ok) throw new Error(`${name}_FAIL_${res.status}`);
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
+        const parsed = extractJSON(text);
+        if (!parsed || !Array.isArray(parsed.suggestions) || !parsed.suggestions.length) {
+          throw new Error(`${name}_FAIL_PARSE`);
+        }
+        return parsed;
       } finally { clearTimeout(timer); }
-      if (!res.ok) throw new Error("CEREBRAS_FAIL_" + res.status);
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content;
-      const parsed = extractJSON(text);
-      if (!parsed) throw new Error("CEREBRAS_FAIL_PARSE");
-      return parsed;
+    }
+
+    // ═══ المزودات ═══
+    async function callCerebras() {
+      const key = process.env.CEREBRAS_API_KEY;
+      if (!key) throw new Error("CEREBRAS_NO_KEY");
+      return withRetry(() => callOpenAICompat({
+        name: "CEREBRAS",
+        url: "https://api.cerebras.ai/v1/chat/completions",
+        key,
+        model: process.env.CEREBRAS_MODEL || "gpt-oss-120b",
+        capMs: 20000,
+        extraBody: { reasoning_effort: "low" }
+      }));
     }
 
     async function callGroq() {
       const key = process.env.GROQ_API_KEY;
       if (!key) throw new Error("GROQ_NO_KEY");
+      return withRetry(() => callOpenAICompat({
+        name: "GROQ",
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        key,
+        // الموديل القديم llama-3.3-70b-versatile ما عاد يشتغل (404) — هذا الاسم الحالي
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+        capMs: 18000,
+        extraBody: { reasoning_effort: "low" }
+      }));
+    }
+
+    async function callGeminiModel(model) {
+      const key = process.env.GEMINI_API_KEY;
+      if (!key) throw new Error("GEMINI_NO_KEY");
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const ctrl = new AbortController();
       const ms = Math.max(1000, Math.min(18000, remaining() - 1000));
       const timer = setTimeout(() => ctrl.abort(), ms);
-      let res;
       try {
-        res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-            temperature: 0.5, max_tokens: 5000, response_format: { type: "json_object" }
+            contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
+            generationConfig: {
+              temperature: 0.5,
+              maxOutputTokens: 6000,
+              responseMimeType: "application/json",
+              thinkingConfig: { thinkingBudget: 0 } // بدون تفكير طويل = أسرع وأقل ضغط
+            }
           }),
           signal: ctrl.signal
         });
+        if (!res.ok) throw new Error("GEMINI_FAIL_" + res.status);
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+        const parsed = extractJSON(text);
+        if (!parsed || !Array.isArray(parsed.suggestions) || !parsed.suggestions.length) {
+          throw new Error("GEMINI_FAIL_PARSE");
+        }
+        return parsed;
       } finally { clearTimeout(timer); }
-      if (!res.ok) throw new Error("GROQ_FAIL_" + res.status);
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content;
-      const parsed = extractJSON(text);
-      if (!parsed) throw new Error("GROQ_FAIL_PARSE");
-      return parsed;
     }
 
     async function callGemini() {
-      const key = process.env.GEMINI_API_KEY;
-      if (!key) throw new Error("GEMINI_NO_KEY");
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-      const ctrl = new AbortController();
-      const ms = Math.max(1000, Math.min(18000, remaining() - 1000));
-      const timer = setTimeout(() => ctrl.abort(), ms);
-      let res;
-      try {
-        res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
-            generationConfig: { temperature: 0.5, maxOutputTokens: 5000, responseMimeType: "application/json" }
-          }),
-          signal: ctrl.signal
-        });
-      } finally { clearTimeout(timer); }
-      if (!res.ok) throw new Error("GEMINI_FAIL_" + res.status);
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-      const parsed = extractJSON(text);
-      if (!parsed) throw new Error("GEMINI_FAIL_PARSE");
-      return parsed;
+      if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_NO_KEY");
+      // نجرّب الموديل العادي ثم الأخف لو كان مزدحم
+      const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+      let lastErr;
+      for (const m of models) {
+        if (remaining() < 6000) break;
+        try {
+          return await withRetry(() => callGeminiModel(m));
+        } catch (e) {
+          lastErr = e;
+          console.log(`Gemini ${m} failed (${e.message})`);
+        }
+      }
+      throw lastErr || new Error("GEMINI_FAIL_NO_TIME");
     }
 
+    async function callOpenRouter() {
+      const key = process.env.OPENROUTER_API_KEY;
+      if (!key) throw new Error("OPENROUTER_NO_KEY");
+      return withRetry(() => callOpenAICompat({
+        name: "OPENROUTER",
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        key,
+        model: process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b",
+        capMs: 25000
+      }));
+    }
+
+    async function callZai() {
+      const key = process.env.ZAI_API_KEY;
+      if (!key) throw new Error("ZAI_NO_KEY");
+      return withRetry(() => callOpenAICompat({
+        name: "ZAI",
+        url: "https://api.z.ai/api/paas/v4/chat/completions",
+        key,
+        model: process.env.ZAI_MODEL || "glm-4.5-flash",
+        capMs: 25000,
+        extraBody: { thinking: { type: "disabled" } }
+      }));
+    }
+
+    // ═══ السلسلة: Cerebras → Groq → Gemini → OpenRouter → Zai ═══
     async function callAI() {
-      if (process.env.CEREBRAS_API_KEY && remaining() > 6000) {
-        try { return await callCerebras(); }
-        catch (e1) { console.log("Cerebras suggest failed (" + e1.message + ")"); }
+      const providers = [
+        { name: "Cerebras",   enabled: !!process.env.CEREBRAS_API_KEY,   run: callCerebras },
+        { name: "Groq",       enabled: !!process.env.GROQ_API_KEY,       run: callGroq },
+        { name: "Gemini",     enabled: !!process.env.GEMINI_API_KEY,     run: callGemini },
+        { name: "OpenRouter", enabled: !!process.env.OPENROUTER_API_KEY, run: callOpenRouter },
+        { name: "Zai",        enabled: !!process.env.ZAI_API_KEY,        run: callZai }
+      ];
+      for (const p of providers) {
+        if (!p.enabled) continue;
+        if (remaining() < 6000) { errors.push(p.name + "_SKIPPED_NO_TIME"); break; }
+        try {
+          return await p.run();
+        } catch (e) {
+          const m = e.message || String(e);
+          errors.push(m);
+          console.log(p.name + " suggest failed (" + m + ")");
+        }
       }
-      if (process.env.GROQ_API_KEY && remaining() > 6000) {
-        try { return await callGroq(); }
-        catch (e2) { console.log("Groq suggest failed (" + e2.message + ")"); }
-      }
-      if (process.env.GEMINI_API_KEY && remaining() > 6000) {
-        return await callGemini();
-      }
-      throw new Error("timeout_budget");
+      throw new Error("ALL_PROVIDERS_FAILED: " + errors.join(" | "));
     }
 
     console.log("═══ توليد الاقتراحات ═══");
@@ -228,7 +314,8 @@ ${targetBlock}
     console.error("Suggest Server Error:", error.message);
     let userMsg = "تعذّر إعداد الاقتراحات، حاول مرة أخرى";
     const msg = error.message || "";
-    if (msg.includes("FAIL_PARSE")) userMsg = "تعذّرت معالجة النتيجة - حاول مرة أخرى بعد لحظات";
+    if (msg.includes("ALL_PROVIDERS_FAILED")) userMsg = "الخدمة مزدحمة الآن - حاول بعد لحظات";
+    else if (msg.includes("FAIL_PARSE")) userMsg = "تعذّرت معالجة النتيجة - حاول مرة أخرى بعد لحظات";
     else if (msg.includes("aborted") || msg.includes("timeout")) userMsg = "العملية أخذت وقتاً أطول من المتوقع - حاول مرة أخرى";
     else if (msg.includes("429") || msg.includes("rate")) userMsg = "الخدمة مزدحمة الآن - حاول بعد دقيقة";
     return Response.json({ error: userMsg, debug: msg }, { status: 500 });
