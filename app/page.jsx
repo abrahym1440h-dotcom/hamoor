@@ -11,7 +11,7 @@ import {
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
   ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
-  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download, Plus
+  LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download, Plus, Camera, Bell
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -1261,6 +1261,12 @@ function AdvisorDashboard({result, user, isDemo, isPremium, onNeedUpgrade, onGoL
     alert("هذا مشروع تجريبي للتعليم فقط. اشترك لإضافة بياناتك الحقيقية ومتابعة مشروعك الفعلي.");
     if (onNeedUpgrade) onNeedUpgrade();
   }
+  // بيئة تنفيذ عمليات المستشار: نفس بيانات الأقسام ونفس دوال الحفظ، والواجهة تتحدث فوراً
+  const opsEnv = () => ({
+    analysisId, user,
+    data: { entries, team, doneTasks, planItems, metrics, documents },
+    set: { entries: setEntries, team: setTeam, doneTasks: setDoneTasks, planItems: setPlanItems, metrics: setMetrics, documents: setDocuments }
+  });
 
   return (
     <div>
@@ -1344,7 +1350,8 @@ function AdvisorDashboard({result, user, isDemo, isPremium, onNeedUpgrade, onGoL
           onDelete={async (docId)=>{ if (!isDemo) await deleteDocument(docId); setDocuments(prev=>prev.filter(d=>d.id!==docId)); }}/>
       )}
       {section === "chat" && (
-        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team} onGoLearning={onGoLearning} onBack={()=>setSection(prevSection.current)} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}/>
+        <ChatSection result={result} entries={entries} messages={messages} setMessages={setMessages} user={user} analysisId={analysisId} nextTask={nextTask} isDemo={isDemo} doneTasks={doneTasks} metrics={metrics} documents={documents} planItems={planItems} team={team} onGoLearning={onGoLearning} onBack={()=>setSection(prevSection.current)} isPremium={isPremium} onNeedUpgrade={onNeedUpgrade}
+          onRunOps={isDemo ? undefined : (ops)=>execAdvisorOps(ops, opsEnv())} onUndoOps={isDemo ? undefined : (invs)=>undoAdvisorOps(invs, opsEnv())}/>
       )}
       {section === "log" && (
         <LogSection entries={entries} messages={messages} documents={documents} metrics={metrics} team={team}/>
@@ -2214,6 +2221,298 @@ function DocsSection({documents, onAdd, onStatusChange, onDelete}) {
   );
 }
 
+// ═══════════════ المستشار يتحكم بالمشروع: تنفيذ العمليات بعد تأكيد العميل، والتراجع عنها ═══════════════
+// المستشار (السيرفر) يقترح عمليات بعد فحصها، والعميل يضغط «تأكيد» فتُنفَّذ هنا بنفس دوال الحفظ المستخدمة في الأقسام.
+// كل عملية تُرجع «عملية عكسية» تُحفظ مع رسالة الحالة، فيقدر العميل يتراجع حتى بعد إعادة فتح الصفحة.
+const OPS_DONE_MARK = "§OPSDONE§";
+const opsNormKey = (s) => String(s || "").replace(/[ً-ٰٟ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").trim().toLowerCase();
+const byDateAsc = (a, b) => new Date(a.entry_date) - new Date(b.entry_date);
+
+// يقرأ رسائل الحالة المخفية (§OPSDONE§) ويطلع حالة كل بطاقة عمليات: bid -> { status, invs, failed, undoable }
+function readOpsStates(messages) {
+  const map = {};
+  (messages || []).forEach(m => {
+    const c = m && typeof m.content === "string" ? m.content : "";
+    if (!c.startsWith(OPS_DONE_MARK)) return;
+    try {
+      const d = JSON.parse(c.slice(OPS_DONE_MARK.length));
+      if (!d || !d.bid) return;
+      const prev = map[d.bid] || {};
+      map[d.bid] = {
+        status: d.status || prev.status || "done",
+        invs: Array.isArray(d.invs) ? d.invs : (prev.invs || []),
+        failed: Number(d.failed) || 0,
+        undoable: d.status === "done" && Array.isArray(d.invs) && d.invs.length > 0
+      };
+    } catch (e) { /* رسالة حالة تالفة: نتجاهلها */ }
+  });
+  return map;
+}
+const isOpsMarker = (m) => !!(m && typeof m.content === "string" && m.content.startsWith(OPS_DONE_MARK));
+
+const teamPayloadOf = (m, over) => ({
+  name: over && over.name != null ? over.name : m.name,
+  role: over && over.role != null ? over.role : (m.role || ""),
+  phone: m.phone || "",
+  monthlyPay: over && over.monthlyPay != null ? over.monthlyPay : (m.monthly_pay || null),
+  startDate: m.start_date || null,
+  notes: m.notes || ""
+});
+const financePayloadOf = (e) => ({ revenue: e.revenue || 0, expenses: e.expenses || 0, profit: e.profit || 0, cashBalance: e.cash_balance || 0, note: e.note || "", date: e.entry_date });
+
+async function execAdvisorOp(o, W, env) {
+  const aid = env.analysisId, uid = env.user.id, set = env.set;
+  switch (o.op) {
+    case "finance_add": {
+      const row = await addFinanceEntry(aid, uid, { revenue: o.revenue, expenses: o.expenses, profit: o.revenue - o.expenses, cashBalance: o.cash || 0, note: o.note || "", date: o.date });
+      W.entries = [...W.entries, row]; set.entries(p => [...p, row]);
+      return { t: "finance_del", id: row.id };
+    }
+    case "finance_edit": {
+      const e = W.entries.find(x => x.id === o.id);
+      if (!e) throw new Error("الإدخال غير موجود");
+      const rev = o.revenue !== undefined ? o.revenue : (e.revenue || 0);
+      const exp = o.expenses !== undefined ? o.expenses : (e.expenses || 0);
+      const amountChanged = o.revenue !== undefined || o.expenses !== undefined;
+      const row = await updateFinanceEntry(o.id, { revenue: rev, expenses: exp, profit: amountChanged ? rev - exp : (e.profit || 0), cashBalance: o.cash !== undefined ? o.cash : (e.cash_balance || 0), note: o.note !== undefined ? o.note : (e.note || ""), date: o.date || e.entry_date });
+      W.entries = W.entries.map(x => x.id === o.id ? row : x); set.entries(p => p.map(x => x.id === o.id ? row : x));
+      return { t: "finance_set", id: o.id, prev: financePayloadOf(e) };
+    }
+    case "finance_delete": {
+      const e = W.entries.find(x => x.id === o.id);
+      if (!e) throw new Error("الإدخال غير موجود");
+      await deleteFinanceEntry(o.id);
+      W.entries = W.entries.filter(x => x.id !== o.id); set.entries(p => p.filter(x => x.id !== o.id));
+      return { t: "finance_re", row: financePayloadOf(e) };
+    }
+    case "team_add": {
+      const m = await addTeamMember(aid, uid, { name: o.name, role: o.role || "", monthlyPay: o.pay || null });
+      W.team = [...W.team, m]; set.team(p => [...p, m]);
+      return { t: "team_del", id: m.id };
+    }
+    case "team_edit": {
+      const m = W.team.find(x => x.id === o.id);
+      if (!m) throw new Error("العضو غير موجود");
+      const row = await updateTeamMember(o.id, teamPayloadOf(m, { name: o.name, role: o.role, monthlyPay: o.pay }));
+      W.team = W.team.map(x => x.id === o.id ? row : x); set.team(p => p.map(x => x.id === o.id ? row : x));
+      return { t: "team_set", id: o.id, prev: teamPayloadOf(m) };
+    }
+    case "team_delete": {
+      const m = W.team.find(x => x.id === o.id);
+      if (!m) throw new Error("العضو غير موجود");
+      await deleteTeamMember(o.id);
+      W.team = W.team.filter(x => x.id !== o.id); set.team(p => p.filter(x => x.id !== o.id));
+      return { t: "team_re", row: teamPayloadOf(m) };
+    }
+    case "task_done": {
+      const isDone = W.doneTasks.some(x => x.phase_index === o.phase && x.task_index === o.task);
+      if (isDone === !!o.done) return null;
+      await toggleTask(aid, uid, o.phase, o.task, o.text, !!o.done);
+      const mark = { phase_index: o.phase, task_index: o.task };
+      const apply = (p) => o.done ? [...p, mark] : p.filter(x => !(x.phase_index === o.phase && x.task_index === o.task));
+      W.doneTasks = apply(W.doneTasks); set.doneTasks(apply);
+      return { t: "task_set", phase: o.phase, task: o.task, text: o.text, done: !o.done };
+    }
+    case "item_add": {
+      const it = await addPlanItem(aid, uid, o.plan, o.text);
+      W.items = [...W.items, it]; set.planItems(p => [...p, it]);
+      return { t: "item_del", id: it.id };
+    }
+    case "item_done": {
+      const it = W.items.find(x => x.id === o.id);
+      if (!it) throw new Error("المهمة غير موجودة");
+      if (!!it.done === !!o.done) return null;
+      await togglePlanItem(o.id, !!o.done);
+      W.items = W.items.map(x => x.id === o.id ? { ...x, done: !!o.done } : x); set.planItems(p => p.map(x => x.id === o.id ? { ...x, done: !!o.done } : x));
+      return { t: "item_set", id: o.id, done: !!it.done };
+    }
+    case "item_delete": {
+      const it = W.items.find(x => x.id === o.id);
+      if (!it) throw new Error("المهمة غير موجودة");
+      await deletePlanItem(o.id);
+      W.items = W.items.filter(x => x.id !== o.id); set.planItems(p => p.filter(x => x.id !== o.id));
+      return { t: "item_re", rows: [{ plan: it.plan_name, text: it.task_text, done: !!it.done }] };
+    }
+    case "plan_delete": {
+      const rows = W.items.filter(x => x.plan_name === o.plan);
+      if (!rows.length) throw new Error("الخطة غير موجودة");
+      await deletePlan(aid, o.plan);
+      W.items = W.items.filter(x => x.plan_name !== o.plan); set.planItems(p => p.filter(x => x.plan_name !== o.plan));
+      return { t: "item_re", rows: rows.map(it => ({ plan: it.plan_name, text: it.task_text, done: !!it.done })) };
+    }
+    case "metric_add": {
+      const chart = !!o.chart && W.metrics.filter(m => m.show_chart).length < 3;
+      const m = await addMetric(aid, uid, o.name, o.unit || "", chart);
+      W.metrics = [...W.metrics, m]; W.created.set(opsNormKey(o.name), m.id); set.metrics(p => [...p, m]);
+      return { t: "metric_del", id: m.id };
+    }
+    case "metric_value": {
+      let mid = o.metric_id;
+      if (mid == null && o.metric_name) {
+        const key = opsNormKey(o.metric_name);
+        mid = W.created.get(key);
+        if (mid == null) { const f = W.metrics.find(x => opsNormKey(x.name) === key); mid = f ? f.id : null; }
+      }
+      if (mid == null || !W.metrics.some(m => m.id === mid)) throw new Error("المؤشر غير موجود");
+      const e = await addMetricEntry(mid, uid, o.value, o.date);
+      const apply = (p) => p.map(m => m.id === mid ? { ...m, entries: [...(m.entries || []), e].sort(byDateAsc) } : m);
+      W.metrics = apply(W.metrics); set.metrics(apply);
+      return { t: "mval_del", id: e.id, metric_id: mid };
+    }
+    case "metric_delete": {
+      const m = W.metrics.find(x => x.id === o.id);
+      if (!m) throw new Error("المؤشر غير موجود");
+      await deleteMetric(o.id);
+      W.metrics = W.metrics.filter(x => x.id !== o.id); set.metrics(p => p.filter(x => x.id !== o.id));
+      return { t: "metric_re", row: { name: m.name, unit: m.unit || "", chart: !!m.show_chart }, entries: (m.entries || []).slice(-500).map(e => ({ value: e.value, date: e.entry_date })) };
+    }
+    case "metric_value_delete": {
+      const m = W.metrics.find(x => x.id === o.metric_id);
+      const e = m && (m.entries || []).find(x => x.id === o.id);
+      if (!e) throw new Error("القراءة غير موجودة");
+      await deleteMetricEntry(o.id);
+      const apply = (p) => p.map(x => x.id === o.metric_id ? { ...x, entries: (x.entries || []).filter(y => y.id !== o.id) } : x);
+      W.metrics = apply(W.metrics); set.metrics(apply);
+      return { t: "mval_re", metric_id: o.metric_id, value: e.value, date: e.entry_date };
+    }
+    case "doc_add": {
+      let d = await addDocument(aid, uid, o.name);
+      if (d.status !== o.status) { await updateDocumentStatus(d.id, o.status); d = { ...d, status: o.status }; }
+      W.docs = [...W.docs, d]; set.documents(p => [...p, d]);
+      return { t: "doc_del", id: d.id };
+    }
+    case "doc_status": {
+      const d = W.docs.find(x => x.id === o.id);
+      if (!d) throw new Error("المستند غير موجود");
+      await updateDocumentStatus(o.id, o.status);
+      W.docs = W.docs.map(x => x.id === o.id ? { ...x, status: o.status } : x); set.documents(p => p.map(x => x.id === o.id ? { ...x, status: o.status } : x));
+      return { t: "doc_set", id: o.id, status: d.status };
+    }
+    case "doc_delete": {
+      const d = W.docs.find(x => x.id === o.id);
+      if (!d) throw new Error("المستند غير موجود");
+      await deleteDocument(o.id);
+      W.docs = W.docs.filter(x => x.id !== o.id); set.documents(p => p.filter(x => x.id !== o.id));
+      return { t: "doc_re", name: d.name, status: d.status };
+    }
+    default:
+      throw new Error("عملية غير معروفة");
+  }
+}
+
+// ينفّذ العمليات بالترتيب. ما يوقف عند أول فشل: يكمّل ويرجّع عدد الفاشل، والعمليات العكسية للي نجح فقط
+async function execAdvisorOps(ops, env) {
+  const d = env.data;
+  const W = { entries: [...d.entries], team: [...d.team], doneTasks: [...d.doneTasks], items: [...d.planItems], metrics: [...d.metrics], docs: [...d.documents], created: new Map() };
+  const invs = [], failed = [];
+  for (const o of (ops || [])) {
+    try { const inv = await execAdvisorOp(o, W, env); if (inv) invs.push(inv); }
+    catch (e) { failed.push({ label: o && o.label, error: (e && e.message) || "فشل" }); }
+  }
+  return { invs, failed };
+}
+
+async function undoAdvisorOp(v, env) {
+  const aid = env.analysisId, uid = env.user.id, set = env.set;
+  switch (v.t) {
+    case "finance_del": await deleteFinanceEntry(v.id); set.entries(p => p.filter(x => x.id !== v.id)); return;
+    case "finance_set": { const row = await updateFinanceEntry(v.id, v.prev); set.entries(p => p.map(x => x.id === v.id ? row : x)); return; }
+    case "finance_re": { const row = await addFinanceEntry(aid, uid, v.row); set.entries(p => [...p, row]); return; }
+    case "team_del": await deleteTeamMember(v.id); set.team(p => p.filter(x => x.id !== v.id)); return;
+    case "team_set": { const row = await updateTeamMember(v.id, v.prev); set.team(p => p.map(x => x.id === v.id ? row : x)); return; }
+    case "team_re": { const row = await addTeamMember(aid, uid, v.row); set.team(p => [...p, row]); return; }
+    case "task_set": {
+      await toggleTask(aid, uid, v.phase, v.task, v.text, !!v.done);
+      const mark = { phase_index: v.phase, task_index: v.task };
+      set.doneTasks(p => { const rest = p.filter(x => !(x.phase_index === v.phase && x.task_index === v.task)); return v.done ? [...rest, mark] : rest; });
+      return;
+    }
+    case "item_del": await deletePlanItem(v.id); set.planItems(p => p.filter(x => x.id !== v.id)); return;
+    case "item_set": await togglePlanItem(v.id, !!v.done); set.planItems(p => p.map(x => x.id === v.id ? { ...x, done: !!v.done } : x)); return;
+    case "item_re": {
+      for (const r of (v.rows || [])) {
+        let it = await addPlanItem(aid, uid, r.plan, r.text);
+        if (r.done) { await togglePlanItem(it.id, true); it = { ...it, done: true }; }
+        set.planItems(p => [...p, it]);
+      }
+      return;
+    }
+    case "metric_del": await deleteMetric(v.id); set.metrics(p => p.filter(x => x.id !== v.id)); return;
+    case "mval_del": await deleteMetricEntry(v.id); set.metrics(p => p.map(x => x.id === v.metric_id ? { ...x, entries: (x.entries || []).filter(y => y.id !== v.id) } : x)); return;
+    case "metric_re": {
+      const m = await addMetric(aid, uid, v.row.name, v.row.unit || "", !!v.row.chart);
+      const es = [];
+      const list = v.entries || [];
+      for (let i = 0; i < list.length; i += 10) {
+        const got = await Promise.all(list.slice(i, i + 10).map(e => addMetricEntry(m.id, uid, e.value, e.date)));
+        es.push(...got);
+      }
+      set.metrics(p => [...p, { ...m, entries: es.sort(byDateAsc) }]);
+      return;
+    }
+    case "mval_re": {
+      const e = await addMetricEntry(v.metric_id, uid, v.value, v.date);
+      set.metrics(p => p.map(x => x.id === v.metric_id ? { ...x, entries: [...(x.entries || []), e].sort(byDateAsc) } : x));
+      return;
+    }
+    case "doc_del": await deleteDocument(v.id); set.documents(p => p.filter(x => x.id !== v.id)); return;
+    case "doc_set": await updateDocumentStatus(v.id, v.status); set.documents(p => p.map(x => x.id === v.id ? { ...x, status: v.status } : x)); return;
+    case "doc_re": {
+      let d = await addDocument(aid, uid, v.name);
+      if (d.status !== v.status) { await updateDocumentStatus(d.id, v.status); d = { ...d, status: v.status }; }
+      set.documents(p => [...p, d]);
+      return;
+    }
+    default:
+      throw new Error("عملية تراجع غير معروفة");
+  }
+}
+
+// يتراجع بالعكس: آخر عملية تُعكس أولاً. ما يوقف عند أول فشل
+async function undoAdvisorOps(invs, env) {
+  let failed = 0;
+  for (const v of [...(invs || [])].reverse()) {
+    try { await undoAdvisorOp(v, env); } catch (e) { failed += 1; }
+  }
+  return { failed };
+}
+
+// يصغّر الصورة ويحوّلها JPEG عشان تنرسل للمستشار بحجم صغير (فاتورة مصوّرة من الجوال تكون عدة ميغا)
+function readImageForAdvisor(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type || "")) { reject(new Error("اختر صورة")); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const MAX = 1400;
+        const k = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const g = c.getContext("2d");
+        g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+        let q = 0.82, data = c.toDataURL("image/jpeg", q);
+        while (data.length > 2600000 && q > 0.45) { q -= 0.1; data = c.toDataURL("image/jpeg", q); }
+        if (data.length > 3400000) { reject(new Error("الصورة كبيرة، جرّب صورة أصغر")); return; }
+        resolve({ mime: "image/jpeg", data: data.split(",")[1], preview: data });
+      } catch (e) { reject(new Error("تعذّر تجهيز الصورة")); }
+      finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("تعذّر قراءة الصورة، جرّب صورة JPG أو لقطة شاشة")); };
+    img.src = url;
+  });
+}
+
+// كم يوم مضى على آخر إدخال مالي (بتوقيت الرياض)؟ null = ما فيه إدخالات أصلاً
+function daysSinceLastEntry(entries) {
+  const ds = (entries || []).map(e => e && e.entry_date).filter(Boolean).sort();
+  if (!ds.length) return null;
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+  const diff = Math.floor((new Date(today + "T00:00:00Z") - new Date(String(ds[ds.length - 1]).slice(0, 10) + "T00:00:00Z")) / 86400000);
+  return isNaN(diff) ? null : Math.max(0, diff);
+}
+
 // ═══════════════ المستشار — محادثة بشاشة كاملة وفقاعات كبيرة وواضحة ═══════════════
 const CHAT_STARTERS = ["وش أبدأ فيه أول؟", "كم أحتاج سيولة؟", "فسّر لي الأرقام"];
 // مميزات المستشار (زر بجنب زر الإرسال): كل ميزة ترسل سؤالاً جاهزاً، والمستشار يجاوب من بيانات مشروعك
@@ -2281,8 +2580,18 @@ function ChatArticleView({article, onClose}) {
   );
 }
 
-function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team, onGoLearning, onBack, isPremium, onNeedUpgrade}) {
+function ChatSection({result, entries, messages, setMessages, user, analysisId, nextTask, isDemo, doneTasks, metrics, documents, planItems, team, onGoLearning, onBack, isPremium, onNeedUpgrade, onRunOps, onUndoOps}) {
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
+  const [opsBusy, setOpsBusy] = useState(null);
+  const [img, setImg] = useState(null);
+  const fileRef = useRef(null);
+  const inputRef = useRef(null);
+  const nudgeKey = `hm-nudge-${analysisId}-${new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"})}`;
+  const [nudgeOff, setNudgeOff] = useState(() => { try { return sessionStorage.getItem(nudgeKey) === "1"; } catch(e) { return false; } });
+  // رسائل الحالة المخفية (تأكيد/إلغاء/تراجع) ما تظهر كفقاعات؛ تتحول لحالة بطاقة العمليات
+  const visible = messages.filter(m => !isOpsMarker(m));
+  const opsStates = readOpsStates(messages);
+  const gapDays = daysSinceLastEntry(entries);
   const [err, setErr] = useState(null);
   const [menu, setMenu] = useState(false);
   const [artOpen, setArtOpen] = useState(null);
@@ -2300,7 +2609,8 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
   // أول ما يوصل رد المستشار: نوريك بدايته (إذا كان طويل)، وإلا ننزل لآخر المحادثة
   useEffect(() => {
     const box = scrollRef.current; if (!box) return;
-    const last = messages[messages.length - 1];
+    const vis = messages.filter(m => !isOpsMarker(m));
+    const last = vis[vis.length - 1];
     const el = lastAdvRef.current;
     if (!sending && last && last.role === "advisor" && el && el.offsetHeight > box.clientHeight - 24) box.scrollTop = Math.max(0, el.offsetTop - 10);
     else box.scrollTop = box.scrollHeight;
@@ -2316,9 +2626,11 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
 
   async function send(overrideText) {
     const text = (overrideText !== undefined ? overrideText : input).trim();
-    if (!text || sending) return;
-    setMenu(false); setInput(""); setErr(null); setSending(true);
-    setMessages(prev => [...prev, { role:"user", content:text, id:"tmp-"+Date.now() }]);
+    const image = overrideText === undefined ? img : null;
+    if ((!text && !image) || sending) return;
+    const shown = image ? `📷 ${text || "صورة مرفقة"}` : text;
+    setMenu(false); setInput(""); setImg(null); setErr(null); setSending(true);
+    setMessages(prev => [...prev, { role:"user", content:shown, id:"tmp-"+Date.now(), thumb: image ? image.preview : undefined }]);
     try {
       const res = await fetch("/api/advisor", {
         method:"POST", headers:{"Content-Type":"application/json"},
@@ -2329,16 +2641,65 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
           metrics: metrics || [],
           documents: documents || [],
           planItems: planItems || [],
-          team: (team || []).map(t=>({name:t.name, role:t.role, monthly_pay:t.monthly_pay})),
+          team: (team || []).map(t=>({id:t.id, name:t.name, role:t.role, monthly_pay:t.monthly_pay})),
           history: messages.map(m=>({role:m.role,content:m.content})),
-          message: text
+          message: text,
+          readOnly: !!isDemo,
+          image: image ? { mime:image.mime, data:image.data } : undefined
         })
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error || "تعذّر الوصول للمستشار"); return; }
       setMessages(prev => [...prev, { role:"advisor", content:data.reply, id:"tmp-a-"+Date.now() }]);
-      if (!isDemo && analysisId) { saveAdvisorMessage(analysisId,user.id,"user",text); saveAdvisorMessage(analysisId,user.id,"advisor",data.reply); }
+      if (!isDemo && analysisId) { saveAdvisorMessage(analysisId,user.id,"user",shown); saveAdvisorMessage(analysisId,user.id,"advisor",data.reply); }
     } catch(e) { setErr("تعذّر الاتصال، تحقق من الإنترنت"); } finally { setSending(false); }
+  }
+
+  // ───── عمليات المستشار: تأكيد / إلغاء / تراجع (الحالة تُحفظ كرسالة مخفية فتبقى بعد إعادة الفتح) ─────
+  function pushMarker(bid, status, extra) {
+    const content = OPS_DONE_MARK + JSON.stringify({ bid, status, ...extra });
+    setMessages(prev => [...prev, { role:"advisor", content, id:"tmp-m-"+Date.now()+"-"+Math.random().toString(36).slice(2,6) }]);
+    if (!isDemo && analysisId && user) saveAdvisorMessage(analysisId, user.id, "advisor", content);
+  }
+  async function confirmOps(O) {
+    if (opsBusy) return;
+    if (isDemo || !onRunOps) { if (onNeedUpgrade) onNeedUpgrade(); return; }
+    setErr(null); setOpsBusy(O.bid);
+    try {
+      const { invs, failed } = await onRunOps(O.ops);
+      if (failed.length >= O.ops.length) setErr("تعذّر تنفيذ العمليات، حاول مرة أخرى");
+      else pushMarker(O.bid, "done", { invs, failed: failed.length });
+    } catch(e) { setErr("تعذّر التنفيذ، حاول مرة أخرى"); } finally { setOpsBusy(null); }
+  }
+  function cancelOps(O) { if (opsBusy) return; pushMarker(O.bid, "cancelled"); }
+  async function undoOps(O) {
+    const st = opsStates[O.bid];
+    if (opsBusy || !st || !st.undoable || !onUndoOps) return;
+    setErr(null); setOpsBusy(O.bid);
+    try { const { failed } = await onUndoOps(st.invs); pushMarker(O.bid, "undone", { failed }); }
+    catch(e) { setErr("تعذّر التراجع، حاول مرة أخرى"); } finally { setOpsBusy(null); }
+  }
+
+  // ───── صورة (فاتورة مثلاً) ترسل للمستشار ليقرأها ويسجّلها ─────
+  function pickImage() {
+    if (isDemo) { if (onNeedUpgrade) onNeedUpgrade(); return; }
+    if (fileRef.current) fileRef.current.click();
+  }
+  async function onFile(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    setErr(null);
+    try { setImg(await readImageForAdvisor(f)); } catch(ex) { setErr(ex.message || "تعذّر تجهيز الصورة"); }
+  }
+
+  // ───── تنبيه استباقي: ما سجّل أرقام من 3 أيام ─────
+  const showNudge = !isDemo && !nudgeOff && !img && (gapDays === null || gapDays >= 3);
+  function dismissNudge() { setNudgeOff(true); try { sessionStorage.setItem(nudgeKey, "1"); } catch(e) { /* التخزين غير متاح */ } }
+  function startNudge() {
+    setInput(gapDays === null ? "سجّل لي اليوم: الإيراد " : "سجّل لي أمس: الإيراد ");
+    dismissNudge();
+    if (inputRef.current) inputRef.current.focus();
   }
 
   // زر المقال المرشّح: يفتح نفس المقال هنا (المقالات المميّزة تطلب اشتراك زي قسم التعلّم)
@@ -2349,7 +2710,7 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
     } else if (onGoLearning) onGoLearning();
   }
 
-  const empty = messages.length === 0 && !sending;
+  const empty = visible.length === 0 && !sending;
   const starters = [nextTask ? { label:`ناقش معي: ${nextTask.text}`, q:`أبي أناقش الخطوة الجاية: ${nextTask.text}` } : null, ...CHAT_STARTERS.map(q => ({ label:q, q }))].filter(Boolean);
   const advBubble = { background:$.surface, border:`1px solid ${$.sepL}`, borderRadius:"20px 20px 20px 4px" };
   const sub = sending ? "يفكّر الحين…" : (result && result.idea ? result.idea : "يعرف أرقام مشروعك ومقالات التعلّم");
@@ -2383,14 +2744,15 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
                   <button type="button" onClick={()=>setMenu(true)} style={{marginTop:sp[3],minHeight:44,padding:"0 18px",borderRadius:99,border:"none",background:`${$.blue}1F`,color:$.blue,fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}><ChatAppsIcon size={18} color={$.blue}/>مميزات المستشار</button>
                 </div>
               )}
-              {messages.map((m,i)=>{
+              {visible.map((m,i)=>{
                 const adv = m.role==="advisor", time = chatTime(m);
-                const top = i>0 && messages[i-1].role!==m.role ? 10 : 0;
+                const top = i>0 && visible[i-1].role!==m.role ? 10 : 0;
                 return (
-                  <div key={m.id||i} ref={adv && i===messages.length-1 ? lastAdvRef : null} style={{display:"flex",justifyContent:adv?"flex-end":"flex-start",marginTop:top}}>
+                  <div key={m.id||i} ref={adv && i===visible.length-1 ? lastAdvRef : null} style={{display:"flex",justifyContent:adv?"flex-end":"flex-start",marginTop:top}}>
                     {adv
-                      ? <AdvisorReply chat time={time} text={m.content} result={result} question={i>0&&messages[i-1].role==="user"?messages[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===messages.length-1?send:undefined} onGoLearning={openArticle}/>
+                      ? <AdvisorReply chat time={time} text={m.content} result={result} question={i>0&&visible[i-1].role==="user"?visible[i-1].content:""} t={$} articles={ARTICLES} onAsk={i===visible.length-1?send:undefined} onGoLearning={openArticle} opsStates={opsStates} opsBusy={opsBusy} onOpsConfirm={confirmOps} onOpsCancel={cancelOps} onOpsUndo={undoOps}/>
                       : <div style={{maxWidth:"min(88%, 560px)",boxSizing:"border-box",padding:"10px 16px 8px",borderRadius:"20px 20px 4px 20px",background:$.blue,color:"#fff"}}>
+                          {m.thumb && <img src={m.thumb} alt="الصورة المرفقة" style={{display:"block",maxWidth:"100%",maxHeight:220,borderRadius:12,marginBottom:6,objectFit:"cover"}}/>}
                           <div style={{fontSize:CH_BODY,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{m.content}</div>
                           {time && <div style={{fontSize:12,color:"rgba(255,255,255,0.78)",textAlign:"left",marginTop:2}}>{time}</div>}
                         </div>}
@@ -2398,7 +2760,7 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
                 );
               })}
               {sending && (
-                <div style={{display:"flex",justifyContent:"flex-end",marginTop:messages.length&&messages[messages.length-1].role!=="advisor"?10:0}}>
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:visible.length&&visible[visible.length-1].role!=="advisor"?10:0}}>
                   <div style={{...advBubble,padding:"12px 16px 2px",display:"flex",alignItems:"center",gap:sp[2]}}>
                     <ThinkingWhale t={$} label=""/>
                     <div style={{fontSize:15,color:$.L2,marginInlineStart:-10,marginBottom:10}}>المستشار يفكّر…</div>
@@ -2439,6 +2801,21 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
         <div style={{flexShrink:0,background:$.surface,borderTop:`1px solid ${$.sepL}`,paddingBottom:"env(safe-area-inset-bottom)"}}>
           <div style={{maxWidth:CH_W,margin:"0 auto",boxSizing:"border-box",padding:`${sp[2]}px ${sp[3]}px ${sp[3]}px`}}>
             {err && <div style={{fontSize:13,color:$.orange,padding:`${sp[1]}px ${sp[2]}px ${sp[2]}px`}}>{err}</div>}
+            {showNudge && (
+              <div role="status" style={{display:"flex",alignItems:"center",gap:10,background:`${$.orange}18`,border:`1px solid ${$.orange}44`,borderRadius:16,padding:"6px 6px 6px 12px",marginBottom:sp[2]}}>
+                <Bell size={20} color={$.orange} style={{flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0,fontSize:15,lineHeight:1.6,color:$.L1}}>{gapDays===null ? "ما سجّلت أرقام مبيعاتك للحين" : `ما سجّلت أرقام من ${gapDays>10 ? gapDays+" يوماً" : gapDays+" أيام"}`}</div>
+                <button type="button" onClick={startNudge} style={{flexShrink:0,minHeight:40,padding:"0 14px",borderRadius:99,border:"none",background:$.blue,color:"#fff",fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer"}}>سجّلها لي</button>
+                <button type="button" aria-label="إخفاء التنبيه" onClick={dismissNudge} style={{flexShrink:0,width:40,height:40,borderRadius:"50%",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} color={$.L3}/></button>
+              </div>
+            )}
+            {img && (
+              <div style={{display:"flex",alignItems:"center",gap:10,background:$.F4,borderRadius:16,padding:6,marginBottom:sp[2]}}>
+                <img src={img.preview} alt="الصورة المرفقة" style={{width:56,height:56,borderRadius:12,objectFit:"cover",flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0,fontSize:15,lineHeight:1.6,color:$.L2}}>صورة مرفقة: اكتب ملاحظة إن بغيت، أو أرسلها وأقرأها لك وأسجّلها</div>
+                <button type="button" aria-label="إزالة الصورة" onClick={()=>setImg(null)} style={{flexShrink:0,width:40,height:40,borderRadius:"50%",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} color={$.L3}/></button>
+              </div>
+            )}
             {empty && (
               <div style={{display:"flex",gap:sp[2],overflowX:"auto",paddingBottom:sp[2],scrollbarWidth:"none"}}>
                 {starters.map(s=>(
@@ -2447,9 +2824,11 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
               </div>
             )}
             <div style={{display:"flex",gap:sp[2],alignItems:"center"}}>
-              <input aria-label="اكتب سؤالك" enterKeyHint="send" value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setMenu(false)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="اكتب سؤالك…" style={{flex:1,minWidth:0,height:52,boxSizing:"border-box",background:$.F4,border:"none",borderRadius:99,padding:`0 ${sp[5]}px`,color:$.L1,fontSize:17,fontFamily:"inherit",outline:"none"}}/>
-              <button type="button" aria-label="مميزات المستشار" title="المميزات" aria-haspopup="dialog" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} disabled={sending} style={{width:52,height:52,borderRadius:"50%",background:menu?$.blue:`${$.blue}1F`,border:"none",cursor:sending?"default":"pointer",opacity:sending?0.45:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{menu ? <X size={22} color="#fff"/> : <ChatAppsIcon size={24} color={$.blue}/>}</button>
-              <button type="button" aria-label="إرسال" onClick={()=>send()} disabled={!input.trim()||sending} style={{width:52,height:52,borderRadius:"50%",background:input.trim()?$.blue:$.F3,border:"none",cursor:input.trim()?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><ArrowRight size={22} color={input.trim()?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
+              <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{display:"none"}} aria-hidden="true" tabIndex={-1}/>
+              <input ref={inputRef} aria-label="اكتب سؤالك" enterKeyHint="send" value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setMenu(false)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={img?"ملاحظة (اختياري)…":"اكتب سؤالك…"} style={{flex:1,minWidth:0,height:52,boxSizing:"border-box",background:$.F4,border:"none",borderRadius:99,padding:`0 ${sp[4]}px`,color:$.L1,fontSize:17,fontFamily:"inherit",outline:"none"}}/>
+              <button type="button" aria-label="أرفق صورة فاتورة" title="صورة فاتورة" onClick={pickImage} disabled={sending} style={{width:48,height:48,borderRadius:"50%",background:img?$.blue:`${$.blue}1F`,border:"none",cursor:sending?"default":"pointer",opacity:sending?0.45:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><Camera size={22} color={img?"#fff":$.blue}/></button>
+              <button type="button" aria-label="مميزات المستشار" title="المميزات" aria-haspopup="dialog" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} disabled={sending} style={{width:48,height:48,borderRadius:"50%",background:menu?$.blue:`${$.blue}1F`,border:"none",cursor:sending?"default":"pointer",opacity:sending?0.45:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{menu ? <X size={22} color="#fff"/> : <ChatAppsIcon size={24} color={$.blue}/>}</button>
+              <button type="button" aria-label="إرسال" onClick={()=>send()} disabled={(!input.trim()&&!img)||sending} style={{width:52,height:52,borderRadius:"50%",background:(input.trim()||img)?$.blue:$.F3,border:"none",cursor:(input.trim()||img)?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><ArrowRight size={22} color={(input.trim()||img)?"#fff":$.L4} style={{transform:"rotate(180deg)"}}/></button>
             </div>
           </div>
         </div>
