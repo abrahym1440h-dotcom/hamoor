@@ -2746,9 +2746,8 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
             {onBack && (
               <button type="button" aria-label="رجوع" onClick={onBack} style={{flexShrink:0,minHeight:44,padding:"0 6px",border:"none",background:"transparent",color:$.blue,fontFamily:"inherit",fontSize:16,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><ArrowRight size={24}/><span>رجوع</span></button>
             )}
-            <button type="button" aria-label="غيّر صورة المستشار" title="غيّر صورة المستشار" onClick={()=>setPicker(true)} style={{position:"relative",flexShrink:0,width:48,height:48,padding:0,border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <button type="button" aria-label="غيّر صورة المستشار" onClick={()=>setPicker(true)} style={{position:"relative",flexShrink:0,width:48,height:48,padding:0,border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
               <AdvisorAvatar src={avatarSrc} size={44}/>
-              <span style={{position:"absolute",bottom:0,insetInlineEnd:0,width:20,height:20,borderRadius:"50%",background:$.blue,border:`2px solid ${$.surface}`,display:"flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"}}><Camera size={10} color="#fff"/></span>
             </button>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:17,fontWeight:700,color:$.L1}}>المستشار</div>
