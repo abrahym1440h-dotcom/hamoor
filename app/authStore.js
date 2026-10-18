@@ -433,3 +433,53 @@ export async function deleteTeamMember(memberId) {
   const { error } = await supabase.from("advisor_team").delete().eq("id", memberId);
   if (error) throw new Error("فشل حذف العضو");
 }
+
+// ═══════════════════════════════════════════════════
+// المفضلة — أفكار الاقتراحات اللي حفظها الشخص
+// (تحتاج جدول favorite_ideas في Supabase — كود إنشائه في ملف favorites.sql)
+// ═══════════════════════════════════════════════════
+
+// ترجع null لو الجدول غير موجود أو صار خطأ (عشان التطبيق يكمل على نسخة الجهاز)
+export async function getFavoritesCloud(userId) {
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("favorite_ideas")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) return null;
+  return (data || []).map(row => ({
+    ...(row.data || {}),
+    id: row.id,
+    name: row.name,
+    favSavedAt: row.created_at
+  }));
+}
+
+export async function addFavoriteCloud(userId, item) {
+  const { id, ...rest } = item || {};
+  const { data, error } = await supabase
+    .from("favorite_ideas")
+    .insert({ user_id: userId, name: item.name, data: rest })
+    .select()
+    .single();
+  if (error) {
+    // الفكرة محفوظة من قبل — نرجّع السطر الموجود
+    if (error.code === "23505") {
+      const { data: existing } = await supabase
+        .from("favorite_ideas")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("name", item.name)
+        .single();
+      if (existing) return existing;
+    }
+    throw new Error("فشل حفظ الفكرة في المفضلة");
+  }
+  return data;
+}
+
+export async function removeFavoriteCloud(id) {
+  const { error } = await supabase.from("favorite_ideas").delete().eq("id", id);
+  if (error) throw new Error("فشل حذف الفكرة من المفضلة");
+}
