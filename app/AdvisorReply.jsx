@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
-import { AlertTriangle, BookOpen, ChevronLeft } from "lucide-react";
+import { AlertTriangle, BookOpen, ChevronLeft, Plus, Pencil, Trash2, Check, RotateCcw } from "lucide-react";
 
 /* ══════════════════════════════════════════════════════════════
    رد المستشار بخمسة تصاميم: ١ ملخّص · ٥ محادثة · ٨ سيولة · ٩ تبويبات · ١٠ تقرير
@@ -1134,12 +1134,95 @@ function ChatPlain({ text, t, time }) {
   );
 }
 
+
+/* ═══ بطاقة العمليات (§OPS§): المستشار يقترح والعميل يؤكد بالزر، وبعدها يقدر يتراجع ═══ */
+const OPS_MARK = "§OPS§";
+export function parseOps(text) {
+  const raw = String(text || "");
+  if (!raw.startsWith(OPS_MARK)) return null;
+  try {
+    const o = JSON.parse(raw.slice(OPS_MARK.length));
+    const ops = (Array.isArray(o.ops) ? o.ops : []).filter((x) => x && typeof x === "object" && typeof x.op === "string" && typeof x.label === "string");
+    if (!ops.length || !o.bid) return null;
+    return { bid: String(o.bid), text: cleanStr(o.text), ops, skipped: Number(o.skipped) || 0 };
+  } catch (e) { return null; }
+}
+function opKind(o) {
+  if (/_delete$/.test(o.op)) return "delete";
+  if (/_add$/.test(o.op) || o.op === "metric_value") return "add";
+  if ((o.op === "task_done" || o.op === "item_done") && o.done !== false) return "done";
+  return "edit";
+}
+function ChatOps({ O, t, time, info, busy, onConfirm, onCancel, onUndo }) {
+  const status = (info && info.status) || "pending";
+  const failed = (info && info.failed) || 0;
+  const pending = status === "pending";
+  // زر التراجع يظهر مكان زر التأكيد؛ نعطّله لحظة بعد التنفيذ حتى ما تصيبه ضغطة التأكيد المزدوجة بالغلط
+  const prevStatus = useRef(status);
+  const [armed, setArmed] = useState(status !== "pending");
+  useEffect(() => {
+    if (prevStatus.current === "pending" && status === "done") {
+      prevStatus.current = status;
+      setArmed(false);
+      const id = setTimeout(() => setArmed(true), 1200);
+      return () => clearTimeout(id);
+    }
+    prevStatus.current = status;
+    return undefined;
+  }, [status]);
+  const allDelete = O.ops.every((o) => opKind(o) === "delete");
+  const head = {
+    pending: ["بانتظار تأكيدك", t.blue],
+    done: [failed ? "نُفّذ جزء منها" : "تم التنفيذ", failed ? t.orange : t.green],
+    cancelled: ["أُلغيت ولم يُنفَّذ شي", t.L3],
+    undone: ["تم التراجع عنها", t.orange],
+  }[status] || ["", t.L3];
+  const kindStyle = { add: [t.green, Plus], edit: [t.blue, Pencil], delete: [t.red, Trash2], done: [t.green, Check] };
+  const btn = { minHeight: 52, borderRadius: 14, border: "none", fontFamily: "inherit", fontSize: F_BODY, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? 0.65 : 1 };
+  const faded = status === "cancelled" || status === "undone";
+  return (
+    <div style={chatStack({ width: "min(94%, 640px)" })} role="group" aria-label="عمليات مقترحة من المستشار">
+      {O.text && <ChatBubble t={t}><div style={{ fontSize: F_BODY, lineHeight: 1.9, color: t.L1, whiteSpace: "pre-wrap" }}>{O.text}</div></ChatBubble>}
+      <ChatBubble t={t} gap={14}>
+        <ChatLabel color={head[1]}>{head[0]}</ChatLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, opacity: faded ? 0.55 : 1 }}>
+          {O.ops.map((o, i) => {
+            const [c, Ic] = kindStyle[opKind(o)];
+            return (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: tint(c, "22"), display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}><Ic size={16} color={c} /></span>
+                <div style={{ minWidth: 0, flex: 1, fontSize: F_BODY, lineHeight: 1.8, color: t.L1, textDecoration: status === "undone" ? "line-through" : "none" }}>{o.label}</div>
+              </div>
+            );
+          })}
+        </div>
+        {O.skipped > 0 && <div style={{ fontSize: F_SMALL, color: t.orange, lineHeight: 1.7 }}>تجاهلت {O.skipped} {O.skipped === 1 ? "عملية" : "عمليات"} ما قدرت أتحقق منها.</div>}
+        {failed > 0 && <div style={{ fontSize: F_SMALL, color: t.orange, lineHeight: 1.7 }}>{status === "undone" ? `تعذّر التراجع عن ${failed} ${failed === 1 ? "عملية" : "عمليات"}، راجعها من الأقسام.` : `تعذّر تنفيذ ${failed} ${failed === 1 ? "عملية" : "عمليات"}، تقدر تكتبها لي من جديد.`}</div>}
+        {pending && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" disabled={!!busy} onClick={onConfirm} style={{ ...btn, flex: 1, background: allDelete ? t.red : t.blue, color: "#fff" }}>{busy ? "جاري التنفيذ…" : allDelete ? "تأكيد الحذف" : "تأكيد وتنفيذ"}</button>
+            <button type="button" disabled={!!busy} onClick={onCancel} style={{ ...btn, padding: "0 20px", background: t.F4, color: t.L2 }}>إلغاء</button>
+          </div>
+        )}
+        {status === "done" && info && info.undoable && (
+          <button type="button" disabled={!!busy || !armed} onClick={onUndo} style={{ ...btn, opacity: busy || !armed ? 0.5 : 1, background: "transparent", border: `1.5px solid ${tint(t.blue, "88")}`, color: t.blue, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <RotateCcw size={18} color={t.blue} />{busy ? "جاري التراجع…" : "تراجع عن التنفيذ"}
+          </button>
+        )}
+      </ChatBubble>
+      <ChatTime t={t} time={time} />
+    </div>
+  );
+}
+
 /* ═══ المدخل ═══ */
-export default function AdvisorReply({ text, result, question, layout, t, articles, onAsk, onGoLearning, chat, time }) {
-  const C = useMemo(() => parseCard(text), [text]);
-  const P0 = useMemo(() => (C ? null : parseReply(text)), [text, C]);
+export default function AdvisorReply({ text, result, question, layout, t, articles, onAsk, onGoLearning, chat, time, opsStates, opsBusy, onOpsConfirm, onOpsCancel, onOpsUndo }) {
+  const O = useMemo(() => parseOps(text), [text]);
+  const isOps = String(text || "").startsWith(OPS_MARK);
+  const C = useMemo(() => (isOps ? null : parseCard(text)), [text, isOps]);
+  const P0 = useMemo(() => (C || isOps ? null : parseReply(text)), [text, C, isOps]);
   const N = useMemo(() => numbersFrom(result), [result]);
-  const art = useMemo(() => (C ? articleFor(C, articles) : findArticle(text, articles)), [text, articles, C]);
+  const art = useMemo(() => (isOps ? null : C ? articleFor(C, articles) : findArticle(text, articles)), [text, articles, C, isOps]);
   const P = useMemo(() => {
     if (!P0 || !art) return P0;
     const fix = (x) => ({ ...x, body: dropMention(x.body, art.title) });
@@ -1148,6 +1231,11 @@ export default function AdvisorReply({ text, result, question, layout, t, articl
   const go = onGoLearning ? () => onGoLearning(art || null) : undefined;
   const canRunway = !!(N.budget && N.monthly);
   const box = { width: "100%", maxWidth: 680, minWidth: 0 };
+
+  if (isOps) {
+    if (!O) return <ChatPlain text="تعذّر عرض هذا الاقتراح، اطلبه من المستشار من جديد." t={t} time={time} />;
+    return <ChatOps O={O} t={t} time={time} info={opsStates ? opsStates[O.bid] : undefined} busy={opsBusy === O.bid} onConfirm={onOpsConfirm ? () => onOpsConfirm(O) : undefined} onCancel={onOpsCancel ? () => onOpsCancel(O) : undefined} onUndo={onOpsUndo ? () => onOpsUndo(O) : undefined} />;
+  }
 
   if (chat) {
     const CC = C || (P0 && P0.ok ? cardFromParsed(P) : null);
