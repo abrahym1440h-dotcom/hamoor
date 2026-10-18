@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { ARTICLES, ARTICLE_CATEGORIES } from "./articles";
 import ThinkingWhale from "./ThinkingWhale";
 import AdvisorReply from "./AdvisorReply";
+import { ADVISOR_AVATARS } from "./advisorAvatars";
 import { signUp, signIn, signOut, getCurrentUser, onAuthChange, saveAnalysisCloud, updateAnalysisCloud, getAnalysesCloud, deleteAnalysisCloud, getProfile, updateName, activateWithCode, cancelSubscription, getUsage, incrementUsage, getPremiumUsage, incrementPremiumUsage, addFinanceEntry, getFinanceEntries, getAdvisorMessages, saveAdvisorMessage, getDoneTasks, toggleTask, getMetrics, addMetric, addMetricEntry, deleteMetric, getDocuments, addDocument, updateDocumentStatus, deleteDocument, updateFinanceEntry, deleteFinanceEntry, deleteMetricEntry, getPlanItems, addPlanItem, togglePlanItem, deletePlanItem, deletePlan, updateMetricChart, getTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from "./authStore";
 import {
   Home, BarChart2, Grid, BookOpen, ChevronDown, TrendingUp, Users, DollarSign,
@@ -2504,6 +2505,21 @@ function readImageForAdvisor(file) {
   });
 }
 
+// ───── صورة بروفايل المستشار (فوق في المحادثة): يختارها العميل من الصور الجاهزة وتنحفظ على هذا الجهاز ─────
+const AVATAR_KEY = "hm-advisor-avatar";
+function avatarSrcOf(v) {
+  const s = String(v || "");
+  const p = ADVISOR_AVATARS.find(a => "p:" + a.id === s);
+  return p ? p.src : null;
+}
+function loadAvatarChoice() { try { return localStorage.getItem(AVATAR_KEY) || ""; } catch(e) { return ""; } }
+function saveAvatarChoice(v) { try { if (v) localStorage.setItem(AVATAR_KEY, v); else localStorage.removeItem(AVATAR_KEY); } catch(e) { /* التخزين غير متاح */ } }
+function AdvisorAvatar({src, size}) {
+  const base = {width:size,height:size,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"};
+  if (src) return <img src={src} alt="" draggable={false} style={{...base,objectFit:"cover",background:$.F4,border:`1px solid ${$.sepL}`}}/>;
+  return <div style={{...base,background:"linear-gradient(135deg,#3B6FD4,#32A67A)"}}><Sparkles size={Math.round(size*0.5)} color="#fff"/></div>;
+}
+
 // كم يوم مضى على آخر إدخال مالي (بتوقيت الرياض)؟ null = ما فيه إدخالات أصلاً
 function daysSinceLastEntry(entries) {
   const ds = (entries || []).map(e => e && e.entry_date).filter(Boolean).sort();
@@ -2584,6 +2600,9 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
   const [input, setInput] = useState(""); const [sending, setSending] = useState(false);
   const [opsBusy, setOpsBusy] = useState(null);
   const [img, setImg] = useState(null);
+  const [avatarChoice, setAvatarChoice] = useState(() => loadAvatarChoice());
+  const [picker, setPicker] = useState(false);
+  const avatarSrc = avatarSrcOf(avatarChoice);
   const fileRef = useRef(null);
   const inputRef = useRef(null);
   const nudgeKey = `hm-nudge-${analysisId}-${new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"})}`;
@@ -2710,6 +2729,8 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
     } else if (onGoLearning) onGoLearning();
   }
 
+  function chooseAvatar(v) { setAvatarChoice(v); saveAvatarChoice(v); setPicker(false); }
+
   const empty = visible.length === 0 && !sending;
   const starters = [nextTask ? { label:`ناقش معي: ${nextTask.text}`, q:`أبي أناقش الخطوة الجاية: ${nextTask.text}` } : null, ...CHAT_STARTERS.map(q => ({ label:q, q }))].filter(Boolean);
   const advBubble = { background:$.surface, border:`1px solid ${$.sepL}`, borderRadius:"20px 20px 20px 4px" };
@@ -2725,7 +2746,10 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
             {onBack && (
               <button type="button" aria-label="رجوع" onClick={onBack} style={{flexShrink:0,minHeight:44,padding:"0 6px",border:"none",background:"transparent",color:$.blue,fontFamily:"inherit",fontSize:16,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><ArrowRight size={24}/><span>رجوع</span></button>
             )}
-            <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#3B6FD4,#32A67A)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Sparkles size={22} color="#fff"/></div>
+            <button type="button" aria-label="غيّر صورة المستشار" title="غيّر صورة المستشار" onClick={()=>setPicker(true)} style={{position:"relative",flexShrink:0,width:48,height:48,padding:0,border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <AdvisorAvatar src={avatarSrc} size={44}/>
+              <span style={{position:"absolute",bottom:0,insetInlineEnd:0,width:20,height:20,borderRadius:"50%",background:$.blue,border:`2px solid ${$.surface}`,display:"flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"}}><Camera size={10} color="#fff"/></span>
+            </button>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:17,fontWeight:700,color:$.L1}}>المستشار</div>
               <div style={{fontSize:13,color:sending?$.green:$.L3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sub}</div>
@@ -2833,6 +2857,24 @@ function ChatSection({result, entries, messages, setMessages, user, analysisId, 
           </div>
         </div>
       </div>
+
+      <Sheet open={picker} onClose={()=>setPicker(false)}>
+        <div role="dialog" aria-label="صورة المستشار" style={{padding:`${sp[2]}px ${sp[4]}px ${sp[5]}px`}}>
+          <div style={{fontSize:18,fontWeight:700,color:$.L1,textAlign:"center"}}>اختر صورة المستشار</div>
+          <div style={{fontSize:13.5,color:$.L3,textAlign:"center",marginTop:2,marginBottom:sp[4],lineHeight:1.6}}>تظهر فوق في المحادثة</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:14,justifyItems:"center"}}>
+            {[{id:"",label:"الافتراضية",src:null}, ...ADVISOR_AVATARS.map(a=>({id:"p:"+a.id,label:a.label,src:a.src}))].map(a=>{
+              const on = avatarChoice === a.id || (!avatarSrc && a.id === "");
+              return (
+                <button key={a.id||"def"} type="button" aria-label={a.label} aria-pressed={on} onClick={()=>chooseAvatar(a.id)} style={{width:"100%",maxWidth:112,minHeight:44,padding:6,border:"none",background:"transparent",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                  <span style={{display:"flex",padding:3,borderRadius:"50%",border:`3px solid ${on?$.blue:"transparent"}`}}><AdvisorAvatar src={a.src} size={72}/></span>
+                  <span style={{fontSize:13,color:on?$.blue:$.L2,fontWeight:on?700:500,lineHeight:1.4}}>{a.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Sheet>
 
       <Sheet open={!!artOpen} onClose={()=>setArtOpen(null)}>
         {artOpen && <ChatArticleView article={artOpen} onClose={()=>setArtOpen(null)}/>}
