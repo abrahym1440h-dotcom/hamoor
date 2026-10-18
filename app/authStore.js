@@ -303,8 +303,11 @@ export async function updateMetricChart(metricId, showChart) {
   if (error) throw new Error("فشل تحديث إعداد الرسم البياني");
 }
 
-export async function addMetricEntry(metricId, userId, value) {
-  const { data, error } = await supabase.from("advisor_metric_entries").insert({ metric_id: metricId, user_id: userId, value }).select().single();
+export async function addMetricEntry(metricId, userId, value, date) {
+  // date اختياري (YYYY-MM-DD): يسمح للمستشار بتسجيل قراءة بتاريخ سابق مثل «أمس»
+  const row = { metric_id: metricId, user_id: userId, value };
+  if (date) row.entry_date = date;
+  const { data, error } = await supabase.from("advisor_metric_entries").insert(row).select().single();
   if (error) throw new Error("فشل حفظ القيمة");
   return data;
 }
