@@ -561,6 +561,7 @@ function UpgradeSheet({open, onClose, user, onActivated}) {
   );
 }
 
+const SUG_SECTOR_EXTRA = ["آلات بيع"];
 const SECTOR_OPTIONS = [
   "مقاهي","مطاعم","وجبات سريعة","حلويات",
   "تجزئة","أزياء","إلكترونيات","صالونات",
@@ -4214,7 +4215,7 @@ let _sugOpenView = null;
 function sugTypeColor(t) {
   if (t==="آمن") return $.green;
   if (t==="نمو") return $.blue;
-  if (t==="مبتكر") return $.purple;
+  if (t==="مبتكر" || t==="ابتكار عالمي") return $.purple;
   return $.L3;
 }
 function sugRiskColor(r) {
@@ -4234,6 +4235,8 @@ function SuggestionCard({s, isFav, onToggleFav, an}) {
             {s.sector && <Chip text={s.sector} color={$.L3} bg={$.F4}/>}
             {s.type && <Chip text={s.type} color={sugTypeColor(s.type)} bg={`${sugTypeColor(s.type)}15`}/>}
             {s.risk_level && <Chip text={`مخاطرة ${s.risk_level}`} color={sugRiskColor(s.risk_level)} bg={`${sugRiskColor(s.risk_level)}15`}/>}
+            {s.is_global && s.origin_country && <Chip text={`🌍 من ${s.origin_country}`} color={$.purple} bg={`${$.purple}15`}/>}
+            {s.scale_label && s.scale !== "micro" && <Chip text={s.scale_label} color={$.L3} bg={$.F4}/>}
           </div>
         </div>
         <button
@@ -4258,6 +4261,34 @@ function SuggestionCard({s, isFav, onToggleFav, an}) {
           <div style={{fontSize:12,fontWeight:700,color:$.L1}}>{s.break_even}</div>
         </div>
       </div>
+      {s.is_global && (s.origin_note || s.why_new_in_saudi || s.saudi_adaptation) && (
+        <div style={{background:`${$.purple}0A`,border:`1px solid ${$.purple}22`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3]}}>
+          <div style={{fontSize:12,fontWeight:800,color:$.purple,marginBottom:6}}>🌍 فكرة عالمية{s.origin_country ? ` من ${s.origin_country}` : ""}</div>
+          {s.origin_note && <div style={{fontSize:12.5,color:$.L2,lineHeight:1.7,marginBottom:4}}><b>كيف تعمل هناك: </b>{s.origin_note}</div>}
+          {s.why_new_in_saudi && <div style={{fontSize:12.5,color:$.L2,lineHeight:1.7,marginBottom:4}}><b>لماذا هي جديدة عندنا: </b>{s.why_new_in_saudi}</div>}
+          {s.saudi_adaptation && <div style={{fontSize:12.5,color:$.L2,lineHeight:1.7}}><b>كيف تُكيَّف للسعودية: </b>{s.saudi_adaptation}</div>}
+        </div>
+      )}
+      {s.reality_check && (
+        <div style={{background:s.reality_check.fit==="tight"||s.reality_check.fit==="estimate"?`${$.orange}0E`:`${$.green}0C`,border:`1px solid ${s.reality_check.fit==="tight"||s.reality_check.fit==="estimate"?$.orange:$.green}28`,borderRadius:12,padding:`${sp[3]}px ${sp[4]}px`,marginBottom:sp[3]}}>
+          <div style={{fontSize:12,fontWeight:800,color:$.L1,marginBottom:6}}>فحص سريع للميزانية (مجاني)</div>
+          <div style={{fontSize:12.5,color:$.L2,lineHeight:1.8}}>
+            التأسيس {s.reality_check.setup} ريال + رأس مال تشغيلي نحو {s.reality_check.working_capital} ريال
+            {" "}= نحو <b>{s.reality_check.total_needed}</b> ريال من ميزانيتك ({s.reality_check.budget}).
+            {s.reality_check.fit==="comfortable" && <span style={{color:$.green,fontWeight:700}}> ✓ تكفي بهامش أمان.</span>}
+            {s.reality_check.fit==="tight" && <span style={{color:$.orange,fontWeight:700}}> ⚠ ضيّقة: تستهلك أغلب ميزانيتك، وابدأ بالحد الأدنى.</span>}
+            {s.reality_check.fit==="estimate" && <span style={{color:$.orange,fontWeight:700}}> ⚠ تقدير عام لميزانية صغيرة.</span>}
+          </div>
+          {s.target_fit && (
+            <div style={{fontSize:12.5,marginTop:4,fontWeight:700,color:s.target_fit==="meets"?$.green:s.target_fit==="possible"?$.orange:$.L3}}>
+              {s.target_fit==="meets" && "يحقق هدفك الشهري في الحالة المتوقعة"}
+              {s.target_fit==="possible" && "قد يحقق هدفك الشهري في الحالة الجيدة فقط"}
+              {s.target_fit==="below" && "أقل من هدفك الشهري"}
+            </div>
+          )}
+          {s.basis_label && <div style={{fontSize:11,color:$.L4,marginTop:4}}>الموثوقية: {s.basis_label}</div>}
+        </div>
+      )}
       {s.why_fits && (
         <div style={{marginBottom:sp[2],display:"flex",gap:6}}>
           <CheckCircle size={14} color={$.green} style={{flexShrink:0,marginTop:2}}/>
@@ -4283,6 +4314,14 @@ function SuggestionCard({s, isFav, onToggleFav, an}) {
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:sp[2],padding:`${sp[3]}px`,background:`${$.blue}10`,borderRadius:12,color:$.blue,fontSize:13,fontWeight:700}}>
             <Spinner sz={16} clr={$.blue}/>
             <span>جاري التحليل… قد يأخذ نصف دقيقة</span>
+          </div>
+        ) : an.analyzed ? (
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:sp[3],padding:`${sp[3]}px ${sp[4]}px`,background:`${$.green}10`,borderRadius:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,color:$.green,fontSize:13,fontWeight:700}}>
+              <CheckCircle size={16} color={$.green}/>
+              <span>تم تحليل هذه الفكرة</span>
+            </div>
+            <button onClick={an.onView} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:$.blue,fontFamily:"inherit",padding:0}}>عرض التحليل</button>
           </div>
         ) : an.confirming ? (
           <div style={{background:$.F5,borderRadius:14,padding:sp[4]}}>
@@ -4334,12 +4373,17 @@ function SuggestionCard({s, isFav, onToggleFav, an}) {
   );
 }
 
-function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleFavorite, onAnalyze, analysesCount}) {
+const SUG_SECTOR_OPTIONS = [...SECTOR_OPTIONS, ...SUG_SECTOR_EXTRA];
+
+function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleFavorite, onAnalyze, analysesCount, analyses, onViewAnalysis}) {
   const screen = useScreenSize();
   const favs = Array.isArray(favorites) ? favorites : [];
   const [budget,setBudget]=useState(_sugCache ? _sugCache.budget : "");
   const [city,setCity]=useState(_sugCache ? _sugCache.city : "");
   const [sector,setSector]=useState(_sugCache ? _sugCache.sector : "");
+  const [targetProfit,setTargetProfit]=useState(_sugCache ? (_sugCache.targetProfit || "") : "");
+  const [operator,setOperator]=useState(_sugCache ? (_sugCache.operator || "") : "");
+  const [premises,setPremises]=useState(_sugCache ? (_sugCache.premises || "") : "");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(null);
   const [result,setResult]=useState(_sugCache ? _sugCache.result : null);
@@ -4349,7 +4393,7 @@ function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleF
   const [anCity,setAnCity]=useState("");
   const [anErr,setAnErr]=useState(null);
 
-  useEffect(()=>{ _sugCache = { budget, city, sector, result }; }, [budget, city, sector, result]);
+  useEffect(()=>{ _sugCache = { budget, city, sector, targetProfit, operator, premises, result }; }, [budget, city, sector, targetProfit, operator, premises, result]);
   useEffect(()=>{ _sugOpenView = null; }, []);
 
   function handleBudgetChange(e) {
@@ -4364,7 +4408,7 @@ function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleF
     setBusy(true); setErr(null); setResult(null); setConfirmKey(null);
     try {
       const cleanBudget = budget.replace(/,/g, "");
-      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null });
+      const r = await apiCall("suggest", { budget:cleanBudget, city:city||null, sector:sector||null, target_profit:targetProfit?targetProfit.replace(/,/g,""):null, operator:operator||null, premises:premises||null });
       setResult({ ...r, _meta: { budget: cleanBudget, city: city || "", sector: sector || "" } });
     } catch(e) { setErr(e.message); }
     finally { setBusy(false); }
@@ -4380,7 +4424,8 @@ function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleF
     setAnalyzingKey(key); setAnErr(null); setConfirmKey(null);
     try {
       const cityName = anCity || (meta && meta.city) || "الرياض";
-      const chosenSector = (meta && meta.sector) || null; // لو ما اختار قطاع، هامور يحدده من اسم الفكرة
+      // القطاع: اللي اختاره الشخص، وإلا القطاع المرتبط بالفكرة (لو معروف)، وإلا هامور يحدده من اسم الفكرة
+      const chosenSector = (meta && meta.sector) || (s.sector && SUG_SECTOR_OPTIONS.includes(s.sector) ? s.sector : null);
       const r = await apiCall("analyze", { idea:s.name, sector:chosenSector, city:cityName, budget:cleanBudget, extras:null });
       const analysis = { ...r, idea:s.name, sector:chosenSector || r._sector || "", city:cityName, budget:cleanBudget };
       let saved = analysis;
@@ -4392,10 +4437,20 @@ function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleF
     finally { setAnalyzingKey(null); }
   }
 
+  // الأفكار اللي سبق تحليلها (نطابق اسم الفكرة مع فكرة التحليل المحفوظ)
+  const analyzedByKey = {};
+  (Array.isArray(analyses) ? analyses : []).forEach(a => {
+    const k = favKey(a && a.idea);
+    if (k && !analyzedByKey[k]) analyzedByKey[k] = a;
+  });
+
   function anFor(s, meta) {
     const key = favKey(s.name);
     const limit = isPremium ? PREMIUM_ANALYSES : FREE_ANALYSES;
+    const doneAnalysis = analyzedByKey[key] || null;
     return {
+      analyzed: !!doneAnalysis,
+      onView: () => { if (doneAnalysis && onViewAnalysis) onViewAnalysis(doneAnalysis); },
       limit,
       remaining: Math.max(0, limit - analysesCount),
       reached: analysesCount >= limit,
@@ -4476,7 +4531,36 @@ function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleF
                   <div style={{position:"relative"}}>
                     <select value={sector} onChange={e=>setSector(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:sector?$.L1:$.L4}}>
                       <option value="">كل القطاعات</option>
-                      {SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                      {SUG_SECTOR_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+                  </div>
+                </FormField>
+              </div>
+              <FormField label="الربح الشهري الذي تطمح له (اختياري)" icon={<Target size={14} color={$.L4}/>}>
+                <div style={{position:"relative"}}>
+                  <input value={targetProfit} onChange={e=>{ const raw=e.target.value.replace(/\D/g,""); setTargetProfit(raw===""?"":numWithCommas(parseInt(raw))); }} placeholder="مثال: 15,000" inputMode="numeric" style={{...iStyle(),paddingLeft:sp[10],direction:"ltr",textAlign:"right"}}/>
+                  <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:18,fontWeight:700,color:$.L3}}>﷼</div>
+                </div>
+              </FormField>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:sp[3]}}>
+                <FormField label="من يدير المشروع؟ (اختياري)" icon={<Briefcase size={14} color={$.L4}/>}>
+                  <div style={{position:"relative"}}>
+                    <select value={operator} onChange={e=>setOperator(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:operator?$.L1:$.L4}}>
+                      <option value="">غير محدد</option>
+                      <option value="self">أديره بنفسي</option>
+                      <option value="staff">بموظفين / مدير</option>
+                    </select>
+                    <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
+                  </div>
+                </FormField>
+                <FormField label="الموقع (اختياري)" icon={<MapPin size={14} color={$.L4}/>}>
+                  <div style={{position:"relative"}}>
+                    <select value={premises} onChange={e=>setPremises(e.target.value)} style={{...iStyle(),paddingLeft:sp[8],cursor:"pointer",color:premises?$.L1:$.L4}}>
+                      <option value="">غير محدد</option>
+                      <option value="own">عندي موقع جاهز</option>
+                      <option value="rent">سأستأجر</option>
+                      <option value="online">بدون موقع (أونلاين/متنقل)</option>
                     </select>
                     <ChevronDown size={13} color={$.L4} style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}/>
                   </div>
@@ -4510,6 +4594,11 @@ function SuggestionsScreen({isPremium, onNeedUpgrade, user, favorites, onToggleF
                     />
                   ))}
                 </div>
+                {Array.isArray(result.notes) && result.notes.length > 0 && (
+                  <Card style={{padding:sp[4],marginTop:sp[4],background:$.F5}}>
+                    {result.notes.map((n,i)=><div key={i} style={{fontSize:12.5,color:$.L2,lineHeight:1.8,marginBottom:i<result.notes.length-1?6:0}}>• {n}</div>)}
+                  </Card>
+                )}
                 <p style={{fontSize:11,color:$.L4,textAlign:"center",marginTop:sp[5],lineHeight:1.7}}>الأرقام تقديرية مبنية على متوسطات السوق. ننصح بدراسة جدوى تفصيلية قبل أي قرار استثماري.</p>
               </>
             )}
@@ -5227,7 +5316,7 @@ function HamourApp({ onReady }) {
       <div style={{position:"relative",zIndex:1,paddingRight:screen.isDesktop?260:0, paddingTop:screen.isDesktop?0:`calc(52px + env(safe-area-inset-top))`}}>
         {tab==="home" && <HomeScreen onAnalyze={handleAnalyze} onViewLast={handleViewAnalysis} onViewSaved={()=>setTab("saved")} onGoSectors={()=>setTab("sectors")} onGoLearning={()=>setTab("learning")} onGoSuggestions={()=>setTab("suggestions")} onGoFavorites={()=>{ _sugOpenView = "fav"; setTab("suggestions"); }} favorites={favorites} user={user} analyses={analyses} usageCount={usageCount} premiumUsageCount={premiumUsageCount} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
         {tab==="analysis" && <AnalysisScreen result={result} onUpdate={handleUpdateResult} user={user} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)}/>}
-        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} user={user} favorites={favorites} onToggleFavorite={handleToggleFavorite} onAnalyze={handleAnalyze} analysesCount={isPremium?premiumUsageCount:usageCount}/>}
+        {tab==="suggestions" && <SuggestionsScreen isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} user={user} favorites={favorites} onToggleFavorite={handleToggleFavorite} onAnalyze={handleAnalyze} analysesCount={isPremium?premiumUsageCount:usageCount} analyses={analyses} onViewAnalysis={handleViewAnalysis}/>}
         {tab==="advisor" && <AdvisorHubScreen analyses={analyses} user={user} selectedId={advisorSelectedId} onSelect={setAdvisorSelectedId} onBack={()=>setAdvisorSelectedId(null)} isPremium={isPremium} onNeedUpgrade={()=>setShowUpgrade(true)} onGoLearning={()=>setTab("learning")}/>}
         {tab==="saved" && <SavedAnalysesScreen onViewAnalysis={handleViewAnalysis} analyses={analyses} onRefresh={refreshAnalyses}/>}
         {tab==="sectors" && <SectorsScreen/>}
