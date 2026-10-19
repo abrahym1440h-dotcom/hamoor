@@ -21,7 +21,9 @@ export async function POST(req) {
 
 async function handleAnalyze(req) {
   try {
-    console.log("═══ ROUTE VERSION MARKER: HAMOOR-FIX-2026-09-29-V6 (parallel-providers+no-audit) ═══");
+    console.log("═══ ROUTE VERSION MARKER: HAMOOR-FIX-2026-10-19-V7 (parallel-providers+gemini-fallback+zai-nothink+openrouter) ═══");
+    const _startedAt = Date.now();
+    const timeLeft = () => 52000 - (Date.now() - _startedAt); // أقل من شبكة الأمان (55 ثانية)
     const { idea, sector: userSector, city, budget, extras } = await req.json();
     console.log("Request:", { idea, userSector, city, budget, extras });
 
@@ -30,7 +32,7 @@ async function handleAnalyze(req) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    if (!apiKey && !process.env.CEREBRAS_API_KEY && !process.env.GROQ_API_KEY && !process.env.ZAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
       return Response.json({ error: "مفتاح API غير موجود" }, { status: 500 });
     }
 
@@ -263,6 +265,8 @@ ${adaptEngine}
 
     // ═══ مهلة كل مزوّد ذكاء اصطناعي (ثواني × 1000) ═══
     const AI_TIMEOUT_MS = 38000;
+    // مهلة الطلب الحالي: لا تتجاوز مهلة المزوّد ولا الوقت المتبقي من ميزانية الدالة كلها
+    const aiMs = () => Math.max(1500, Math.min(AI_TIMEOUT_MS, timeLeft() - 1500));
 
     // ═══ دالة مساعدة: إرسال طلب JSON مع مهلة وإمكانية الإلغاء ═══
     async function postJSON(name, url, headers, body, ms, outerSignal) {
@@ -293,13 +297,12 @@ ${adaptEngine}
     }
 
     // ═══ Gemini ═══
-    async function callGemini(userPrompt, signal) {
-      const model = "gemini-flash-latest";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const data = await postJSON("GEMINI", url, {}, {
+    async function callGeminiModel(model, userPrompt, signal) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const data = await postJSON("GEMINI", url, { "x-goog-api-key": apiKey }, {
         contents: [{ role: "user", parts: [{ text: userPrompt }] }],
         generationConfig: { temperature: 0.4, maxOutputTokens: 8000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } }
-      }, AI_TIMEOUT_MS, signal);
+      }, aiMs(), signal);
       const cand = data.candidates?.[0];
       const text = cand?.content?.parts?.map(p => p.text || "").join("") || "";
       if (!text) throw new Error("GEMINI_FAIL_EMPTY");
@@ -311,16 +314,38 @@ ${adaptEngine}
       return parsed;
     }
 
+    // Gemini: لو الموديل مزدحم (503/429...) نجرّب الموديل الأخف مباشرة بدل ما نفشل
+    async function callGemini(userPrompt, signal) {
+      if (!apiKey) throw new Error("GEMINI_NO_KEY");
+      const models = ["gemini-flash-latest", "gemini-2.5-flash-lite"];
+      let lastErr;
+      for (let i = 0; i < models.length; i++) {
+        if (signal && signal.aborted) break;
+        if (i > 0 && timeLeft() < 12000) break; // ما بقي وقت كافي لمحاولة ثانية
+        try {
+          return await callGeminiModel(models[i], userPrompt, signal);
+        } catch (e) {
+          lastErr = e;
+          const m = e.message || "";
+          if (!/_FAIL_(429|500|502|503|504|PARSE|EMPTY)$/.test(m)) break; // خطأ ما تفيد معه إعادة المحاولة
+          console.log("Gemini " + models[i] + " failed (" + m + ") — trying next model");
+          await new Promise(r => setTimeout(r, 600));
+        }
+      }
+      throw lastErr || new Error("GEMINI_FAIL_NO_TIME");
+    }
+
     // ═══ أي مزوّد بصيغة OpenAI (Cerebras / Groq / Z.ai) ═══
-    async function callChat(name, url, key, model, userPrompt, signal) {
+    async function callChat(name, url, key, model, userPrompt, signal, extraBody = {}) {
       if (!key) throw new Error(name + "_NO_KEY");
       const data = await postJSON(name, url, { "Authorization": `Bearer ${key}` }, {
         model,
         messages: [{ role: "user", content: userPrompt }],
         temperature: 0.35,
         max_tokens: 8000,
-        response_format: { type: "json_object" }
-      }, AI_TIMEOUT_MS, signal);
+        response_format: { type: "json_object" },
+        ...extraBody
+      }, aiMs(), signal);
       const text = data.choices?.[0]?.message?.content;
       if (!text) throw new Error(name + "_FAIL_EMPTY");
       const parsed = extractJSON(text);
@@ -495,9 +520,13 @@ ${adaptEngine}
       const winner = new AbortController();
       const attempts = [
         callGemini(userPrompt, winner.signal),
-        callChat("CEREBRAS", "https://api.cerebras.ai/v1/chat/completions", process.env.CEREBRAS_API_KEY, "gpt-oss-120b", userPrompt, winner.signal),
-        callChat("GROQ", "https://api.groq.com/openai/v1/chat/completions", process.env.GROQ_API_KEY, "openai/gpt-oss-120b", userPrompt, winner.signal),
-        callChat("ZAI", "https://api.z.ai/api/paas/v4/chat/completions", process.env.ZAI_API_KEY, "glm-4.5-flash", userPrompt, winner.signal)
+        // reasoning_effort منخفض: نماذج gpt-oss تصرف جزء من الحد على "التفكير" وقد يُقطع الـ JSON، ويقلّل استهلاك حد التوكنز عند Groq
+        callChat("CEREBRAS", "https://api.cerebras.ai/v1/chat/completions", process.env.CEREBRAS_API_KEY, "gpt-oss-120b", userPrompt, winner.signal, { reasoning_effort: "low" }),
+        callChat("GROQ", "https://api.groq.com/openai/v1/chat/completions", process.env.GROQ_API_KEY, "openai/gpt-oss-120b", userPrompt, winner.signal, { reasoning_effort: "low" }),
+        // Z.ai: وضع التفكير مفعّل افتراضياً وهو اللي كان يخلّي الطلب يتجاوز 38 ثانية وينقطع
+        callChat("ZAI", "https://api.z.ai/api/paas/v4/chat/completions", process.env.ZAI_API_KEY, process.env.ZAI_MODEL || "glm-4.5-flash", userPrompt, winner.signal, { thinking: { type: "disabled" } }),
+        // احتياط إضافي (يشتغل فقط لو المفتاح موجود)
+        callChat("OPENROUTER", "https://openrouter.ai/api/v1/chat/completions", process.env.OPENROUTER_API_KEY, process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b", userPrompt, winner.signal, { reasoning: { effort: "low" } })
       ];
       try {
         const result = await Promise.any(attempts);
