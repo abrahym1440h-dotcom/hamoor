@@ -11,7 +11,7 @@ import {
   Search, CheckCircle, XCircle, Clock, Lightbulb, Zap, Shield, Sparkles, X,
   Target, Award, TrendingDown, Calendar, PieChart, Activity, Briefcase, Star,
   Scissors, GraduationCap, Dumbbell, Smartphone, Cake, Pizza, Shirt, Sparkle,
-  ChevronRight, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
+  ChevronRight, ChevronLeft, Share2, Trash2, Archive, FileText, Eye, ArrowRight, Flame, Layers, Info, Moon, Sun,
   LogOut, Mail, Lock, User, Crown, Settings, Check, KeyRound, Download, Plus, Camera, Bell
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -2597,33 +2597,136 @@ function ChatAppsIcon({ size = 24, color = "currentColor" }) {
   );
 }
 
+// ───────────── قارئ المقالات بتصميم «ورقة هامور» (نفس المحتوى حرفياً بدون حذف أو تعديل) ─────────────
+const ART_MARKS = {
+  "✅": { kind:"ok" },
+  "⚠": { kind:"warn" },
+  "💡": { kind:"tip" }
+};
+function ArtMarkIcon({kind, color, size=16}) {
+  const p = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:color, strokeWidth:2.5, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
+  if (kind === "ok") return <svg {...p}><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>;
+  if (kind === "warn") return <svg {...p}><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.01"/></svg>;
+  return <svg {...p} strokeWidth={2.2}><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></svg>;
+}
+function artLines(lines, keyPrefix) {
+  return lines.map((l, i) => {
+    const isB = /^[•\-]\s+/.test(l) || /^•/.test(l);
+    const text = isB ? l.replace(/^[•\-]\s*/, "") : l;
+    return (
+      <div key={keyPrefix+i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+        {isB && <span style={{width:5,height:5,borderRadius:99,background:$.L4,flexShrink:0,marginTop:11}}/>}
+        <span>{text}</span>
+      </div>
+    );
+  });
+}
+function artBlock(b, key) {
+  const lines = b.split("\n").map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return null;
+  const em = lines[0].match(/^(\p{Extended_Pictographic}️?)\s*([\s\S]*)$/u);
+  if (em) {
+    const marker = em[1].replace(/️/g, "");
+    const kind = (ART_MARKS[marker] || {}).kind || null;
+    const color = kind === "ok" ? $.green : kind === "warn" ? $.red : kind === "tip" ? $.blue : $.L3;
+    const head = em[2];
+    const rest = lines.slice(1);
+    const tile = (
+      <span style={{width:30,height:30,borderRadius:9,background:kind?`${color}22`:$.F4,color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16}}>
+        {kind ? <ArtMarkIcon kind={kind} color={color}/> : em[1]}
+      </span>
+    );
+    if (!rest.length) {
+      return (
+        <div key={key} style={{background:kind==="tip"?`${$.blue}14`:kind?`${color}12`:$.F5,borderRadius:12,padding:"12px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
+          {tile}
+          <span style={{fontSize:14.5,lineHeight:1.85,color:$.L1,paddingTop:2}}>{head}</span>
+        </div>
+      );
+    }
+    return (
+      <div key={key} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+        {tile}
+        <div style={{flex:1,minWidth:0}}>
+          {head && <div style={{fontSize:14.5,fontWeight:700,color:$.L1,marginBottom:2,paddingTop:4}}>{head}</div>}
+          <div style={{fontSize:14.5,lineHeight:1.9,color:$.L2}}>{artLines(rest, key+"-")}</div>
+        </div>
+      </div>
+    );
+  }
+  if (lines.length === 1 && !/^[•\-]/.test(lines[0])) {
+    return <p key={key} style={{margin:0,fontSize:15,lineHeight:1.95,color:$.L2}}>{lines[0]}</p>;
+  }
+  return <div key={key} style={{fontSize:14.5,lineHeight:1.9,color:$.L2}}>{artLines(lines, key+"-")}</div>;
+}
+
+function ArticleReader({article, cat}) {
+  const CatIcon = CATEGORY_ICONS[cat.iconName] || BookOpen;
+  const onCat = cat.id === "finance" ? "#3A2E00" : "#fff";
+  const blocks = String(article.content || "").split("\n\n").map(x => x.trim()).filter(Boolean);
+  const intro = [];
+  const sections = [];
+  blocks.forEach(b => {
+    if (b.startsWith("═══")) {
+      const ls = b.split("\n");
+      const t = ls[0].replace(/═/g, "").trim();
+      const m = t.match(/^(\d+)\s*[.\-)]\s*([\s\S]*)$/);
+      const sec = { title: m ? m[2] : t, num: m ? m[1] : null, blocks: [] };
+      const rest = ls.slice(1).join("\n").trim();
+      if (rest) sec.blocks.push(rest);
+      sections.push(sec);
+    } else if (sections.length) sections[sections.length-1].blocks.push(b);
+    else intro.push(b);
+  });
+  const secId = (i) => "art-" + article.id + "-sec-" + i;
+  function goTo(i) {
+    try { const el = document.getElementById(secId(i)); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } catch(e) {}
+  }
+  const meta = [article.readTime ? `${article.readTime} دقائق قراءة` : null, article.level, article.date].filter(Boolean).join(" · ");
+  return (
+    <div style={{background:$.bg,borderRadius:24,overflow:"hidden",paddingBottom:sp[5]}}>
+      <div style={{background:cat.color,color:onCat,padding:`${sp[6]}px ${sp[5]}px ${sp[7]}px`,borderRadius:"0 0 28px 28px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{width:28,height:28,borderRadius:9,background:"rgba(255,255,255,0.24)",display:"flex",alignItems:"center",justifyContent:"center"}}><CatIcon size={15} color={onCat} strokeWidth={2.3}/></span>
+          <span style={{fontSize:13,fontWeight:600,opacity:0.95}}>{cat.name}</span>
+        </div>
+        <h2 style={{margin:0,fontSize:26,fontWeight:700,lineHeight:1.45}}>{article.title}</h2>
+        {meta && <div style={{marginTop:12,fontSize:13,fontWeight:500,opacity:0.92}}>{meta}</div>}
+      </div>
+      <div style={{padding:`${sp[5]}px ${sp[4]}px 0`,display:"flex",flexDirection:"column",gap:sp[4]}}>
+        {intro.map((b,i) => <p key={i} style={{margin:"0 4px",fontSize:15.5,lineHeight:2,color:$.L2,whiteSpace:"pre-line"}}>{b}</p>)}
+        {sections.length >= 2 && (
+          <div style={{background:$.surface,borderRadius:18,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px 8px",fontSize:13,fontWeight:600,color:$.L3}}>في هذا الدليل</div>
+            {sections.map((sec,i) => (
+              <button key={i} type="button" onClick={()=>goTo(i)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 18px",border:"none",borderTop:`0.5px solid ${$.sepL}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",textAlign:"right",minHeight:44}}>
+                <span style={{width:24,fontSize:14,fontWeight:700,color:sec.num?$.blue:$.L4}}>{sec.num || "•"}</span>
+                <span style={{flex:1,fontSize:15,fontWeight:600,color:$.L1}}>{sec.title}</span>
+                <ChevronLeft size={15} color={$.L4}/>
+              </button>
+            ))}
+          </div>
+        )}
+        {sections.map((sec,i) => (
+          <div id={secId(i)} key={i} style={{background:$.surface,borderRadius:18,padding:"20px 18px",display:"flex",flexDirection:"column",gap:14,scrollMarginTop:56}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              {sec.num && <span style={{width:30,height:30,borderRadius:9,background:$.blue,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,flexShrink:0}}>{sec.num}</span>}
+              <h3 style={{margin:0,fontSize:19,fontWeight:700,color:$.L1,lineHeight:1.5}}>{sec.title}</h3>
+            </div>
+            {sec.blocks.map((b,j) => artBlock(b, "b"+i+"-"+j))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // المقال اللي رشّحه المستشار يتفتح هنا فوق المحادثة نفسها (مو في قسم التعلّم)
 function ChatArticleView({article, onClose}) {
-  const cat = ARTICLE_CATEGORIES.find(c => c.id === article.category) || {name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
-  const CatIcon = CATEGORY_ICONS[cat.iconName] || BookOpen;
-  const paras = String(article.content || "").split("\n\n").filter(p => p.trim());
+  const cat = ARTICLE_CATEGORIES.find(c => c.id === article.category) || {id:"general", name:"عام", color:$.blue, gradient:"linear-gradient(145deg,#007AFF,#0050C0)", iconName:"BookOpen"};
   return (
     <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-      <div style={{background:cat.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5]}}>
-        <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-          <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
-            <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
-            <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{cat.name}</span>
-          </div>
-          <Chip text={article.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
-        </div>
-        <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3}}>{article.title}</h2>
-      </div>
-      <div style={{fontSize:16,color:$.L1,lineHeight:1.95}}>
-        {paras.map((paragraph,i) => {
-          const trimmed = paragraph.trim();
-          if (trimmed.startsWith("═══")) {
-            const headerText = trimmed.replace(/═/g,"").trim();
-            return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3]}}>{headerText}</h3>;
-          }
-          return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
-        })}
-      </div>
+      <ArticleReader article={article} cat={cat}/>
       <button type="button" onClick={onClose} style={{width:"100%",minHeight:52,marginTop:sp[5],border:"none",borderRadius:14,background:$.blue,color:"#fff",fontFamily:"inherit",fontSize:16,fontWeight:700,cursor:"pointer"}}>رجوع للمحادثة</button>
     </div>
   );
@@ -4171,34 +4274,7 @@ function LearningScreen({isPremium, onNeedUpgrade}) {
         <Sheet open={!!activeArticle} onClose={()=>setActiveArticle(null)}>
           {activeArticle && (
             <div style={{padding:`0 ${sp[5]}px ${sp[8]}px`}}>
-              {(() => {
-                const catInfo = getCategoryInfo(activeArticle.category);
-                const CatIcon = CATEGORY_ICONS[catInfo.iconName] || BookOpen;
-                return (
-                  <>
-                    <div style={{background:catInfo.gradient,borderRadius:20,padding:`${sp[6]}px ${sp[5]}px`,marginBottom:sp[5]}}>
-                      <div style={{display:"flex",alignItems:"center",gap:sp[2],marginBottom:sp[3]}}>
-                        <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.22)",borderRadius:99,padding:"5px 12px"}}>
-                          <CatIcon size={13} color="#fff" strokeWidth={2.2}/>
-                          <span style={{fontSize:11,fontWeight:600,color:"#fff"}}>{catInfo.name}</span>
-                        </div>
-                        <Chip text={activeArticle.level} color="rgba(255,255,255,0.95)" bg="rgba(255,255,255,0.22)"/>
-                      </div>
-                      <h2 style={{fontSize:22,fontWeight:800,color:"#fff",lineHeight:1.3}}>{activeArticle.title}</h2>
-                    </div>
-                    <div style={{fontSize:15,color:$.L2,lineHeight:1.9}}>
-                      {activeArticle.content.split("\n\n").filter(p=>p.trim()).map((paragraph,i) => {
-                        const trimmed = paragraph.trim();
-                        if (trimmed.startsWith("═══")) {
-                          const headerText = trimmed.replace(/═/g,"").trim();
-                          return <h3 key={i} style={{fontSize:18,fontWeight:800,color:$.L1,marginTop:sp[6],marginBottom:sp[3]}}>{headerText}</h3>;
-                        }
-                        return <p key={i} style={{marginBottom:sp[3]}}>{trimmed}</p>;
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
+              <ArticleReader article={activeArticle} cat={getCategoryInfo(activeArticle.category)}/>
             </div>
           )}
         </Sheet>
